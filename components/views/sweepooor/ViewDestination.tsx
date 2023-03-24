@@ -38,6 +38,9 @@ function	ViewDestination(): ReactElement {
 				logoURI: `https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/multichain-tokens/1/${ETH_TOKEN_ADDRESS}/logo-128.png`
 			};
 			for (const eachToken of cowswapTokenListResponse.tokens) {
+				if (eachToken.extra) {
+					continue;
+				}
 				possibleDestinationsTokens[toAddress(eachToken.address)] = eachToken;
 			}
 			for (const eachToken of yearnTokenListResponse.tokens) {
