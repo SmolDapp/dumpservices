@@ -147,7 +147,7 @@ function ComboboxAddressInput({possibleDestinations, destinationToken, onChangeD
 							<p className={'w-full overflow-x-hidden text-ellipsis whitespace-nowrap pr-4 font-normal text-neutral-900 scrollbar-none'}>
 								<Combobox.Input
 									className={'font-inter w-full cursor-default overflow-x-scroll border-none bg-transparent p-0 outline-none scrollbar-none'}
-									displayValue={(dest: TAddress): string => possibleDestinations?.[toAddress(dest)]?.name || ''}
+									displayValue={(dest: TAddress): string => possibleDestinations?.[toAddress(dest)]?.symbol || ''}
 									placeholder={'Ethereum'}
 									autoComplete={'off'}
 									autoCorrect={'off'}
