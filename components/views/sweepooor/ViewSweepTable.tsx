@@ -72,9 +72,9 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 			<div className={'box-0 relative grid w-full grid-cols-12 overflow-hidden'}>
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
 					<div className={'w-full md:w-3/4'}>
-						<b>{'Select the tokens to migrate'}</b>
+						<b>{'Select the tokens to dump'}</b>
 						<p className={'text-sm text-neutral-500'}>
-							{'Select the tokens you want to migrate to another wallet. You can migrate all your tokens at once or select individual tokens.'}
+							{'Select the tokens you want to dump for another one.'}
 						</p>
 					</div>
 				</div>

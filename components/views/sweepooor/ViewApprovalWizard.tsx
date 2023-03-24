@@ -333,9 +333,9 @@ function	ViewApprovalWizard(): ReactElement {
 		<section>
 			<div className={'box-0 relative flex w-full flex-col items-center justify-center overflow-hidden p-4 md:p-6'}>
 				<div className={'mb-6 w-full'}>
-					<b>{'Approvals'}</b>
+					<b>{'Dump!'}</b>
 					<p className={'text-sm text-neutral-500'}>
-						{'This is a two step process. You first need to approve the tokens you want to sweep, then we will ask you to sign a message to send your order to the CowSwap solver.'}
+						{isGnosisSafe ? 'All the step will be batched in one single transaction! Just execute it and sign your safe transaction! Easiest way to dump!' : 'This is a two step process. You first need to approve the tokens you want to dump, and then we will ask you to sign a message to send your order to dump!'}
 					</p>
 				</div>
 

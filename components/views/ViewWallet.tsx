@@ -59,10 +59,10 @@ function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
 					<div className={'w-full md:w-3/4'}>
 						<a href={'#wallet'}>
-							<b>{'Connect your Wallet'}</b>
+							<b>{'Connect your wallet'}</b>
 						</a>
 						<p className={'text-sm text-neutral-500'}>
-							{'Connect your wallet to start using the Migratooor. Once connected, you will be able to select a destination and migrate your tokens.'}
+							{'Connect your wallet to start dumping like a pro.'}
 						</p>
 					</div>
 					<div className={'col-span-12 mt-6 grid grid-cols-12 gap-4 md:gap-6'}>

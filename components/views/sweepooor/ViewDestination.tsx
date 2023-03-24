@@ -67,9 +67,9 @@ function	ViewDestination(): ReactElement {
 			<div className={'box-0 grid w-full grid-cols-12'}>
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
 					<div className={'w-full md:w-3/4'}>
-						<b>{'Token to Receive'}</b>
+						<b>{'Token to receive'}</b>
 						<p className={'text-sm text-neutral-500'}>
-							{'Select the token you would like to sweep to. If it is not listed, you can enter the token address manually!'}
+							{'Select the token you would like to receive when dumping. If it is not listed, you can enter the token address manually.'}
 						</p>
 					</div>
 					<form
