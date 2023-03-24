@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import ComboboxAddressInput from 'components/app/sweepooor/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {isAddress} from 'ethers/lib/utils';
+import cowswapTokenList from 'utils/tokenLists.json';
 import axios from 'axios';
 import {useMountEffect, useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
@@ -24,11 +25,8 @@ function	ViewDestination(): ReactElement {
 	** Only the tokens in that list will be displayed as possible destinations.
 	**********************************************************************************************/
 	useMountEffect((): void => {
-		axios.all([
-			axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/1/cowswap.json'),
-			axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/1/yearn.json')
-		]).then(axios.spread((cowswapResponse, yearnResponse): void => {
-			const	cowswapTokenListResponse = cowswapResponse.data as TTokenList;
+		axios.all([axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/1/yearn.json')]).then(axios.spread((yearnResponse): void => {
+			const	cowswapTokenListResponse = cowswapTokenList as TTokenList;
 			const	yearnTokenListResponse = yearnResponse.data as TTokenList;
 			const	possibleDestinationsTokens: TDict<TTokenInfo> = {};
 			possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = {

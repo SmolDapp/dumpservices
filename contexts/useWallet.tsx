@@ -2,7 +2,7 @@ import React, {createContext, memo, useCallback, useContext, useMemo, useState} 
 import {useTokenList} from 'contexts/useTokenList';
 import {useBalances} from 'hooks/useBalances';
 import {MATIC_TOKEN_ADDRESS} from 'utils/constants';
-import defaultTokenList from 'utils/tokenLists.debug.json';
+import defaultTokenList from 'utils/tokenLists.json';
 import {useMountEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
