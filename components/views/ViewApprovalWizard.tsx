@@ -257,7 +257,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 
 			cowswap.execute(
 				quote,
-				false, // We don't want to use presign, unless specified in env variables (debug mode)
+				Boolean(process.env.SHOULD_USE_PRESIGN), // We don't want to use presign, unless specified in env variables (debug mode)
 				(orderUID): void => {
 					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,

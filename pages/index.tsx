@@ -1,8 +1,8 @@
 import React from 'react';
-import ViewApprovalWizard from 'components/views/sweepooor/ViewApprovalWizard';
-import ViewDestination from 'components/views/sweepooor/ViewDestination';
-import ViewReceiver from 'components/views/sweepooor/ViewReceiver';
-import ViewSweepTable from 'components/views/sweepooor/ViewSweepTable';
+import ViewApprovalWizard from 'components/views/ViewApprovalWizard';
+import ViewDestination from 'components/views/ViewDestination';
+import ViewReceiver from 'components/views/ViewReceiver';
+import ViewSweepTable from 'components/views/ViewSweepTable';
 import ViewWallet from 'components/views/ViewWallet';
 import {Step, SweepooorContextApp, useSweepooor} from 'contexts/useSweepooor';
 

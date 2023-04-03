@@ -149,7 +149,7 @@ export function useSolverCowswap(): TSolverContext {
 	**********************************************************************************************/
 	const execute = useCallback(async (
 		quoteOrder: TOrderQuoteResponse,
-		shouldUsePresign = true || Boolean(process.env.SHOULD_USE_PRESIGN),
+		shouldUsePresign: boolean,
 		onSubmitted: (orderUID: string) => void
 	): Promise<TPossibleStatus> => {
 		if (!quoteOrder) {
@@ -164,7 +164,7 @@ export function useSolverCowswap(): TSolverContext {
 			from: quoteOrder.from,
 			quoteId: quoteOrder.id,
 			signature: quoteOrder.signature,
-			signingScheme
+			signingScheme: signingScheme
 		};
 		const	orderUID = await orderBookAPI?.sendOrder(orderCreation as OrderCreation);
 		if (orderUID) {
