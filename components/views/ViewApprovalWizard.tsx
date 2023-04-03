@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo, useState} from 'react';
-import ApprovalWizardItem from 'components/app/sweepooor/ApprovalWizardItem';
+import ApprovalWizardItem from 'components/ApprovalWizardItem';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';

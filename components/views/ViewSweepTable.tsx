@@ -1,6 +1,6 @@
 import React, {useMemo, useState} from 'react';
-import TokenRow from 'components/app/sweepooor/TokenRow';
 import ListHead from 'components/ListHead';
+import TokenRow from 'components/TokenRow';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {Button} from '@yearn-finance/web-lib/components/Button';

@@ -1,7 +1,7 @@
 import React, {memo, useCallback, useState} from 'react';
 import Link from 'next/link';
-import TokenRowInput from 'components/app/sweepooor/TokenRowInput';
 import {ImageWithFallback} from 'components/ImageWithFallback';
+import TokenRowInput from 'components/TokenRowInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useMountEffect} from '@react-hookz/web';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';

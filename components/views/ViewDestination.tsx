@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import ComboboxAddressInput from 'components/app/sweepooor/ComboboxAddressInput';
+import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {isAddress} from 'ethers/lib/utils';
 import cowswapTokenList from 'utils/tokenLists.json';
