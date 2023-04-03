@@ -14,8 +14,8 @@ import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/con
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 import {defaultTxStatus, Transaction} from '@yearn-finance/web-lib/utils/web3/transaction';
 
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
 
@@ -192,12 +192,12 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				const signature = await cowswap.signCowswapOrder(quoteOrder);
 				performBatchedUpdates((): void => {
 					onUpdateSignStep((currentStep: number): number => currentStep + 1);
-					set_quotes((prev): TDict<TCowQuote> => ({...prev, [toAddress(token)]: {...quoteOrder, signature}}));
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({...prev, [toAddress(token)]: {...quoteOrder, signature}}));
 				});
 			} catch (error) {
 				performBatchedUpdates((): void => {
 					onUpdateSignStep((currentStep: number): number => currentStep + 1);
-					set_quotes((prev): TDict<TCowQuote> => ({...prev, [toAddress(token)]: {...quotes[toAddress(token)], signature: ''}}));
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({...prev, [toAddress(token)]: {...quotes[toAddress(token)], signature: ''}}));
 				});
 			}
 			if (token === allSelected[allSelected.length - 1]) {
@@ -226,7 +226,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 			if ((quote?.signature || '') === '') {
 				const quoteOrder = quotes[toAddress(token)];
 				const signature = await cowswap.signCowswapOrder(quoteOrder);
-				set_quotes((prev): TDict<TCowQuote> => ({...prev, [toAddress(token)]: {...quoteOrder, signature}}));
+				set_quotes((prev): TDict<TOrderQuoteResponse> => ({...prev, [toAddress(token)]: {...quoteOrder, signature}}));
 				quote.signature = signature;
 			}
 
@@ -234,23 +234,33 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				quote,
 				false, // We don't want to use presign, unless specified in env variables (debug mode)
 				(orderUID): void => {
-					set_quotes((prev): TDict<TCowQuote> => ({
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
 						[toAddress(token)]: {...quote, orderUID, orderStatus: 'pending'}
 					}));
 				})
 				.then((status): void => {
-					set_quotes((prev): TDict<TCowQuote> => ({
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
 						[toAddress(token)]: {...quote, orderStatus: status}
 					}));
 					refresh([
-						{token: quote.quote.buyToken, decimals: quote.outputTokenDecimals, symbol: quote.outputTokenSymbol},
-						{token: quote.quote.sellToken, decimals: quote.inputTokenDecimals, symbol: quote.inputTokenSymbol}
+						{
+							token: quote.quote.buyToken,
+							decimals: quote.request.outputToken.decimals,
+							name: quote.request.outputToken.label,
+							symbol: quote.request.outputToken.symbol
+						},
+						{
+							token: quote.quote.sellToken,
+							decimals: quote.request.inputToken.decimals,
+							name: quote.request.inputToken.label,
+							symbol: quote.request.inputToken.symbol
+						}
 					]);
 				}).catch((error): void => {
 					console.log(error);
-					set_quotes((prev): TDict<TCowQuote> => ({...prev, [toAddress(token)]: {...quotes[toAddress(token)], orderStatus: 'invalid'}}));
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({...prev, [toAddress(token)]: {...quotes[toAddress(token)], orderStatus: 'invalid'}}));
 				});
 		}
 	}, [selected, quotes, cowswap, set_quotes, refresh]);

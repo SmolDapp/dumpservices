@@ -11,8 +11,8 @@ import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {TMinBalanceData} from 'hooks/useBalances';
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {ReactElement} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -37,7 +37,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {
-				set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => {
+				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => {
 					const newQuotes = {...quotes};
 					delete newQuotes[toAddress(tokenAddress)];
 					return newQuotes;
@@ -62,7 +62,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 	return (
 		<div
 			id={`${safeChainID}-${toAddress(tokenAddress)}`}
-			className={`group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 py-2 px-4 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:px-6 ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
+			className={`group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 py-3 px-4 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:px-6 ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
 			<div className={'absolute left-3 top-7 z-10 flex h-full justify-center md:left-6 md:top-0 md:items-center'}>
 				<input
 					type={'checkbox'}
@@ -85,6 +85,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 						<div className={'flex flex-row items-center space-x-2'}>
 							<b>{balance.symbol}</b>
 						</div>
+						<p className={'text-ellipsis font-mono text-xs text-neutral-500 line-clamp-1'}>{balance.name}</p>
 						<Link
 							href={`${explorer || 'https://etherscan.io'}/address/${tokenAddress}`}
 							onClick={(e): void => e.stopPropagation()}

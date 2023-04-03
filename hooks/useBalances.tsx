@@ -26,6 +26,7 @@ import type {TAddress, TDict, TNDict} from '@yearn-finance/web-lib/types';
 ******************************************************************************/
 export type	TMinBalanceData = {
 	symbol: string,
+	name: string,
 	decimals: number,
 	raw: BigNumber,
 	normalized: number,
@@ -39,6 +40,7 @@ export type	TUseBalancesTokens = {
 	token: string,
 	decimals: number,
 	symbol: string,
+	name: string,
 	force?: boolean
 }
 export type	TUseBalancesReq = {
@@ -84,11 +86,12 @@ async function performCall(
 
 	let		rIndex = 0;
 	for (const element of tokens) {
-		const	{token, symbol, decimals} = element;
+		const	{token, symbol, name, decimals} = element;
 		const	balanceOf = results[rIndex++] as BigNumber;
 		_data[toAddress(token)] = {
 			decimals: Number(decimals || 18),
 			symbol: symbol,
+			name: name,
 			raw: balanceOf,
 			normalized: format.toNormalizedValue(balanceOf, Number(decimals || 18)),
 			force: element.force

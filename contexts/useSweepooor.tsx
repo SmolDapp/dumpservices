@@ -4,8 +4,8 @@ import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {Dispatch, SetStateAction} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {TTokenInfo} from './useTokenList';
@@ -20,12 +20,12 @@ export enum	Step {
 export type TSelected = {
 	selected: TAddress[],
 	amounts: TDict<TNormalizedBN>,
-	quotes: TDict<TCowQuote>,
+	quotes: TDict<TOrderQuoteResponse>,
 	destination: TTokenInfo,
 	currentStep: Step,
 	set_selected: Dispatch<SetStateAction<TAddress[]>>,
 	set_amounts: Dispatch<SetStateAction<TDict<TNormalizedBN>>>,
-	set_quotes: Dispatch<SetStateAction<TDict<TCowQuote>>>,
+	set_quotes: Dispatch<SetStateAction<TDict<TOrderQuoteResponse>>>,
 	set_currentStep: Dispatch<SetStateAction<Step>>,
 	set_destination: Dispatch<SetStateAction<TTokenInfo>>
 }
@@ -69,7 +69,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const	{address, isActive, walletType} = useWeb3();
 	const	[selected, set_selected] = useState<TAddress[]>(defaultProps.selected);
 	const	[destination, set_destination] = useState<TTokenInfo>(defaultProps.destination);
-	const	[quotes, set_quotes] = useState<TDict<TCowQuote>>(defaultProps.quotes);
+	const	[quotes, set_quotes] = useState<TDict<TOrderQuoteResponse>>(defaultProps.quotes);
 	const	[amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
 	const	[currentStep, set_currentStep] = useState<Step>(Step.WALLET);
 

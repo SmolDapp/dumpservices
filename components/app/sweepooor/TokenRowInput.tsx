@@ -12,8 +12,8 @@ import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUp
 
 import type {BigNumber} from 'ethers';
 import type {TMinBalanceData} from 'hooks/useBalances';
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {ChangeEvent, ReactElement} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -44,6 +44,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		if (!isSelected && !force) {
 			return;
 		}
+		console.log('HERE');
 		performBatchedUpdates((): void => {
 			set_error('');
 			set_isLoadingQuote(true);
@@ -67,7 +68,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
 				if (order) {
-					set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => ({
+					set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
 						...quotes,
 						[toAddress(tokenAddress)]: order
 					}));
@@ -76,6 +77,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				set_isLoadingQuote(false);
 			});
 		} else {
+			console.log('NOT SUCCESS', cowswapQuote, order, error);
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
@@ -128,7 +130,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
 				if (order) {
-					set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => ({
+					set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
 						...quotes,
 						[toAddress(tokenAddress)]: order
 					}));
@@ -211,7 +213,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	**********************************************************************************************/
 	const	onRefreshClick = useCallback((): void => {
 		set_error('');
-		onEstimateQuote(amount?.raw);
+		onEstimateQuote(amount?.raw, true);
 	}, [amount?.raw, onEstimateQuote]);
 
 	/**********************************************************************************************

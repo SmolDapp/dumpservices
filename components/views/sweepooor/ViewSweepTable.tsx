@@ -19,6 +19,7 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{balances, balancesNonce} = useWallet();
 	const	[sortBy, set_sortBy] = useState<string>('apy');
 	const	[sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
+	const	[search, set_search] = useState<string>('');
 	const	currentChain = useChain().getCurrent();
 
 	const	hasQuoteForEverySelectedToken = useMemo((): boolean => {
@@ -31,6 +32,12 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 		balancesNonce;
 		return (
 			Object.entries(balances || [])
+				.filter(([tokenAddress, tokenData]: [string, TMinBalanceData]): boolean => {
+					if (search) {
+						return (`${tokenData.symbol}_${tokenData.name}_${tokenAddress}`.toLowerCase().includes(search.toLowerCase()));
+					}
+					return true;
+				})
 				.filter(([, balance]: [string, TMinBalanceData]): boolean => (
 					(balance?.raw && !balance.raw.isZero()) || (balance?.force || false)
 				))
@@ -65,7 +72,7 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						tokenAddress={toAddress(tokenAddress)} />;
 				})
 		);
-	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer]);
+	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer, search]);
 
 	return (
 		<section>
@@ -76,6 +83,14 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						<p className={'text-sm text-neutral-500'}>
 							{'Select the tokens you want to dump for another one.'}
 						</p>
+					</div>
+					<div className={'mt-4 w-full'}>
+						<input
+							onChange={(event): void => set_search(event.target.value)}
+							value={search}
+							className={'h-10 w-full rounded-md border border-neutral-200 py-2 px-4 text-sm focus:border-neutral-400 focus:outline-none'}
+							type={'text'}
+							placeholder={'Filter tokens...'} />
 					</div>
 				</div>
 

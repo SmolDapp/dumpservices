@@ -55,11 +55,12 @@ async function getBatchBalances({
 
 			let		rIndex = 0;
 			for (const element of chunkTokens) {
-				const	{token, symbol, decimals} = element;
+				const	{token, symbol, name, decimals} = element;
 				const	balanceOf = results[rIndex++] as BigNumber;
 				data[toAddress(token)] = {
 					decimals: Number(decimals || 18),
 					symbol: symbol,
+					name: name,
 					raw: balanceOf,
 					normalized: toNormalizedValue(balanceOf, Number(decimals || 18)),
 					force: element.force

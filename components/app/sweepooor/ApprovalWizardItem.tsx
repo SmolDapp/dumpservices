@@ -18,8 +18,8 @@ import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.ti
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ethers} from 'ethers';
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {ReactElement} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TApprovalWizardItem = {
@@ -92,7 +92,7 @@ function	ApprovalWizardItem({
 		performBatchedUpdates((): void => {
 			if (order) {
 				console.log(order);
-				set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => ({...quotes, [toAddress(token)]: order}));
+				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({...quotes, [toAddress(token)]: order}));
 				set_expireIn((Number(order.quote?.validTo || 0) * 1000) - new Date().valueOf());
 				set_isQuoteExpired(false);
 			}
@@ -216,7 +216,7 @@ function	ApprovalWizardItem({
 						<span className={'font-number font-bold'}>
 							{formatAmount(Number(toNormalizedBN(
 								currentQuote?.quote?.buyAmount || '',
-								currentQuote?.outputTokenDecimals || 18
+								currentQuote?.request?.outputToken?.decimals || 18
 							).normalized), 6, 6)}
 						</span>
 						{` ${destination.symbol}`}
@@ -261,7 +261,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.buyAmount || '',
-							currentQuote?.inputTokenDecimals || 18
+							currentQuote?.request?.inputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.buyAmount || ''})`}
 					</p>
 				</span>
@@ -276,7 +276,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.sellAmount || '',
-							currentQuote?.outputTokenDecimals || 18
+							currentQuote?.request?.outputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.sellAmount || ''})`}
 					</p>
 				</span>
@@ -285,7 +285,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.feeAmount || '',
-							currentQuote?.outputTokenDecimals || 18
+							currentQuote?.request?.outputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.feeAmount || ''})`}
 					</p>
 				</span>
