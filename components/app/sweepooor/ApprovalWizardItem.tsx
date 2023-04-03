@@ -39,7 +39,7 @@ function	ApprovalWizardItem({
 	currentWizardSignStep
 }: TApprovalWizardItem): ReactElement {
 	const	{provider} = useWeb3();
-	const	{amounts, quotes, set_quotes, destination} = useSweepooor();
+	const	{amounts, quotes, set_quotes, destination, receiver} = useSweepooor();
 	const	{balances} = useWallet();
 	const	cowswap = useSolverCowswap();
 	const	[isQuoteExpired, set_isQuoteExpired] = useState<boolean>((Number(quotes[toAddress(token)]?.quote?.validTo || 0) * 1000) < new Date().valueOf());
@@ -57,6 +57,10 @@ function	ApprovalWizardItem({
 			amounts[toAddress(token)]?.raw
 		);
 	}, false);
+
+	useUpdateEffect((): void => {
+		set_expireIn((Number(currentQuote?.quote?.validTo || 0) * 1000) - new Date().valueOf());
+	}, [currentQuote?.quote?.validTo]);
 
 	useEffect((): void => {
 		triggerAllowanceCheck.execute();
@@ -85,6 +89,7 @@ function	ApprovalWizardItem({
 		set_isRefreshingQuote(true);
 		const [, order] = await cowswap.init({
 			from: toAddress(currentQuote?.from),
+			receiver: toAddress(receiver),
 			inputToken: currentQuote?.request?.inputToken,
 			outputToken: currentQuote?.request?.outputToken,
 			inputAmount: currentQuote?.request?.inputAmount
@@ -98,7 +103,7 @@ function	ApprovalWizardItem({
 			set_isRefreshingQuote(false);
 		});
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token]);
+	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token, receiver]);
 
 	function	renderApprovalIndication(): ReactElement {
 		if (hasAllowance) {
@@ -251,10 +256,13 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>{currentQuote?.quote?.kind || ''}</p>
 				</span>
 				<span className={'flex flex-row justify-between'}>
+					<b>{'From'}</b>
+					<p className={'font-number'}>{toAddress(currentQuote?.from || '')}</p>
+				</span>
+				<span className={'flex flex-row justify-between'}>
 					<b>{'Receiver'}</b>
 					<p className={'font-number'}>{toAddress(currentQuote?.quote?.receiver || '')}</p>
 				</span>
-
 				<span className={'flex flex-row justify-between'}>
 					<b>{'BuyAmount'}</b>
 					<p className={'font-number'}>

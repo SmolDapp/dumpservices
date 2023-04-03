@@ -1,6 +1,7 @@
 import React from 'react';
 import ViewApprovalWizard from 'components/views/sweepooor/ViewApprovalWizard';
 import ViewDestination from 'components/views/sweepooor/ViewDestination';
+import ViewReceiver from 'components/views/sweepooor/ViewReceiver';
 import ViewSweepTable from 'components/views/sweepooor/ViewSweepTable';
 import ViewWallet from 'components/views/ViewWallet';
 import {Step, SweepooorContextApp, useSweepooor} from 'contexts/useSweepooor';
@@ -20,8 +21,14 @@ function	Home(): ReactElement {
 
 			<div
 				id={'destinationToken'}
-				className={`mt-2 pt-8 transition-opacity ${[Step.SELECTOR, Step.APPROVALS, Step.DESTINATION].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
+				className={`mt-2 pt-8 transition-opacity ${[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER, Step.DESTINATION].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
 				<ViewDestination />
+			</div>
+
+			<div
+				id={'receiver'}
+				className={`mt-2 pt-8 transition-opacity ${[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
+				<ViewReceiver onProceed={(): void => set_currentStep(Step.SELECTOR)} />
 			</div>
 
 			<div

@@ -27,7 +27,7 @@ type TTokenRowInputProps = {
 
 const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSelected, amount, onDisable}: TTokenRowInputProps): ReactElement {
 	const cowswap = useSolverCowswap();
-	const {set_selected, set_amounts, set_quotes, destination} = useSweepooor();
+	const {set_selected, set_amounts, set_quotes, destination, receiver} = useSweepooor();
 	const {address: fromAddress, isActive} = useWeb3();
 	const [quote, set_quote] = useState(toNormalizedBN(0));
 	const [isLoadingQuote, set_isLoadingQuote] = useState(false);
@@ -50,6 +50,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		});
 		const [cowswapQuote, order, isSuccess, error] = await cowswap.init({
 			from: toAddress(fromAddress || ''),
+			receiver: toAddress(receiver),
 			inputToken: {
 				value: toAddress(tokenAddress),
 				label: balance.symbol,
@@ -111,6 +112,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		});
 		const [cowswapQuote, order, isSuccess, error] = await cowswap.init({
 			from: toAddress(fromAddress || ''),
+			receiver: toAddress(receiver),
 			inputToken: {
 				value: toAddress(tokenAddress),
 				label: balance.symbol,
