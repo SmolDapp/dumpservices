@@ -91,7 +91,6 @@ function	ApprovalWizardItem({
 		});
 		performBatchedUpdates((): void => {
 			if (order) {
-				console.log(order);
 				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({...quotes, [toAddress(token)]: order}));
 				set_expireIn((Number(order.quote?.validTo || 0) * 1000) - new Date().valueOf());
 				set_isQuoteExpired(false);

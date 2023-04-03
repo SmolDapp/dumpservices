@@ -1,8 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {ethers} from 'ethers';
 import axios from 'axios';
-import {OrderBookApi, OrderQuoteSide, SigningScheme} from '@cowprotocol/cow-sdk';
-import {domain, signOrder} from '@gnosis.pm/gp-v2-contracts';
+import {OrderBookApi, OrderQuoteSide, OrderSigningUtils} from '@cowprotocol/cow-sdk';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
@@ -13,8 +12,7 @@ import {formatBN, toNormalizedBN, Zero} from '@yearn-finance/web-lib/utils/forma
 import type {BigNumber} from 'ethers';
 import type {Maybe, TInitSolverArgs, TOrderQuoteResponse, TPossibleStatus, TSolverContext} from 'utils/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
-import type {OrderParameters, OrderQuoteRequest} from '@cowprotocol/cow-sdk';
-import type {Order} from '@gnosis.pm/gp-v2-contracts';
+import type {OrderParameters, OrderQuoteRequest, UnsignedOrder} from '@cowprotocol/cow-sdk';
 
 
 const	VALID_TO_MN = 60;
@@ -64,7 +62,6 @@ export function useSolverCowswap(): TSolverContext {
 				}
 				const	message = `Zap not possible. Try again later or pick another token. ${_error?.body.description ? `(Reason: [${_error?.body.description}])` : ''}`;
 				toast({type: 'error', content: message});
-				// _error?.response?.data?.data?.fee_amount
 				return [undefined, formatBN(_error?.body?.data?.fee_amount || 0), _error?.body];
 			}
 		}
@@ -116,14 +113,24 @@ export function useSolverCowswap(): TSolverContext {
 		const	buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
 		const	signer = provider.getSigner();
 
-		const	rawSignature = await signOrder(
-			domain(1, toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS)),
-			{...quote as Order, buyAmount: buyAmountWithSlippage},
-			signer,
-			SigningScheme.EIP712 as any
+		const rawSignature = await OrderSigningUtils.signOrder(
+			{...quote as UnsignedOrder, buyAmount: buyAmountWithSlippage},
+			safeChainID,
+			signer
 		);
-		return ethers.utils.joinSignature(rawSignature.data);
-	}, [getBuyAmountWithSlippage, provider, address]);
+		// .then(setOutput)
+		// .catch((error) => {
+		//   setOutput(error.toString())
+		// })
+
+		// const	rawSignature = await signOrder(
+		// 	domain(1, toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS)),
+		// 	{...quote as Order, buyAmount: buyAmountWithSlippage},
+		// 	signer,
+		// 	SigningScheme.EIP712 as any
+		// );
+		return ethers.utils.joinSignature(rawSignature.signature);
+	}, [getBuyAmountWithSlippage, provider, safeChainID, address]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Cowswap orders have a validity period and the return value on submit is not the execution

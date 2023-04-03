@@ -44,7 +44,6 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		if (!isSelected && !force) {
 			return;
 		}
-		console.log('HERE');
 		performBatchedUpdates((): void => {
 			set_error('');
 			set_isLoadingQuote(true);
@@ -77,7 +76,6 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				set_isLoadingQuote(false);
 			});
 		} else {
-			console.log('NOT SUCCESS', cowswapQuote, order, error);
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
