@@ -9,9 +9,24 @@ import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {formatBN, toNormalizedBN, Zero} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 import type {BigNumber} from 'ethers';
-import type {Maybe, TInitSolverArgs, TOrderQuoteResponse, TPossibleStatus, TSolverContext} from 'utils/types';
+import type {Maybe, TInitSolverArgs, TOrderQuoteResponse, TPossibleStatus} from 'utils/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {OrderCreation, OrderParameters, OrderQuoteRequest, SigningResult, UnsignedOrder} from '@cowprotocol/cow-sdk';
+
+type TCowQuoteError = {
+	description: string,
+	errorType: string,
+	data: {fee_amount: string}
+}
+type TGetQuote = [Maybe<TOrderQuoteResponse>, BigNumber, Maybe<TCowQuoteError>]
+type TInit = [TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<TCowQuoteError>]
+type TCheckOrder = {status: TPossibleStatus, isSuccessful: boolean, error?: Error}
+type TSolverContext = {
+	init: (args: TInitSolverArgs) => Promise<TInit>;
+	signCowswapOrder: (quote: TOrderQuoteResponse) => Promise<SigningResult>;
+	execute: (quoteOrder: TOrderQuoteResponse, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TPossibleStatus>;
+}
+
 
 const	VALID_TO_MN = 60;
 export function useSolverCowswap(): TSolverContext {
@@ -30,7 +45,7 @@ export function useSolverCowswap(): TSolverContext {
 	const getQuote = useCallback(async (
 		request: TInitSolverArgs,
 		shouldPreventErrorToast = false
-	): Promise<[Maybe<TOrderQuoteResponse>, BigNumber, Maybe<Error>]> => {
+	): Promise<TGetQuote> => {
 		const	quote: OrderQuoteRequest = ({
 			sellToken: toAddress(request.inputToken.value), // token to spend
 			buyToken: toAddress(request.outputToken.value), // token to receive
@@ -54,13 +69,14 @@ export function useSolverCowswap(): TSolverContext {
 				const result = await orderBookAPI.getQuote(quote) as TOrderQuoteResponse;
 				return ([result, Zero, undefined]);
 			} catch (error) {
-				const	_error = error as any;
+				const	_error = error as TCowQuoteError;
 				if (shouldPreventErrorToast) {
-					return [undefined, formatBN(_error?.body.data?.fee_amount || 0), _error?.body?.data];
+					return [undefined, formatBN(_error.data?.fee_amount || 0), _error];
 				}
-				const	message = `Zap not possible. Try again later or pick another token. ${_error?.body.description ? `(Reason: [${_error?.body.description}])` : ''}`;
+				console.error(error);
+				const	message = `Zap not possible ${_error.description ? `(Reason: ${_error.description})` : ''}`;
 				toast({type: 'error', content: message});
-				return [undefined, formatBN(_error?.body?.data?.fee_amount || 0), _error?.body];
+				return [undefined, formatBN(_error?.data?.fee_amount || 0), _error];
 			}
 		}
 		return [undefined, formatBN(0), undefined];
@@ -82,7 +98,7 @@ export function useSolverCowswap(): TSolverContext {
 	** It will set the request to the provided value, as it's required to get the quote, and will
 	** call getQuote to get the current quote for the provided request.current.
 	**********************************************************************************************/
-	const init = useCallback(async (_request: TInitSolverArgs): Promise<[TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<Error>]> => {
+	const init = useCallback(async (_request: TInitSolverArgs): Promise<TInit> => {
 		const [quote, minFeeAmount, error] = await getQuote(_request);
 		if (quote) {
 			const buyAmountWithSlippage = getBuyAmountWithSlippage(quote.quote, _request?.outputToken?.decimals || 18);
@@ -124,7 +140,7 @@ export function useSolverCowswap(): TSolverContext {
 	** boolean value indicating whether the order was successful or not.
 	** It will timeout once the order is no longer valid or after 50 minutes (max should be 30mn)
 	**********************************************************************************************/
-	const	checkOrderStatus = useCallback(async (orderUID: string, validTo: number): Promise<{status: TPossibleStatus, isSuccessful: boolean, error?: Error}> => {
+	const	checkOrderStatus = useCallback(async (orderUID: string, validTo: number): Promise<TCheckOrder> => {
 		for (let i = 0; i < maxIterations; i++) {
 			const order = await orderBookAPI?.getOrder(orderUID);
 			if (order?.status === 'fulfilled') {
