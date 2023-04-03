@@ -18,8 +18,8 @@ import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.ti
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ethers} from 'ethers';
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {ReactElement} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TApprovalWizardItem = {
@@ -39,7 +39,7 @@ function	ApprovalWizardItem({
 	currentWizardSignStep
 }: TApprovalWizardItem): ReactElement {
 	const	{provider} = useWeb3();
-	const	{amounts, quotes, set_quotes, destination} = useSweepooor();
+	const	{amounts, quotes, set_quotes, destination, receiver} = useSweepooor();
 	const	{balances} = useWallet();
 	const	cowswap = useSolverCowswap();
 	const	[isQuoteExpired, set_isQuoteExpired] = useState<boolean>((Number(quotes[toAddress(token)]?.quote?.validTo || 0) * 1000) < new Date().valueOf());
@@ -57,6 +57,10 @@ function	ApprovalWizardItem({
 			amounts[toAddress(token)]?.raw
 		);
 	}, false);
+
+	useUpdateEffect((): void => {
+		set_expireIn((Number(currentQuote?.quote?.validTo || 0) * 1000) - new Date().valueOf());
+	}, [currentQuote?.quote?.validTo]);
 
 	useEffect((): void => {
 		triggerAllowanceCheck.execute();
@@ -85,21 +89,21 @@ function	ApprovalWizardItem({
 		set_isRefreshingQuote(true);
 		const [, order] = await cowswap.init({
 			from: toAddress(currentQuote?.from),
+			receiver: toAddress(receiver),
 			inputToken: currentQuote?.request?.inputToken,
 			outputToken: currentQuote?.request?.outputToken,
 			inputAmount: currentQuote?.request?.inputAmount
 		});
 		performBatchedUpdates((): void => {
 			if (order) {
-				console.log(order);
-				set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => ({...quotes, [toAddress(token)]: order}));
+				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({...quotes, [toAddress(token)]: order}));
 				set_expireIn((Number(order.quote?.validTo || 0) * 1000) - new Date().valueOf());
 				set_isQuoteExpired(false);
 			}
 			set_isRefreshingQuote(false);
 		});
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token]);
+	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token, receiver]);
 
 	function	renderApprovalIndication(): ReactElement {
 		if (hasAllowance) {
@@ -216,7 +220,7 @@ function	ApprovalWizardItem({
 						<span className={'font-number font-bold'}>
 							{formatAmount(Number(toNormalizedBN(
 								currentQuote?.quote?.buyAmount || '',
-								currentQuote?.outputTokenDecimals || 18
+								currentQuote?.request?.outputToken?.decimals || 18
 							).normalized), 6, 6)}
 						</span>
 						{` ${destination.symbol}`}
@@ -252,16 +256,19 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>{currentQuote?.quote?.kind || ''}</p>
 				</span>
 				<span className={'flex flex-row justify-between'}>
+					<b>{'From'}</b>
+					<p className={'font-number'}>{toAddress(currentQuote?.from || '')}</p>
+				</span>
+				<span className={'flex flex-row justify-between'}>
 					<b>{'Receiver'}</b>
 					<p className={'font-number'}>{toAddress(currentQuote?.quote?.receiver || '')}</p>
 				</span>
-
 				<span className={'flex flex-row justify-between'}>
 					<b>{'BuyAmount'}</b>
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.buyAmount || '',
-							currentQuote?.inputTokenDecimals || 18
+							currentQuote?.request?.inputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.buyAmount || ''})`}
 					</p>
 				</span>
@@ -276,7 +283,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.sellAmount || '',
-							currentQuote?.outputTokenDecimals || 18
+							currentQuote?.request?.outputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.sellAmount || ''})`}
 					</p>
 				</span>
@@ -285,7 +292,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.feeAmount || '',
-							currentQuote?.outputTokenDecimals || 18
+							currentQuote?.request?.outputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.feeAmount || ''})`}
 					</p>
 				</span>

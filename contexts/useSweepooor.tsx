@@ -1,11 +1,12 @@
 import React, {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import {useMountEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
+import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {Dispatch, SetStateAction} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {TTokenInfo} from './useTokenList';
@@ -13,6 +14,7 @@ import type {TTokenInfo} from './useTokenList';
 export enum	Step {
 	WALLET = 'wallet',
 	DESTINATION = 'destination',
+	RECEIVER = 'receiver',
 	SELECTOR = 'selector',
 	APPROVALS = 'approval'
 }
@@ -20,14 +22,16 @@ export enum	Step {
 export type TSelected = {
 	selected: TAddress[],
 	amounts: TDict<TNormalizedBN>,
-	quotes: TDict<TCowQuote>,
+	quotes: TDict<TOrderQuoteResponse>,
 	destination: TTokenInfo,
 	currentStep: Step,
+	receiver: TAddress,
 	set_selected: Dispatch<SetStateAction<TAddress[]>>,
 	set_amounts: Dispatch<SetStateAction<TDict<TNormalizedBN>>>,
-	set_quotes: Dispatch<SetStateAction<TDict<TCowQuote>>>,
+	set_quotes: Dispatch<SetStateAction<TDict<TOrderQuoteResponse>>>,
 	set_currentStep: Dispatch<SetStateAction<Step>>,
-	set_destination: Dispatch<SetStateAction<TTokenInfo>>
+	set_destination: Dispatch<SetStateAction<TTokenInfo>>,
+	set_receiver: Dispatch<SetStateAction<TAddress>>
 }
 
 const	defaultProps: TSelected = {
@@ -43,11 +47,13 @@ const	defaultProps: TSelected = {
 		logoURI: `https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/multichain-tokens/1/${ETH_TOKEN_ADDRESS}/logo-128.png`
 	},
 	currentStep: Step.WALLET,
+	receiver: toAddress(),
 	set_selected: (): void => undefined,
 	set_amounts: (): void => undefined,
 	set_quotes: (): void => undefined,
 	set_currentStep: (): void => undefined,
-	set_destination: (): void => undefined
+	set_destination: (): void => undefined,
+	set_receiver: (): void => undefined
 };
 
 
@@ -69,7 +75,8 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const	{address, isActive, walletType} = useWeb3();
 	const	[selected, set_selected] = useState<TAddress[]>(defaultProps.selected);
 	const	[destination, set_destination] = useState<TTokenInfo>(defaultProps.destination);
-	const	[quotes, set_quotes] = useState<TDict<TCowQuote>>(defaultProps.quotes);
+	const	[receiver, set_receiver] = useState<TAddress>(toAddress(address));
+	const	[quotes, set_quotes] = useState<TDict<TOrderQuoteResponse>>(defaultProps.quotes);
 	const	[amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
 	const	[currentStep, set_currentStep] = useState<Step>(Step.WALLET);
 
@@ -82,6 +89,15 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			});
 		}
 	}, [isActive]);
+
+	/**********************************************************************************************
+	** We need to set the receiver to the connected wallet address if the receiver is not set.
+	**********************************************************************************************/
+	useUpdateEffect((): void => {
+		if (receiver === toAddress()) {
+			set_receiver(toAddress(address));
+		}
+	}, [address]);
 
 	/**********************************************************************************************
 	** This effect is used to directly jump the UI to the DESTINATION section if the wallet is
@@ -109,6 +125,8 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 				document?.getElementById('wallet')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
 				document?.getElementById('destinationToken')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+			} else if (currentStep === Step.RECEIVER) {
+				document?.getElementById('receiver')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.SELECTOR) {
 				document?.getElementById('selector')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.APPROVALS) {
@@ -134,6 +152,8 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 				currentStepContainer = document?.getElementById('wallet');
 			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
 				currentStepContainer = document?.getElementById('destinationToken');
+			} else if (currentStep === Step.RECEIVER) {
+				currentStepContainer = document?.getElementById('receiver');
 			} else if (currentStep === Step.SELECTOR) {
 				currentStepContainer = document?.getElementById('selector');
 			} else if (currentStep === Step.APPROVALS) {
@@ -159,8 +179,10 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 		currentStep,
 		set_currentStep,
 		destination,
-		set_destination
-	}), [selected, amounts, quotes, currentStep, destination]);
+		set_destination,
+		receiver,
+		set_receiver
+	}), [selected, amounts, quotes, currentStep, destination, receiver]);
 
 	return (
 		<SweepooorContext.Provider value={contextValue}>

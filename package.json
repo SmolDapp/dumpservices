@@ -12,7 +12,7 @@
 		"lint": "eslint . --ext .js,.jsx,.ts,.tsx"
 	},
 	"dependencies": {
-		"@gnosis.pm/gp-v2-contracts": "^1.1.2",
+		"@cowprotocol/cow-sdk": "^2.0.0-alpha.6",
 		"@gnosis.pm/safe-apps-react-sdk": "^4.6.2",
 		"@headlessui/react": "^1.7.13",
 		"@next/font": "^13.2.4",

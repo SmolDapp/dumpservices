@@ -12,8 +12,8 @@ import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUp
 
 import type {BigNumber} from 'ethers';
 import type {TMinBalanceData} from 'hooks/useBalances';
-import type {TCowQuote} from 'hooks/useSolverCowswap';
 import type {ChangeEvent, ReactElement} from 'react';
+import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -27,7 +27,7 @@ type TTokenRowInputProps = {
 
 const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSelected, amount, onDisable}: TTokenRowInputProps): ReactElement {
 	const cowswap = useSolverCowswap();
-	const {set_selected, set_amounts, set_quotes, destination} = useSweepooor();
+	const {set_selected, set_amounts, set_quotes, destination, receiver} = useSweepooor();
 	const {address: fromAddress, isActive} = useWeb3();
 	const [quote, set_quote] = useState(toNormalizedBN(0));
 	const [isLoadingQuote, set_isLoadingQuote] = useState(false);
@@ -50,6 +50,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		});
 		const [cowswapQuote, order, isSuccess, error] = await cowswap.init({
 			from: toAddress(fromAddress || ''),
+			receiver: toAddress(receiver),
 			inputToken: {
 				value: toAddress(tokenAddress),
 				label: balance.symbol,
@@ -67,7 +68,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
 				if (order) {
-					set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => ({
+					set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
 						...quotes,
 						[toAddress(tokenAddress)]: order
 					}));
@@ -111,6 +112,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		});
 		const [cowswapQuote, order, isSuccess, error] = await cowswap.init({
 			from: toAddress(fromAddress || ''),
+			receiver: toAddress(receiver),
 			inputToken: {
 				value: toAddress(tokenAddress),
 				label: balance.symbol,
@@ -128,7 +130,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
 				if (order) {
-					set_quotes((quotes: TDict<TCowQuote>): TDict<TCowQuote> => ({
+					set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
 						...quotes,
 						[toAddress(tokenAddress)]: order
 					}));
@@ -211,7 +213,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	**********************************************************************************************/
 	const	onRefreshClick = useCallback((): void => {
 		set_error('');
-		onEstimateQuote(amount?.raw);
+		onEstimateQuote(amount?.raw, true);
 	}, [amount?.raw, onEstimateQuote]);
 
 	/**********************************************************************************************

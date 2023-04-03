@@ -1,11 +1,11 @@
 {
-	"name": "Dump Service",
-	"short_name": "Dump.Service",
+	"name": "Dump Services",
+	"short_name": "Dump.Services",
 	"description": "Dump your tokens like a pro",
 	"locale": "en-US",
-	"uri": "https://dump.ycorpo.app/",
-	"og": "https://dump.ycorpo.app/og.png",
-	"iconPath": "https://dump.ycorpo.app/favicons/favicon.svg",
+	"uri": "https://dump.services/",
+	"og": "https://dump.services/og.png",
+	"iconPath": "https://dump.services/favicons/favicon.svg",
 	"twitter": "@smoldapp",
 	"icons": [
 		{

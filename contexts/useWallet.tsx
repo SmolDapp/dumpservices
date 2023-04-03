@@ -55,14 +55,14 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 				if (safeChainID === 137 && toAddress(token.address) === MATIC_TOKEN_ADDRESS) {
 					return;
 				}
-				tokens.push({token: token.address, decimals: Number(token.decimals), symbol: token.symbol});
+				tokens.push({token: token.address, decimals: Number(token.decimals), name: token.name, symbol: token.symbol});
 			});
 		if (safeChainID === 1) {
-			tokens.push({token: ETH_TOKEN_ADDRESS, decimals: 18, symbol: 'ETH'});
+			tokens.push({token: ETH_TOKEN_ADDRESS, decimals: 18, name: 'Ether', symbol: 'ETH'});
 		} else if (safeChainID === 250) {
-			tokens.push({token: ETH_TOKEN_ADDRESS, decimals: 18, symbol: 'FTM'});
+			tokens.push({token: ETH_TOKEN_ADDRESS, decimals: 18, name: 'Fantom', symbol: 'FTM'});
 		} else if (safeChainID === 137) {
-			tokens.push({token: ETH_TOKEN_ADDRESS, decimals: 18, symbol: 'MATIC'});
+			tokens.push({token: ETH_TOKEN_ADDRESS, decimals: 18, name: 'Matic', symbol: 'MATIC'});
 		}
 		return tokens;
 	}, [safeChainID, tokenList]);
@@ -85,7 +85,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 		withDefaultTokens
 			.filter((token): boolean => token.chainId === safeChainID)
 			.forEach((token): void => {
-				tokens.push({token: token.address, decimals: Number(token.decimals), symbol: token.symbol});
+				tokens.push({token: token.address, decimals: Number(token.decimals), name: token.name, symbol: token.symbol});
 			});
 		const	tokensToFetch = tokens.filter((token): boolean => {
 			return !availableTokens.find((availableToken): boolean => availableToken.token === token.token);

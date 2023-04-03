@@ -97,7 +97,7 @@ function	ViewDestination(): ReactElement {
 											logoURI: possibleDestinations[destinationToken]?.logoURI || ''
 										});
 									}
-									set_currentStep(Step.SELECTOR);
+									set_currentStep(Step.RECEIVER);
 								}}
 								isDisabled={!isValidDestination || (toAddress(destinationToken) === toAddress(destination.address) && destination.chainId !== 0)}>
 								{'Confirm'}
