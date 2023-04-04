@@ -1,8 +1,8 @@
 import React from 'react';
 import ViewApprovalWizard from 'components/views/ViewApprovalWizard';
-import ViewDestination from 'components/views/ViewDestination';
 import ViewReceiver from 'components/views/ViewReceiver';
 import ViewSweepTable from 'components/views/ViewSweepTable';
+import ViewTokenToReceive from 'components/views/ViewTokenToReceive';
 import ViewWallet from 'components/views/ViewWallet';
 import {Step, SweepooorContextApp, useSweepooor} from 'contexts/useSweepooor';
 
@@ -16,13 +16,13 @@ function	Home(): ReactElement {
 			<ViewWallet
 				onSelect={(): void => {
 					set_currentStep(Step.DESTINATION);
-					document?.getElementById('destinationToken')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+					document?.getElementById('tokenToReceive')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 				}} />
 
 			<div
-				id={'destinationToken'}
+				id={'tokenToReceive'}
 				className={`mt-2 pt-8 transition-opacity ${[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER, Step.DESTINATION].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
-				<ViewDestination />
+				<ViewTokenToReceive />
 			</div>
 
 			<div

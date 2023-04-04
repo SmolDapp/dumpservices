@@ -20,7 +20,7 @@ import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TComboboxAddressInput = {
 	possibleDestinations: TDict<TTokenInfo>;
-	destinationToken: string;
+	tokenToReceive: string;
 	onChangeDestination: Dispatch<SetStateAction<string>>,
 	onAddPossibleDestination: Dispatch<SetStateAction<TDict<TTokenInfo>>>
 }
@@ -58,7 +58,7 @@ function ComboboxOption({option}: {option: TTokenInfo}): ReactElement {
 	);
 }
 
-function ComboboxAddressInput({possibleDestinations, destinationToken, onChangeDestination, onAddPossibleDestination}: TComboboxAddressInput): ReactElement {
+function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDestination, onAddPossibleDestination}: TComboboxAddressInput): ReactElement {
 	const	{provider} = useWeb3();
 	const	{safeChainID} = useChainID();
 	const	[query, set_query] = useState('');
@@ -106,7 +106,7 @@ function ComboboxAddressInput({possibleDestinations, destinationToken, onChangeD
 					}} />
 			) : null}
 			<Combobox<any>
-				value={destinationToken}
+				value={tokenToReceive}
 				onChange={(_selected: TAddress): void => {
 					onAddPossibleDestination((prev: TDict<TTokenInfo>): TDict<TTokenInfo> => {
 						if (prev[_selected]) {
@@ -134,12 +134,12 @@ function ComboboxAddressInput({possibleDestinations, destinationToken, onChangeD
 						onClick={(): void => set_isOpen((o: boolean): boolean => !o)}
 						className={'box-0 grow-1 col-span-12 flex h-10 w-full items-center p-2 px-4 md:col-span-9'}>
 						<div className={'relative flex w-full flex-row items-center space-x-4'}>
-							<div key={destinationToken} className={'h-6 w-6'}>
-								{(possibleDestinations?.[toAddress(destinationToken)]?.logoURI || '') !== '' ? (
+							<div key={tokenToReceive} className={'h-6 w-6'}>
+								{(possibleDestinations?.[toAddress(tokenToReceive)]?.logoURI || '') !== '' ? (
 									<Image
 										alt={''}
 										unoptimized
-										src={possibleDestinations?.[toAddress(destinationToken)]?.logoURI}
+										src={possibleDestinations?.[toAddress(tokenToReceive)]?.logoURI}
 										width={24}
 										height={24} />
 								) : <div className={'h-6 w-6 rounded-full bg-neutral-0'} />}

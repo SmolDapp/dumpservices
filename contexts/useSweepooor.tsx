@@ -124,7 +124,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			if (currentStep === Step.WALLET && !isEmbedWallet) {
 				document?.getElementById('wallet')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
-				document?.getElementById('destinationToken')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+				document?.getElementById('tokenToReceive')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.RECEIVER) {
 				document?.getElementById('receiver')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.SELECTOR) {
@@ -151,7 +151,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			if (currentStep === Step.WALLET && !isEmbedWallet) {
 				currentStepContainer = document?.getElementById('wallet');
 			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
-				currentStepContainer = document?.getElementById('destinationToken');
+				currentStepContainer = document?.getElementById('tokenToReceive');
 			} else if (currentStep === Step.RECEIVER) {
 				currentStepContainer = document?.getElementById('receiver');
 			} else if (currentStep === Step.SELECTOR) {

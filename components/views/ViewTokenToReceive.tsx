@@ -13,9 +13,9 @@ import type {TTokenInfo, TTokenList} from 'contexts/useTokenList';
 import type {ReactElement} from 'react';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
-function	ViewDestination(): ReactElement {
+function	ViewTokenToReceive(): ReactElement {
 	const	{destination, set_destination, set_currentStep} = useSweepooor();
-	const	[destinationToken, set_destinationToken] = useState<string>(ETH_TOKEN_ADDRESS);
+	const	[tokenToReceive, set_tokenToReceive] = useState<string>(ETH_TOKEN_ADDRESS);
 	const	[isValidDestination, set_isValidDestination] = useState<boolean | 'undetermined'>('undetermined');
 	const	[possibleDestinations, set_possibleDestinations] = useState<TDict<TTokenInfo>>({});
 
@@ -58,10 +58,10 @@ function	ViewDestination(): ReactElement {
 	**********************************************************************************************/
 	useUpdateEffect((): void => {
 		set_isValidDestination('undetermined');
-		if (!isZeroAddress(toAddress(destinationToken))) {
+		if (!isZeroAddress(toAddress(tokenToReceive))) {
 			set_isValidDestination(true);
 		}
-	}, [destinationToken]);
+	}, [tokenToReceive]);
 
 	return (
 		<section>
@@ -80,26 +80,26 @@ function	ViewDestination(): ReactElement {
 							<ComboboxAddressInput
 								possibleDestinations={possibleDestinations}
 								onAddPossibleDestination={set_possibleDestinations}
-								destinationToken={destinationToken}
-								onChangeDestination={set_destinationToken} />
+								tokenToReceive={tokenToReceive}
+								onChangeDestination={set_tokenToReceive} />
 						</div>
 						<div className={'col-span-12 md:col-span-3'}>
 							<Button
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
 								onClick={(): void => {
-									if (isAddress(destinationToken)) {
+									if (isAddress(tokenToReceive)) {
 										set_destination({
-											address: toAddress(destinationToken),
+											address: toAddress(tokenToReceive),
 											chainId: 1,
-											name: possibleDestinations[destinationToken]?.name || '',
-											symbol: possibleDestinations[destinationToken]?.symbol || '',
-											decimals: possibleDestinations[destinationToken]?.decimals || 0,
-											logoURI: possibleDestinations[destinationToken]?.logoURI || ''
+											name: possibleDestinations[tokenToReceive]?.name || '',
+											symbol: possibleDestinations[tokenToReceive]?.symbol || '',
+											decimals: possibleDestinations[tokenToReceive]?.decimals || 0,
+											logoURI: possibleDestinations[tokenToReceive]?.logoURI || ''
 										});
 									}
 									set_currentStep(Step.RECEIVER);
 								}}
-								isDisabled={!isValidDestination || (toAddress(destinationToken) === toAddress(destination.address) && destination.chainId !== 0)}>
+								isDisabled={!isValidDestination || (toAddress(tokenToReceive) === toAddress(destination.address) && destination.chainId !== 0)}>
 								{'Confirm'}
 							</Button>
 						</div>
@@ -110,4 +110,4 @@ function	ViewDestination(): ReactElement {
 	);
 }
 
-export default ViewDestination;
+export default ViewTokenToReceive;
