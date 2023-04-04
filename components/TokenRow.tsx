@@ -62,7 +62,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 	return (
 		<div
 			id={`${safeChainID}-${toAddress(tokenAddress)}`}
-			className={`group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 py-3 px-4 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:px-6 ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
+			className={`group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 px-4 pb-3 pt-0 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:py-3 md:px-6 ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
 			<div className={'absolute left-3 top-7 z-10 flex h-full justify-center md:left-6 md:top-0 md:items-center'}>
 				<input
 					type={'checkbox'}
@@ -84,8 +84,13 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 					<div>
 						<div className={'flex flex-row items-center space-x-2'}>
 							<b>{balance.symbol}</b>
+							<p className={'block text-ellipsis font-mono text-xs text-neutral-500 line-clamp-1 md:hidden'}>
+								{` - ${balance.name}`}
+							</p>
 						</div>
-						<p className={'text-ellipsis font-mono text-xs text-neutral-500 line-clamp-1'}>{balance.name}</p>
+						<p className={'hidden text-ellipsis font-mono text-xs text-neutral-500 md:block md:line-clamp-1'}>
+							{balance.name}
+						</p>
 						<Link
 							href={`${explorer || 'https://etherscan.io'}/address/${tokenAddress}`}
 							onClick={(e): void => e.stopPropagation()}

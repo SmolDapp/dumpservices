@@ -1,7 +1,6 @@
 import React from 'react';
 import {Inter} from 'next/font/google';
 import AppWrapper from 'components/common/AppWrapper';
-import {MenuContextApp} from 'contexts/useMenu';
 import {TokenListContextApp} from 'contexts/useTokenList';
 import {WalletContextApp} from 'contexts/useWallet';
 import {SafeProvider} from '@gnosis.pm/safe-apps-react-sdk';
@@ -31,13 +30,11 @@ function	MyApp(props: AppProps): ReactElement {
 				}}>
 				<TokenListContextApp>
 					<WalletContextApp>
-						<MenuContextApp>
-							<SafeProvider>
-								<main className={`flex h-screen flex-col ${inter.variable}`}>
-									<AppWrapper {...props} />
-								</main>
-							</SafeProvider>
-						</MenuContextApp>
+						<SafeProvider>
+							<main className={`flex h-screen flex-col ${inter.variable}`}>
+								<AppWrapper {...props} />
+							</main>
+						</SafeProvider>
 					</WalletContextApp>
 				</TokenListContextApp>
 			</WithYearn>

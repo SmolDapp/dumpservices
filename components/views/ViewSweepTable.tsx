@@ -114,7 +114,7 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					</div>
 				</div>
 
-				<div className={'fixed inset-x-0 bottom-0 z-20 col-span-12 flex w-full max-w-4xl flex-row items-center justify-between bg-neutral-900 p-4 text-neutral-0 md:relative md:px-6 md:py-4'}>
+				<div className={'relative col-span-12 flex w-full max-w-4xl flex-row items-center justify-between bg-neutral-900 p-4 text-neutral-0 md:px-6 md:py-4'}>
 					<div />
 					<div className={'flex flex-col'}>
 						<Button

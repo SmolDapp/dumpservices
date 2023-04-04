@@ -150,7 +150,7 @@ function	ApprovalWizardItem({
 	function	renderIndicators(): ReactElement {
 		if (isGnosisSafe) {
 			return (
-				<div className={'flex flex-row items-center space-x-4 pt-2'}>
+				<div className={'flex flex-row items-center space-x-2 pt-2 md:space-x-4'}>
 					<div className={'flex flex-row items-center justify-center space-x-2'}>
 						{renderSignatureIndication()}
 						<small>{'Signed'}</small>
@@ -175,7 +175,7 @@ function	ApprovalWizardItem({
 			);
 		}
 		return (
-			<div className={'flex flex-row items-center space-x-4 pt-2'}>
+			<div className={'flex flex-row items-center space-x-2 pt-2 md:space-x-4'}>
 				<div className={'flex flex-row items-center justify-center space-x-2'}>
 					{renderApprovalIndication()}
 					<small>{'Approved'}</small>
@@ -208,9 +208,9 @@ function	ApprovalWizardItem({
 	return (
 		<details
 			key={index}
-			className={'rounded-default box-0 group mb-2 flex w-full flex-col justify-center transition-colors hover:bg-neutral-100'}>
+			className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-0 transition-colors hover:bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
 			<summary className={'flex flex-col items-start py-2'}>
-				<div className={'flex w-full flex-row items-center justify-between'}>
+				<div className={'flex w-full flex-col items-start justify-between md:flex-row md:items-center'}>
 					<div className={'text-left text-sm'}>
 						{'Swapping '}
 						<span className={'font-number font-bold'}>
@@ -250,20 +250,20 @@ function	ApprovalWizardItem({
 				</div>
 				{renderIndicators()}
 			</summary>
-			<div className={'font-number space-y-2 border-t-0 p-4 text-sm'}>
-				<span className={'flex flex-row justify-between'}>
+			<div className={'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'Kind'}</b>
 					<p className={'font-number'}>{currentQuote?.quote?.kind || ''}</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'From'}</b>
 					<p className={'font-number'}>{toAddress(currentQuote?.from || '')}</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'Receiver'}</b>
 					<p className={'font-number'}>{toAddress(currentQuote?.quote?.receiver || '')}</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'BuyAmount'}</b>
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
@@ -272,13 +272,13 @@ function	ApprovalWizardItem({
 						).normalized} (${currentQuote?.quote?.buyAmount || ''})`}
 					</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'BuyToken'}</b>
 					<p className={'font-number'}>
 						{`${'ETH'} (${toAddress(currentQuote?.quote?.buyToken || '')})`}
 					</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'SellAmount'}</b>
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
@@ -287,7 +287,7 @@ function	ApprovalWizardItem({
 						).normalized} (${currentQuote?.quote?.sellAmount || ''})`}
 					</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'FeeAmount'}</b>
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
@@ -296,13 +296,13 @@ function	ApprovalWizardItem({
 						).normalized} (${currentQuote?.quote?.feeAmount || ''})`}
 					</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'SellToken'}</b>
 					<p className={'font-number'}>
 						{`${balances?.[toAddress(token)]?.symbol || ''} (${toAddress(currentQuote?.quote?.sellToken || '')})`}
 					</p>
 				</span>
-				<span className={'flex flex-row justify-between'}>
+				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'ValidTo'}</b>
 					<p className={'font-number'}>
 						{formatDate(Number(currentQuote?.quote?.validTo || 0) * 1000)}

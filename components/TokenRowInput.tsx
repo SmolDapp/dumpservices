@@ -232,8 +232,8 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 
 	return (
 		<div className={'yearn--table-data-section'}>
-			<div className={'relative col-span-1 flex h-auto flex-col items-center justify-center px-0 pt-0 md:col-span-7 md:h-16 md:py-2 md:px-6'}>
-				<label className={'yearn--table-data-section-item-label'}>{'Amount to migrate'}</label>
+			<div className={'relative col-span-1 flex h-auto flex-col items-start justify-center px-0 pt-2 md:col-span-7 md:h-16 md:items-center md:py-2 md:px-6'}>
+				<label className={'yearn--table-data-section-item-label'}>{'Amount to dump'}</label>
 				<div className={'box-0 flex h-10 w-full items-center p-2'}>
 					<div
 						className={'flex h-10 w-full flex-row items-center justify-between px-0'}
@@ -259,8 +259,8 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				<legend className={'absolute -bottom-1.5 left-6 pl-1 text-xxs text-[#e11d48]'}>{error}</legend>
 			</div>
 
-			<div className={'col-span-1 flex h-auto flex-col items-center justify-center px-0 pt-0 md:col-span-5 md:h-16 md:py-2'}>
-				<label className={'yearn--table-data-section-item-label'}>{'Amount to migrate'}</label>
+			<div className={'col-span-1 flex h-auto flex-col items-start justify-center px-0 pt-0 md:col-span-5 md:h-16 md:items-center md:py-2'}>
+				<label className={'yearn--table-data-section-item-label'}>{'Amount to receive'}</label>
 				<div className={'box-0 relative flex h-10 w-full items-center p-2'}>
 					<div
 						className={'flex h-10 w-full flex-row items-center justify-between py-4 px-0'}
