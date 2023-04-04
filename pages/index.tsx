@@ -5,11 +5,12 @@ import ViewSweepTable from 'components/views/ViewSweepTable';
 import ViewTokenToReceive from 'components/views/ViewTokenToReceive';
 import ViewWallet from 'components/views/ViewWallet';
 import {Step, SweepooorContextApp, useSweepooor} from 'contexts/useSweepooor';
+import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
 
 function	Home(): ReactElement {
-	const	{currentStep, set_currentStep} = useSweepooor();
+	const	{currentStep, set_currentStep, set_quotes, set_selected} = useSweepooor();
 
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>
@@ -28,7 +29,14 @@ function	Home(): ReactElement {
 			<div
 				id={'receiver'}
 				className={`mt-2 pt-8 transition-opacity ${[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
-				<ViewReceiver onProceed={(): void => set_currentStep(Step.SELECTOR)} />
+				<ViewReceiver
+					onProceed={(): void => {
+						performBatchedUpdates((): void => {
+							set_currentStep(Step.SELECTOR);
+							set_quotes({}); // Reset quotes
+							set_selected([]); // Reset selected
+						});
+					}} />
 			</div>
 
 			<div

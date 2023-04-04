@@ -2,7 +2,7 @@ import React, {memo, useCallback, useState} from 'react';
 import IconRefresh from 'components/icons/IconRefresh';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
-import handleInputChangeEventValue from 'utils/handleInputChangeEventValue';
+import {handleInputChangeEventValue} from 'utils';
 import {useDebouncedCallback} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';

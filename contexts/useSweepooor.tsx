@@ -80,6 +80,9 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const	[amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
 	const	[currentStep, set_currentStep] = useState<Step>(Step.WALLET);
 
+	/**********************************************************************************************
+	** If the user is not active, reset the state to the default values.
+	**********************************************************************************************/
 	useEffect((): void => {
 		if (!isActive) {
 			performBatchedUpdates((): void => {
@@ -89,6 +92,18 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			});
 		}
 	}, [isActive]);
+
+	/**********************************************************************************************
+	** If the address changes, we need to update the receiver to the connected wallet address.
+	**********************************************************************************************/
+	useUpdateEffect((): void => {
+		performBatchedUpdates((): void => {
+			set_selected(defaultProps.selected);
+			set_amounts(defaultProps.amounts);
+			set_destination(defaultProps.destination);
+			set_receiver(toAddress(address));
+		});
+	}, [address]);
 
 	/**********************************************************************************************
 	** We need to set the receiver to the connected wallet address if the receiver is not set.

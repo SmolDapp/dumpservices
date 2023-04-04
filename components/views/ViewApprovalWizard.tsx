@@ -433,7 +433,7 @@ function	ViewApprovalWizard(): ReactElement {
 				{selected.map((token, index): JSX.Element => {
 					return (
 						<ApprovalWizardItem
-							key={index}
+							key={`${token}_${quotes?.[toAddress(token)]?.quote?.buyAmount}_${quotes?.[toAddress(token)]?.quote?.receiver}_${index}`}
 							token={token}
 							index={index}
 							isGnosisSafe={isGnosisSafe}

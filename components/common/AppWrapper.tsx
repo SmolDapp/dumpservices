@@ -1,7 +1,7 @@
 import React from 'react';
 import Header from 'components/common/Header';
 import Meta from 'components/common/Meta';
-import thumbnailVariants from 'utils/animations';
+import {thumbnailVariants} from 'utils';
 import {AnimatePresence, motion} from 'framer-motion';
 
 import type {AppProps} from 'next/app';
