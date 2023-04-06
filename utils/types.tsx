@@ -7,6 +7,7 @@ import type {EcdsaSigningScheme, OrderQuoteResponse} from '@cowprotocol/cow-sdk'
 export type Maybe<T> = T | null | undefined;
 
 export type TPossibleStatus = 'pending' | 'expired' | 'fulfilled' | 'cancelled' | 'invalid'
+export type TPossibleFlowStep = 'valid' | 'invalid' | 'pending' | 'undetermined';
 
 export type TToken = {
 	label: string;

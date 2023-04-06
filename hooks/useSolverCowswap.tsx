@@ -119,7 +119,7 @@ export function useSolverCowswap(): TSolverContext {
 	const	signCowswapOrder = useCallback(async (quoteOrder: TOrderQuoteResponse): Promise<SigningResult> => {
 		if (process.env.SHOULD_USE_PRESIGN) { //sleep 1 second to simulate the signing process
 			await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 1000));
-			return ({signature: '0x', signatureScheme: 'presign'} as any);
+			return ({signature: '0x', signingScheme: 'presign'} as any);
 		}
 
 		// We need to sign the message WITH THE SLIPPAGE, in order to get the correct signature

@@ -19,7 +19,7 @@ import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUp
 
 import type {ethers} from 'ethers';
 import type {ReactElement} from 'react';
-import type {TOrderQuoteResponse} from 'utils/types';
+import type {TOrderQuoteResponse, TPossibleFlowStep} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TApprovalWizardItem = {
@@ -27,8 +27,8 @@ type TApprovalWizardItem = {
 	index: number,
 	isGnosisSafe: boolean,
 	hasSignature: boolean,
-	currentWizardApprovalStep: number,
-	currentWizardSignStep: number,
+	currentWizardApprovalStep: TDict<TPossibleFlowStep>,
+	currentWizardSignStep: TDict<TPossibleFlowStep>,
 }
 function	ApprovalWizardItem({
 	token,
@@ -109,17 +109,20 @@ function	ApprovalWizardItem({
 		if (hasAllowance) {
 			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
 		}
-		if (currentWizardApprovalStep === -1) {
+		if (!currentQuote?.id || !currentWizardApprovalStep[currentQuote?.id] || currentWizardApprovalStep[currentQuote?.id] === 'undetermined') {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
-		if (currentWizardApprovalStep <= index) {
+		if (currentWizardApprovalStep[currentQuote?.id] === 'pending') {
 			return <IconSpinner />;
 		}
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
 	}
 
 	function	renderSignatureIndication(): ReactElement {
-		if (step !== 'Sign' || currentWizardSignStep === -1) {
+		if (!currentQuote?.id) {
+			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+		}
+		if (step !== 'Sign' || !currentWizardSignStep[currentQuote?.id] ||currentWizardSignStep[currentQuote?.id] === 'undetermined') {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
 		if (isQuoteExpired) {
@@ -128,7 +131,7 @@ function	ApprovalWizardItem({
 		if (hasSignature) {
 			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
 		}
-		if (currentWizardSignStep <= index) {
+		if (currentWizardSignStep[currentQuote?.id] === 'pending') {
 			return <IconSpinner />;
 		}
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);

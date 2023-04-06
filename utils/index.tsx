@@ -38,7 +38,7 @@ export function handleInputChangeEventValue(e: React.ChangeEvent<HTMLInputElemen
 		}
 	}
 
-	const	raw = ethers.utils.parseUnits(amount.toString() || '0', decimals);
+	const	raw = ethers.utils.parseUnits(amount.toFixed(decimals) || '0', decimals);
 	return ({raw: raw, normalized: amount.toString() || '0'});
 }
 
