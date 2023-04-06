@@ -36,7 +36,7 @@ export default function SettingsPopover(): ReactElement {
 						leaveFrom={'opacity-100 translate-y-0'}
 						leaveTo={'opacity-0 translate-y-1'}>
 						<Popover.Panel className={'absolute right-0 top-6 isolate z-[1000] mt-3 w-screen max-w-[280px] md:top-4 md:-right-10'}>
-							<div className={'relative rounded-md border border-neutral-200 bg-neutral-900 p-4'}>
+							<div className={'relative rounded-md border border-neutral-900 bg-neutral-900 p-4'}>
 								<div>
 									<label
 										htmlFor={'slippageTolerance'}
