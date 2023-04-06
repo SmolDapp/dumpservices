@@ -30,4 +30,5 @@ export type TOrderQuoteResponse = OrderQuoteResponse & {
 	request: TInitSolverArgs,
 	orderUID?: string,
 	orderStatus?: TPossibleStatus,
+	isRefreshing?: boolean,
 }

@@ -1,5 +1,6 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import ApprovalWizardItem from 'components/ApprovalWizardItem';
+import IconSpinner from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
@@ -24,10 +25,46 @@ import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
 function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<number>>}): ReactElement {
 	const	{provider} = useWeb3();
 	const	cowswap = useSolverCowswap();
-	const	{selected, amounts, quotes} = useSweepooor();
+	const	{selected, amounts, quotes, set_quotes} = useSweepooor();
 	const	[isApproving, set_isApproving] = useState(false);
+	const	[isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
 	const	[existingTransactions, set_existingTransactions] = useState<TDict<BaseTransaction>>({});
 	const	{sdk} = useSafeAppsSDK();
+
+	/* 🔵 - Yearn Finance **************************************************************************
+	** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
+	** time. This function will refresh all the quotes, and update the UI accordingly.
+	**********************************************************************************************/
+	const	onRefreshAllQuotes = useCallback(async (): Promise<void> => {
+		set_isRefreshingQuotes(true);
+		for (const currentQuote of Object.values(quotes)) {
+			if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
+				return; //skip already sent
+			}
+			const tokenAddress = toAddress(currentQuote?.request?.inputToken?.value);
+			set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
+				...quotes,
+				[tokenAddress]: {
+					...currentQuote,
+					isRefreshing: true
+				}
+			}));
+			const [, order] = await cowswap.init({
+				from: currentQuote?.request?.from,
+				receiver: currentQuote?.request?.receiver,
+				inputToken: currentQuote?.request?.inputToken,
+				outputToken: currentQuote?.request?.outputToken,
+				inputAmount: currentQuote?.request?.inputAmount
+			});
+			if (order) {
+				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
+					...quotes,
+					[tokenAddress]: order
+				}));
+			}
+		}
+		set_isRefreshingQuotes(false);
+	}, [cowswap, quotes, set_quotes]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** If the signer is a Gnosis Safe, we will use another way to perform the approvals and
@@ -100,6 +137,14 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
+			<button
+				onClick={onRefreshAllQuotes}
+				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
+				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>{'Refresh all quotes'}</p>
+				<span className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${isRefreshingQuotes ? 'opacity-100' : 'opacity-0'}`}>
+					<IconSpinner />
+				</span>
+			</button>
 			<Button
 				id={'TRIGGER_SWEEPOOOR'}
 				className={'yearn--button !w-fit !px-6 !text-sm'}
@@ -126,6 +171,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	const	[approveStatus, set_approveStatus] = useState<TDict<boolean>>({});
 	const	[isApproving, set_isApproving] = useState(false);
 	const	[isSigning, set_isSigning] = useState(false);
+	const	[isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
 	const	[hasSentOrder, set_hasSentOrder] = useState(false);
 	const	[, set_txStatus] = useState(defaultTxStatus);
 	const	cowswap = useSolverCowswap();
@@ -345,6 +391,40 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 		}
 	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
 
+	/* 🔵 - Yearn Finance **************************************************************************
+	** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
+	** time. This function will refresh all the quotes, and update the UI accordingly.
+	**********************************************************************************************/
+	const	onRefreshAllQuotes = useCallback(async (): Promise<void> => {
+		set_isRefreshingQuotes(true);
+		for (const currentQuote of Object.values(quotes)) {
+			if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
+				return; //skip already sent
+			}
+			const tokenAddress = toAddress(currentQuote?.request?.inputToken?.value);
+			set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
+				...quotes,
+				[tokenAddress]: {
+					...currentQuote,
+					isRefreshing: true
+				}
+			}));
+			const [, order] = await cowswap.init({
+				from: currentQuote?.request?.from,
+				receiver: currentQuote?.request?.receiver,
+				inputToken: currentQuote?.request?.inputToken,
+				outputToken: currentQuote?.request?.outputToken,
+				inputAmount: currentQuote?.request?.inputAmount
+			});
+			if (order) {
+				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
+					...quotes,
+					[tokenAddress]: order
+				}));
+			}
+		}
+		set_isRefreshingQuotes(false);
+	}, [cowswap, quotes, set_quotes]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** areAllApproved and areAllSigned are used to determine if all the selected tokens have been
@@ -394,6 +474,14 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
+			<button
+				onClick={onRefreshAllQuotes}
+				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
+				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>{'Refresh all quotes'}</p>
+				<span className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${isRefreshingQuotes ? 'opacity-100' : 'opacity-0'}`}>
+					<IconSpinner />
+				</span>
+			</button>
 			<Button
 				id={'TRIGGER_SWEEPOOOR'}
 				className={'yearn--button !w-fit !px-6 !text-sm'}

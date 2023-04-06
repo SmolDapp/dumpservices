@@ -172,14 +172,12 @@ function	WalletSelector(): ReactElement {
 }
 
 function	AppHeader(): ReactElement {
-	const	{walletType} = useWeb3();
 	const	{pathname} = useRouter();
 	const	{options} = useWeb3();
-	const	supportedNetworks = useMemo((): number[] => walletType === 'EMBED_LEDGER' ? [1] : [1, 10, 137, 250, 42161], [walletType]);
 
 	const supportedChainID = useMemo((): number[] => (
-		supportedNetworks || options?.supportedChainID || [1, 10, 250, 42161]
-	), [supportedNetworks, options?.supportedChainID]);
+		options?.supportedChainID || [1]
+	), [options?.supportedChainID]);
 
 	return (
 		<div id={'head'} className={'fixed inset-x-0 top-0 z-50 w-full border-b border-neutral-100 bg-neutral-0/95'}>

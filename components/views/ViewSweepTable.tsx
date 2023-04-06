@@ -36,7 +36,13 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 			Object.entries(balances || [])
 				.filter(([tokenAddress, tokenData]: [string, TMinBalanceData]): boolean => {
 					if (search) {
-						return (`${tokenData.symbol}_${tokenData.name}_${tokenAddress}`.toLowerCase().includes(search.toLowerCase()));
+						const searchArray = search.split(/[\s,]+/);
+						return searchArray.some((searchTerm: string): boolean => {
+							if (searchTerm === '') {
+								return false;
+							}
+							return (`${tokenData.symbol}_${tokenData.name}_${tokenAddress}`.toLowerCase().includes(searchTerm.toLowerCase()));
+						});
 					}
 					return true;
 				})

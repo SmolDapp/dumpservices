@@ -226,9 +226,9 @@ function	ApprovalWizardItem({
 						{` ${destination.symbol}`}
 					</div>
 					<div className={'flex flex-row items-center space-x-2'}>
-						{expireIn < 0 && isRefreshingQuote ? (
+						{(expireIn < 0 && isRefreshingQuote) || currentQuote?.isRefreshing ? (
 							<button onClick={estimateQuote}>
-								<small className={'text-xs tabular-nums text-neutral-500'}>
+								<small className={'text-xs tabular-nums text-[#f97316]'}>
 									{'Updating quote...'}
 								</small>
 							</button>

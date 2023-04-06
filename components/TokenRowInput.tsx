@@ -1,4 +1,4 @@
-import React, {memo, useCallback, useState} from 'react';
+import React, {Fragment, memo, useCallback, useState} from 'react';
 import IconRefresh from 'components/icons/IconRefresh';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
@@ -231,7 +231,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	}, []);
 
 	return (
-		<div className={'yearn--table-data-section'}>
+		<Fragment>
 			<div className={'relative col-span-1 flex h-auto flex-col items-start justify-center px-0 pt-2 md:col-span-7 md:h-16 md:items-center md:py-2 md:px-6'}>
 				<label className={'yearn--table-data-section-item-label'}>{'Amount to dump'}</label>
 				<div className={'box-0 flex h-10 w-full items-center p-2'}>
@@ -290,7 +290,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 					</div>
 				</div>
 			</div>
-		</div>
+		</Fragment>
 	);
 });
 

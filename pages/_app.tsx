@@ -25,7 +25,7 @@ function	MyApp(props: AppProps): ReactElement {
 			<WithYearn
 				options={{
 					web3: {
-						supportedChainID: [1, 10, 137, 250, 42161, 1337]
+						supportedChainID: [1, 1337]
 					}
 				}}>
 				<TokenListContextApp>

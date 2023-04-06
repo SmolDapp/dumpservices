@@ -30,10 +30,6 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 
 	const	onToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
 		const	isNowChecked = event.target.checked;
-		if (isDisabled) {
-			return;
-		}
-
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {
@@ -62,7 +58,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 	return (
 		<div
 			id={`${safeChainID}-${toAddress(tokenAddress)}`}
-			className={`group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 px-4 pb-3 pt-0 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:py-3 md:px-6 ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
+			className={'group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 px-4 pb-3 pt-0 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:py-3 md:px-6'}>
 			<div className={'absolute left-3 top-7 z-10 flex h-full justify-center md:left-6 md:top-0 md:items-center'}>
 				<input
 					type={'checkbox'}
@@ -70,7 +66,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 					checked={isSelected}
 					className={'checkbox cursor-pointer'} />
 			</div>
-			<div className={'col-span-3 mb-2 flex h-16 flex-row items-start border-0 border-neutral-200 py-4 pl-8 md:mb-0 md:border-r md:py-0'}>
+			<div className={`col-span-3 mb-2 flex h-16 flex-row items-start border-0 border-neutral-200 py-4 pl-8 md:mb-0 md:border-r md:py-0 ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
 				<div className={'yearn--table-token-section-item h-16 pt-1'}>
 					<div className={'yearn--table-token-section-item-image'}>
 						<ImageWithFallback
@@ -102,12 +98,14 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 				</div>
 			</div>
 
-			<TokenRowInput
-				amount={amount}
-				balance={balance}
-				tokenAddress={tokenAddress}
-				isSelected={isSelected}
-				onDisable={set_isDisabled} />
+			<div className={`yearn--table-data-section ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
+				<TokenRowInput
+					amount={amount}
+					balance={balance}
+					tokenAddress={tokenAddress}
+					isSelected={isSelected}
+					onDisable={set_isDisabled} />
+			</div>
 		</div>
 	);
 });
