@@ -1,4 +1,5 @@
 import React, {useMemo, useState} from 'react';
+import IconSpinner from 'components/icons/IconSpinner';
 import ListHead from 'components/ListHead';
 import SettingsPopover from 'components/SettingsPopover';
 import TokenRow from 'components/TokenRow';
@@ -17,7 +18,7 @@ import type {ReactElement} from 'react';
 function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{isActive, address, chainID} = useWeb3();
 	const	{selected, quotes, destination, amounts} = useSweepooor();
-	const	{balances, balancesNonce} = useWallet();
+	const	{balances, balancesNonce, isLoading} = useWallet();
 	const	[sortBy, set_sortBy] = useState<string>('apy');
 	const	[sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
 	const	[search, set_search] = useState<string>('');
@@ -80,7 +81,6 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 			<div className={'box-0 relative grid w-full grid-cols-12'}>
 				<div className={'absolute top-4 right-4'}>
 					<SettingsPopover />
-
 				</div>
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
 					<div className={'w-full md:w-3/4'}>
@@ -99,25 +99,41 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					</div>
 				</div>
 
-				<div className={'col-span-12 border-t border-neutral-200'}>
-					<ListHead
-						sortBy={sortBy}
-						sortDirection={sortDirection}
-						onSort={(newSortBy, newSortDirection): void => {
-							performBatchedUpdates((): void => {
-								set_sortBy(newSortBy);
-								set_sortDirection(newSortDirection as 'asc' | 'desc');
-							});
-						}}
-						items={[
-							{label: 'Token', value: 'name', sortable: true},
-							{label: 'Amount', value: 'balance', sortable: false, className: 'col-span-6 md:pl-5', datatype: 'text'},
-							{label: `Output (${destination.symbol})`, value: '', sortable: false, className: 'col-span-6 md:pl-7', datatype: 'text'}
-						]} />
-					<div>
-						{balancesToDisplay}
+				{isLoading ? (
+					<div className={'col-span-12 flex min-h-[200px] flex-col items-center justify-center'}>
+						<IconSpinner />
+						<p className={'mt-6 text-sm text-neutral-500'}>{'We are preparing your dumpling ...'}</p>
 					</div>
-				</div>
+				) : balancesToDisplay.length === 0 ? (
+					<div className={'col-span-12 flex min-h-[200px] flex-col items-center justify-center'}>
+						<svg
+							className={'h-4 w-4 text-neutral-400'}
+							xmlns={'http://www.w3.org/2000/svg'}
+							viewBox={'0 0 512 512'}><path d={'M505 41c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0L396.5 81.5C358.1 50.6 309.2 32 256 32C132.3 32 32 132.3 32 256c0 53.2 18.6 102.1 49.5 140.5L7 471c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l74.5-74.5c38.4 31 87.3 49.5 140.5 49.5c123.7 0 224-100.3 224-224c0-53.2-18.6-102.1-49.5-140.5L505 41zM362.3 115.7L115.7 362.3C93.3 332.8 80 295.9 80 256c0-97.2 78.8-176 176-176c39.9 0 76.8 13.3 106.3 35.7zM149.7 396.3L396.3 149.7C418.7 179.2 432 216.1 432 256c0 97.2-78.8 176-176 176c-39.9 0-76.8-13.3-106.3-35.7z'} fill={'currentcolor'} />
+						</svg>
+						<p className={'mt-6 text-sm text-neutral-500'}>{'Oh no, you have nothing to dump!'}</p>
+					</div>
+				) : (
+					<div className={'col-span-12 border-t border-neutral-200'}>
+						<ListHead
+							sortBy={sortBy}
+							sortDirection={sortDirection}
+							onSort={(newSortBy, newSortDirection): void => {
+								performBatchedUpdates((): void => {
+									set_sortBy(newSortBy);
+									set_sortDirection(newSortDirection as 'asc' | 'desc');
+								});
+							}}
+							items={[
+								{label: 'Token', value: 'name', sortable: true},
+								{label: 'Amount', value: 'balance', sortable: false, className: 'col-span-6 md:pl-5', datatype: 'text'},
+								{label: `Output (${destination.symbol})`, value: '', sortable: false, className: 'col-span-6 md:pl-7', datatype: 'text'}
+							]} />
+						<div>
+							{balancesToDisplay}
+						</div>
+					</div>
+				)}
 
 				<div className={'relative col-span-12 flex w-full max-w-4xl flex-row items-center justify-between bg-neutral-900 p-4 text-neutral-0 md:px-6 md:py-4'}>
 					<div />
