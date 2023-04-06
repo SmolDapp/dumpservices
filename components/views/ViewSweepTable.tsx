@@ -1,5 +1,6 @@
 import React, {useMemo, useState} from 'react';
 import ListHead from 'components/ListHead';
+import SettingsPopover from 'components/SettingsPopover';
 import TokenRow from 'components/TokenRow';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
@@ -76,7 +77,11 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 
 	return (
 		<section>
-			<div className={'box-0 relative grid w-full grid-cols-12 overflow-hidden'}>
+			<div className={'box-0 relative grid w-full grid-cols-12'}>
+				<div className={'absolute top-4 right-4'}>
+					<SettingsPopover />
+
+				</div>
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
 					<div className={'w-full md:w-3/4'}>
 						<b>{'Select the tokens to dump'}</b>

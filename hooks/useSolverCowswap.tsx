@@ -1,10 +1,10 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useSweepooor} from 'contexts/useSweepooor';
 import {ethers} from 'ethers';
 import {OrderBookApi, OrderQuoteSide, OrderSigningUtils, SigningScheme} from '@cowprotocol/cow-sdk';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
-import {useLocalStorage} from '@yearn-finance/web-lib/hooks/useLocalStorage';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {formatBN, toNormalizedBN, Zero} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -14,9 +14,11 @@ import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber'
 import type {OrderCreation, OrderParameters, OrderQuoteRequest, SigningResult, UnsignedOrder} from '@cowprotocol/cow-sdk';
 
 type TCowQuoteError = {
-	description: string,
-	errorType: string,
-	data: {fee_amount: string}
+	body: {
+		description: string,
+		errorType: string,
+		data: {fee_amount: string}
+	}
 }
 type TGetQuote = [Maybe<TOrderQuoteResponse>, BigNumber, Maybe<TCowQuoteError>]
 type TInit = [TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<TCowQuoteError>]
@@ -30,12 +32,12 @@ type TSolverContext = {
 
 const	VALID_TO_MN = 60;
 export function useSolverCowswap(): TSolverContext {
+	const {slippage} = useSweepooor();
 	const {provider} = useWeb3();
 	const {toast} = yToast();
 	const {safeChainID} = useChainID();
 	const maxIterations = 1000; // 1000 * up to 3 seconds = 3000 seconds = 50 minutes
 	const [orderBookAPI, set_orderBookAPI] = useState<Maybe<OrderBookApi>>();
-	const [zapSlippage] = useLocalStorage<number>('migratooor/zap-slippage', 0.1);
 
 	useEffect((): void => {
 		const api = new OrderBookApi({chainId: safeChainID});
@@ -71,12 +73,12 @@ export function useSolverCowswap(): TSolverContext {
 			} catch (error) {
 				const	_error = error as TCowQuoteError;
 				if (shouldPreventErrorToast) {
-					return [undefined, formatBN(_error.data?.fee_amount || 0), _error];
+					return [undefined, formatBN(_error.body.data?.fee_amount || 0), _error];
 				}
 				console.error(error);
-				const	message = `Zap not possible ${_error.description ? `(Reason: ${_error.description})` : ''}`;
+				const	message = `Zap not possible ${_error.body.description ? `(Reason: ${_error.body.description})` : ''}`;
 				toast({type: 'error', content: message});
-				return [undefined, formatBN(_error?.data?.fee_amount || 0), _error];
+				return [undefined, formatBN(_error?.body?.data?.fee_amount || 0), _error];
 			}
 		}
 		return [undefined, formatBN(0), undefined];
@@ -89,9 +91,9 @@ export function useSolverCowswap(): TSolverContext {
 	**********************************************************************************************/
 	const getBuyAmountWithSlippage = useCallback((quote: OrderParameters, decimals: number): string => {
 		const buyAmount = Number(ethers.utils.formatUnits(quote.buyAmount, decimals));
-		const withSlippage = ethers.utils.parseUnits((buyAmount * (1 - Number(zapSlippage / 100))).toFixed(decimals), decimals);
+		const withSlippage = ethers.utils.parseUnits((buyAmount * (1 - Number((slippage?.value || 0) / 100))).toFixed(decimals), decimals);
 		return withSlippage.toString();
-	}, [zapSlippage]);
+	}, [slippage.value]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** init will be called when the cowswap solver should be used to perform the desired swap.
