@@ -14,11 +14,9 @@ import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber'
 import type {OrderCreation, OrderParameters, OrderQuoteRequest, SigningResult, UnsignedOrder} from '@cowprotocol/cow-sdk';
 
 type TCowQuoteError = {
-	body: {
-		description: string,
-		errorType: string,
-		data: {fee_amount: string}
-	}
+	description: string,
+	errorType: string,
+	data: {fee_amount: string}
 }
 type TGetQuote = [Maybe<TOrderQuoteResponse>, BigNumber, Maybe<TCowQuoteError>]
 type TInit = [TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<TCowQuoteError>]
@@ -73,12 +71,12 @@ export function useSolverCowswap(): TSolverContext {
 			} catch (error) {
 				const	_error = error as TCowQuoteError;
 				if (shouldPreventErrorToast) {
-					return [undefined, formatBN(_error.body.data?.fee_amount || 0), _error];
+					return [undefined, formatBN(_error.data?.fee_amount || 0), _error];
 				}
 				console.error(error);
-				const	message = `Zap not possible ${_error.body.description ? `(Reason: ${_error.body.description})` : ''}`;
+				const	message = `Zap not possible ${_error.description ? `(Reason: ${_error.description})` : ''}`;
 				toast({type: 'error', content: message});
-				return [undefined, formatBN(_error?.body?.data?.fee_amount || 0), _error];
+				return [undefined, formatBN(_error?.data?.fee_amount || 0), _error];
 			}
 		}
 		return [undefined, formatBN(0), undefined];
