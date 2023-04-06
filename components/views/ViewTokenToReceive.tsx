@@ -74,6 +74,7 @@ function	ViewTokenToReceive(): ReactElement {
 						</p>
 					</div>
 					<form
+						suppressHydrationWarning
 						onSubmit={async (e): Promise<void> => e.preventDefault()}
 						className={'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'}>
 						<div className={'grow-1 col-span-12 flex h-10 w-full items-center md:col-span-9'}>

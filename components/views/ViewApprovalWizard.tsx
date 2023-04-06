@@ -26,6 +26,7 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	const	cowswap = useSolverCowswap();
 	const	{selected, amounts, quotes} = useSweepooor();
 	const	[isApproving, set_isApproving] = useState(false);
+	const	[existingTransactions, set_existingTransactions] = useState<TDict<BaseTransaction>>({});
 	const	{sdk} = useSafeAppsSDK();
 
 	/* 🔵 - Yearn Finance **************************************************************************
@@ -37,8 +38,9 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	** - A orderUID will be returned
 	**********************************************************************************************/
 	const	onExecuteFromGnosis = useCallback(async (): Promise<void> => {
-		const	transactions: BaseTransaction[] = [];
 		const	allSelected = [...selected];
+		const	preparedTransactions: BaseTransaction[] = [];
+		const	newlyExistingTransactions: TDict<BaseTransaction> = {};
 
 		// Check approvals and add them to the batch if needed
 		for (const token of allSelected) {
@@ -55,28 +57,45 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 					toAddress(token),
 					toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS)
 				);
-				transactions.push(newApprovalForBatch);
+				preparedTransactions.push(newApprovalForBatch);
 			}
 
 			quoteOrder.signature = '0x';
+
+			if (existingTransactions[String(quoteOrder.id)]) {
+				//we already have an execute tx for this token in our batch
+				console.warn(`Execute for ${token} already in batch`);
+				preparedTransactions.push(existingTransactions[String(quoteOrder.id)]);
+				onUpdateSignStep((currentStep: number): number => currentStep + 1);
+				continue;
+			}
+
 			await cowswap.execute(quoteOrder, true, (orderUID): void => {
 				const newPreSignatureForBatch = getSetPreSignatureTransaction(
 					toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
 					orderUID,
 					true
 				);
-				transactions.push(newPreSignatureForBatch);
+
+				newlyExistingTransactions[String(quoteOrder.id)] = newPreSignatureForBatch;
+				preparedTransactions.push(newPreSignatureForBatch);
 				onUpdateSignStep((currentStep: number): number => currentStep + 1);
 			});
 		}
 
+		set_existingTransactions((existingTransactions: TDict<BaseTransaction>): TDict<BaseTransaction> => ({
+			...existingTransactions,
+			...newlyExistingTransactions
+		}));
 		try {
-			const {safeTxHash} = await sdk.txs.send({txs: transactions});
+			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
+			set_isApproving(false);
 			console.log(safeTxHash);
 		} catch (error) {
 			console.error(error);
+			set_isApproving(false);
 		}
-	}, [amounts, cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected]);
+	}, [amounts, cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected, existingTransactions]);
 
 
 	return (
@@ -89,7 +108,6 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 				onClick={async (): Promise<void> => {
 					set_isApproving(true);
 					await onExecuteFromGnosis();
-					set_isApproving(false);
 				}}>
 				{'Execute'}
 			</Button>
@@ -425,7 +443,7 @@ function	ViewApprovalWizard(): ReactElement {
 			<div className={'box-0 relative flex w-full flex-col items-center justify-center overflow-hidden p-0 md:p-6'}>
 				<div className={'mb-0 w-full p-4 md:mb-6 md:p-0'}>
 					<b>{'Dump!'}</b>
-					<p className={'text-sm text-neutral-500'}>
+					<p className={'text-sm text-neutral-500'} suppressHydrationWarning>
 						{isGnosisSafe ? 'All the step will be batched in one single transaction! Just execute it and sign your safe transaction! Easiest way to dump!' : 'This is a two step process. You first need to approve the tokens you want to dump, and then we will ask you to sign a message to send your order to dump!'}
 					</p>
 				</div>
