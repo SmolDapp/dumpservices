@@ -16,7 +16,7 @@ function	Home(): ReactElement {
 		<div className={'mx-auto grid w-full max-w-4xl'}>
 			<div className={'mt-6 mb-10 flex flex-col justify-center md:mt-20'}>
 				<h1 className={'mt-4 text-center text-3xl font-normal tracking-tight text-neutral-900 md:mt-6 md:text-4xl'}>
-					{'Harder, Better, Faster, '}
+					{'Faster, simpler, cheaper, '}
 					<b>{'Dumper'}</b>
 				</h1>
 				<span className={'mx-auto mt-4 w-3/4 text-center text-base leading-normal text-neutral-600 md:text-lg md:leading-8'}>
