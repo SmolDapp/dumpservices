@@ -108,7 +108,7 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				{isLoading ? (
 					<div className={'col-span-12 flex min-h-[200px] flex-col items-center justify-center'}>
 						<IconSpinner />
-						<p className={'mt-6 text-sm text-neutral-500'}>{'We are preparing your dumpling ...'}</p>
+						<p className={'mt-6 text-sm text-neutral-500'}>{'We are looking for your tokens ...'}</p>
 					</div>
 				) : balancesToDisplay.length === 0 ? (
 					<div className={'col-span-12 flex min-h-[200px] flex-col items-center justify-center'}>
