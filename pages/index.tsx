@@ -15,17 +15,14 @@ function	Home(): ReactElement {
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>
 			<div className={'mt-6 mb-10 flex flex-col justify-center md:mt-20'}>
-				<h1 className={'mt-4 text-center text-3xl font-normal tracking-tight text-neutral-900 md:mt-6 md:text-4xl'}>
-					{'Faster, simpler, cheaper, '}
-					<b>{'Dumper'}</b>
+				<h1 className={'mt-4 text-3xl tracking-tight text-neutral-900 md:mt-6 md:text-5xl'}>
+					{'One click token selling.'}
 				</h1>
-				<span className={'mx-auto mt-4 w-3/4 text-center text-base leading-normal text-neutral-600 md:text-lg md:leading-8'}>
-					{'Sell all your tokens in a '}
-					<b>{'single transaction'}</b>
-					{'. Save time, gas, and stress, with DeFi’s best token selling experience. Let’s dump.'}
-				</span>
+				<b className={'mt-4 w-3/4 text-base leading-normal text-neutral-500 md:text-lg md:leading-8'}>
+					{'Dump multiple tokens in a single transaction.'}
+				</b>
 				<span className={'text-base leading-normal text-neutral-500 md:text-lg md:leading-8'}>
-					{''}
+					{'Quicker, easier, and less gas. Ready to dump anon?'}
 				</span>
 			</div>
 
