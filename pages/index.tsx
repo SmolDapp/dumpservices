@@ -14,17 +14,19 @@ function	Home(): ReactElement {
 
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>
-			<div className={'mx-auto mt-6 mb-10 flex flex-col justify-center md:mt-20 md:mb-14'}>
-				<div className={'self-center text-center'}>
-					<b className={'items-center justify-center text-center text-5xl font-bold uppercase text-neutral-900 md:text-6xl'}>
-						{'DUMP LIKE A PRO'}
-					</b>
-				</div>
-				<div className={'mt-8'}>
-					<p className={'text-center text-lg md:text-2xl'}>
-						{'Connect your wallet for DeFi’s best token dumping experience.'}
-					</p>
-				</div>
+			<div className={'mt-6 mb-10 flex flex-col justify-center md:mt-20'}>
+				<h1 className={'mt-4 text-center text-3xl font-normal tracking-tight text-neutral-900 md:mt-6 md:text-4xl'}>
+					{'Harder, Better, Faster, '}
+					<b>{'Dumper'}</b>
+				</h1>
+				<span className={'mx-auto mt-4 w-3/4 text-center text-base leading-normal text-neutral-600 md:text-lg md:leading-8'}>
+					{'Sell all your tokens in a '}
+					<b>{'single transaction'}</b>
+					{'. Save time, gas, and stress, with DeFi’s best token selling experience. Let’s dump.'}
+				</span>
+				<span className={'text-base leading-normal text-neutral-500 md:text-lg md:leading-8'}>
+					{''}
+				</span>
 			</div>
 
 			<ViewWallet
