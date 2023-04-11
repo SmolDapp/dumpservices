@@ -121,7 +121,6 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 
 				newlyExistingTransactions[String(quoteOrder.id)] = newPreSignatureForBatch;
 				preparedTransactions.push(newPreSignatureForBatch);
-				// onUpdateSignStep((currentStep: number): number => currentStep + 1);
 				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
 			});
 		}
@@ -363,10 +362,10 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 						[toAddress(token)]: {...quote, orderUID, orderStatus: 'pending'}
 					}));
 				})
-				.then((status): void => {
+				.then(({status, orderUID}): void => {
 					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
-						[toAddress(token)]: {...quote, orderStatus: status}
+						[toAddress(token)]: {...quote, orderUID, orderStatus: status}
 					}));
 					refresh([
 						{

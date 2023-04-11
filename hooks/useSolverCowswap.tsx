@@ -21,10 +21,11 @@ type TCowQuoteError = {
 type TGetQuote = [Maybe<TOrderQuoteResponse>, BigNumber, Maybe<TCowQuoteError>]
 type TInit = [TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<TCowQuoteError>]
 type TCheckOrder = {status: TPossibleStatus, isSuccessful: boolean, error?: Error}
+type TExecuteResp = {status: TPossibleStatus, orderUID: string}
 type TSolverContext = {
 	init: (args: TInitSolverArgs) => Promise<TInit>;
 	signCowswapOrder: (quote: TOrderQuoteResponse) => Promise<SigningResult>;
-	execute: (quoteOrder: TOrderQuoteResponse, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TPossibleStatus>;
+	execute: (quoteOrder: TOrderQuoteResponse, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TExecuteResp>;
 }
 
 
@@ -167,9 +168,9 @@ export function useSolverCowswap(): TSolverContext {
 		quoteOrder: TOrderQuoteResponse,
 		shouldUsePresign: boolean,
 		onSubmitted: (orderUID: string) => void
-	): Promise<TPossibleStatus> => {
+	): Promise<TExecuteResp> => {
 		if (!quoteOrder) {
-			return 'invalid';
+			return {status: 'invalid', orderUID: ''};
 		}
 		const	{quote} = quoteOrder;
 		const	buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
@@ -186,17 +187,21 @@ export function useSolverCowswap(): TSolverContext {
 		if (orderUID) {
 			onSubmitted?.(orderUID);
 			if (shouldUsePresign) {
-				return 'pending';
+
+				// await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 5000));
+				// toast({type: 'success', content: 'Order executed'});
+				// return {status: 'fulfilled', orderUID};
+				return {status: 'pending', orderUID};
 			}
 			const {status, error} = await checkOrderStatus(orderUID, quote.validTo as number);
 			if (error) {
 				console.error(error);
 				toast({type: 'error', content: (error as {message: string}).message});
 			}
-			return status;
+			return {status, orderUID};
 		}
 
-		return 'invalid';
+		return {status: 'invalid', orderUID: ''};
 	}, [checkOrderStatus, getBuyAmountWithSlippage, orderBookAPI, toast]);
 
 	return useMemo((): TSolverContext => ({
