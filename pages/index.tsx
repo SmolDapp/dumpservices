@@ -14,6 +14,19 @@ function	Home(): ReactElement {
 
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>
+			<div className={'mx-auto mt-6 mb-10 flex flex-col justify-center md:mt-20 md:mb-14'}>
+				<div className={'self-center text-center'}>
+					<b className={'items-center justify-center text-center text-5xl font-bold uppercase text-neutral-900 md:text-6xl'}>
+						{'DUMP LIKE A PRO'}
+					</b>
+				</div>
+				<div className={'mt-8'}>
+					<p className={'text-center text-lg md:text-2xl'}>
+						{'Connect your wallet for DeFi’s best token dumping experience.'}
+					</p>
+				</div>
+			</div>
+
 			<ViewWallet
 				onSelect={(): void => {
 					set_currentStep(Step.DESTINATION);

@@ -90,9 +90,9 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				</div>
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
 					<div className={'w-full md:w-3/4'}>
-						<b>{'Select the tokens to dump'}</b>
+						<b>{'Which tokens do you want to dump?'}</b>
 						<p className={'text-sm text-neutral-500'}>
-							{'Select the tokens you want to dump for another one.'}
+							{'Select the token(s) that you’d like to dump. In exchange you’ll receive whatever token you selected in the first step.'}
 						</p>
 					</div>
 					<div className={'mt-4 w-full'}>
