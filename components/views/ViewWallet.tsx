@@ -6,7 +6,6 @@ import {useInjectedWallet} from '@yearn-finance/web-lib/hooks/useInjectedWallet'
 import IconWalletLedger from '@yearn-finance/web-lib/icons/IconWalletLedger';
 import IconWalletSafe from '@yearn-finance/web-lib/icons/IconWalletSafe';
 import IconWalletWalletConnect from '@yearn-finance/web-lib/icons/IconWalletWalletConnect';
-import {isIframe} from '@yearn-finance/web-lib/utils/helpers';
 
 import type {TCardWithIcon} from 'components/CardWithIcon';
 import type {LoaderComponent} from 'next/dynamic';
