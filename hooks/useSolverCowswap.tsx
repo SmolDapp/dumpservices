@@ -188,10 +188,10 @@ export function useSolverCowswap(): TSolverContext {
 			if (orderUID) {
 				onSubmitted?.(orderUID);
 				if (shouldUsePresign) {
-					await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 5000));
-					toast({type: 'success', content: 'Order executed'});
-					return {status: 'fulfilled', orderUID, quote: quoteOrder};
-				// return {status: 'pending', orderUID, quote};
+					// await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 5000));
+					// toast({type: 'success', content: 'Order executed'});
+					// return {status: 'fulfilled', orderUID, quote: quoteOrder};
+					return {status: 'pending', orderUID, quote: quoteOrder};
 				}
 				const {status, error} = await checkOrderStatus(orderUID, quote.validTo as number);
 				if (error) {
