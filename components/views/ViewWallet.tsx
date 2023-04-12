@@ -1,11 +1,12 @@
 import React, {useCallback, useMemo} from 'react';
 import dynamic from 'next/dynamic';
-import IconWalletLedger from 'components/icons/IconWalletLedger';
 import {useWallet} from 'contexts/useWallet';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useInjectedWallet} from '@yearn-finance/web-lib/hooks/useInjectedWallet';
-import IconWalletGnosis from '@yearn-finance/web-lib/icons/IconWalletGnosis';
+import IconWalletLedger from '@yearn-finance/web-lib/icons/IconWalletLedger';
+import IconWalletSafe from '@yearn-finance/web-lib/icons/IconWalletSafe';
 import IconWalletWalletConnect from '@yearn-finance/web-lib/icons/IconWalletWalletConnect';
+import {isIframe} from '@yearn-finance/web-lib/utils/helpers';
 
 import type {TCardWithIcon} from 'components/CardWithIcon';
 import type {LoaderComponent} from 'next/dynamic';
@@ -40,11 +41,10 @@ function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 				name: 'Ledger',
 				icon: <IconWalletLedger />
 			});
-		}
-		if (walletType === 'EMBED_GNOSIS_SAFE') {
+		} if (walletType === 'EMBED_GNOSIS_SAFE') {
 			return ({
-				name: 'Gnosis Safe',
-				icon: <IconWalletGnosis />
+				name: 'Safe',
+				icon: <IconWalletSafe />
 			});
 		}
 		return ({
