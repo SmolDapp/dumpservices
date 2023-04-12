@@ -6,13 +6,16 @@ import {useWallet} from 'contexts/useWallet';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
 import {approveERC20, isApprovedERC20} from 'utils/actions/approveERC20';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/gnosis.tools';
+import axios from 'axios';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
-import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 import {defaultTxStatus, Transaction} from '@yearn-finance/web-lib/utils/web3/transaction';
 
@@ -21,6 +24,54 @@ import type {TOrderQuoteResponse, TPossibleFlowStep} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
+
+function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string): void {
+	if (!orders.length) {
+		return;
+	}
+
+	const	messages = [] as string[];
+	let		from = '';
+	let		to = '';
+	for (const order of orders) {
+		from = toAddress(order.from);
+		to = toAddress(order.quote.receiver);
+		const	buyAmount = formatAmount(
+			toNormalizedBN(
+				order?.quote?.buyAmount || '',
+				order?.request?.outputToken?.decimals || 18
+			).normalized, 6, 6);
+		const	sellAmount = formatAmount(
+			toNormalizedBN(
+				order?.quote?.sellAmount || '',
+				order?.request?.inputToken?.decimals || 18
+			).normalized, 6, 6);
+		const	feeAmount = formatAmount(
+			toNormalizedBN(
+				order?.quote?.feeAmount || '',
+				order?.request?.inputToken?.decimals || 18
+			).normalized, 6, 6);
+		const	buyToken = order.request.outputToken.symbol;
+		const	sellToken = order.request.inputToken.symbol;
+
+		messages.push(
+			`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | [Order](https://explorer.cow.fi/orders/${order.orderUID})`
+		);
+	}
+
+	axios.post('/api/notify', {
+		messages: [
+			'*🥟 New dump detected*',
+			'\n*🧹 - Orders:*',
+			...messages,
+			'\n*👀 - Meta:*',
+			`\t\t\t\tFrom: [${truncateHex(from, 4)}](https://etherscan.io/address/${from})`,
+			`\t\t\t\tTo: [${truncateHex(to, 4)}](https://etherscan.io/address/${to})`,
+			`\t\t\t\tWallet: ${origin}`,
+			txHash ? `\t\t\t\tSafeTx: [${truncateHex(txHash, 6)}](https://etherscan.io/tx/${txHash})` : ''
+		]
+	});
+}
 
 function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
 	const	{provider} = useWeb3();
@@ -131,8 +182,17 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 		}));
 		try {
 			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
+			const executedQuotes = [];
+			for (const token of allSelected) {
+				const	quoteOrder = quotes[toAddress(token)];
+				if (quoteOrder.orderUID) {
+					executedQuotes.push(quoteOrder);
+				}
+			}
+			notify(executedQuotes, 'Safe', safeTxHash);
 			set_isApproving(false);
 			console.log(safeTxHash);
+
 		} catch (error) {
 			console.error(error);
 			set_isApproving(false);
@@ -264,6 +324,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	const	onSignQuote = useCallback(async (): Promise<void> => {
 		for (const token of selected) {
 			if (!quotes[toAddress(token)] || !approveStatus[toAddress(token)]) {
+				console.log('Missing quote or approval', token, quotes[toAddress(token)], approveStatus[toAddress(token)]);
 				return;
 			}
 		}
@@ -319,8 +380,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 			}
 		}
 		set_isSigning(false);
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [cowswap?.signCowswapOrder, onUpdateSignStep, quotes, selected, set_quotes]);
+	}, [approveStatus, cowswap, onUpdateSignStep, quotes, selected, set_quotes]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** onSendOrders send the orders to the cowswap API, skipping the ones that are already sent (
@@ -331,6 +391,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	**********************************************************************************************/
 	const	onSendOrders = useCallback(async (): Promise<void> => {
 		const	allSelected = [...selected];
+		const	allCowswapExecutePromise = [];
 		for (const token of allSelected) {
 			const	quote = quotes[toAddress(token)];
 			if (quote.orderUID && ['fulfilled', 'pending'].includes(quote?.orderStatus || '')) {
@@ -353,76 +414,68 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				quote.signingScheme = signingScheme;
 			}
 
-			cowswap.execute(
-				quote,
-				Boolean(process.env.SHOULD_USE_PRESIGN), // We don't want to use presign, unless specified in env variables (debug mode)
-				(orderUID): void => {
-					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-						...prev,
-						[toAddress(token)]: {...quote, orderUID, orderStatus: 'pending'}
-					}));
-				})
-				.then(({status, orderUID}): void => {
-					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-						...prev,
-						[toAddress(token)]: {...quote, orderUID, orderStatus: status}
-					}));
-					refresh([
-						{
-							token: quote.quote.buyToken,
-							decimals: quote.request.outputToken.decimals,
-							name: quote.request.outputToken.label,
-							symbol: quote.request.outputToken.symbol
-						},
-						{
-							token: quote.quote.sellToken,
-							decimals: quote.request.inputToken.decimals,
-							name: quote.request.inputToken.label,
-							symbol: quote.request.inputToken.symbol
-						}
-					]);
-				}).catch((error): void => {
-					toast({type: 'error', content: error.message});
-					if (error.message.includes('QuoteNotFound')) {
+			allCowswapExecutePromise.push(
+				cowswap.execute(
+					quote,
+					Boolean(process.env.SHOULD_USE_PRESIGN), // We don't want to use presign, unless specified in env variables (debug mode)
+					(orderUID): void => {
 						set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 							...prev,
-							[toAddress(token)]: {
-								...quotes[toAddress(token)],
-								quote: {
-									...quotes[toAddress(token)].quote,
-									validTo: 0
-								},
-								orderStatus: 'invalid',
-								signature: '',
-								signingScheme: '' as string as EcdsaSigningScheme
-							}
+							[toAddress(token)]: {...quote, orderUID, orderStatus: 'pending'}
 						}));
-					} else if (error.message.includes('InsufficientAllowance')) {
-						performBatchedUpdates((): void => {
-							set_approveStatus((prev): TDict<boolean> => ({...prev, [toAddress(token)]: false}));
-							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-								...prev,
-								[toAddress(token)]: {
-									...quotes[toAddress(token)],
-									orderStatus: 'invalid',
-									signature: '',
-									signingScheme: '' as string as EcdsaSigningScheme
-								}
-							}));
-						});
-					} else {
-						set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-							...prev,
-							[toAddress(token)]: {
-								...quotes[toAddress(token)],
-								orderStatus: 'invalid',
-								signature: '',
-								signingScheme: '' as string as EcdsaSigningScheme
-							}
-						}));
-					}
-				});
+					})
+			);
 		}
+
+		//Wait for all promises to be resolved
+		const executedQuotes = [];
+		const result = await Promise.allSettled(allCowswapExecutePromise);
+
+		for (const okOrKo of result) {
+			if (okOrKo.status === 'rejected') {
+				toast({type: 'error', content: okOrKo.reason});
+				continue;
+			}
+
+			const {status, orderUID, quote, error} = okOrKo.value;
+			const tokenAddress = toAddress(quote?.quote?.sellToken || '');
+			if (error?.message) {
+				if (error?.message?.includes('InsufficientAllowance')) {
+					set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
+				}
+				set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+					...prev,
+					[tokenAddress]: {
+						...quotes[tokenAddress],
+						quote: {...quotes[tokenAddress].quote, validTo: 0},
+						orderStatus: 'invalid',
+						signature: '',
+						signingScheme: '' as string as EcdsaSigningScheme
+					}
+				}));
+			}
+
+			executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
+			set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+				...prev,
+				[tokenAddress]: {...quote, orderUID, orderStatus: status}
+			}));
+			refresh([
+				{
+					token: quote.quote.buyToken,
+					decimals: quote.request.outputToken.decimals,
+					name: quote.request.outputToken.label,
+					symbol: quote.request.outputToken.symbol
+				},
+				{
+					token: quote.quote.sellToken,
+					decimals: quote.request.inputToken.decimals,
+					name: quote.request.inputToken.label,
+					symbol: quote.request.inputToken.symbol
+				}
+			]);
+		}
+		notify(executedQuotes, 'EOA', '');
 	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************

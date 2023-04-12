@@ -271,14 +271,14 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.buyAmount || '',
-							currentQuote?.request?.inputToken?.decimals || 18
+							currentQuote?.request?.outputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.buyAmount || ''})`}
 					</p>
 				</span>
 				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'BuyToken'}</b>
 					<p className={'font-number'}>
-						{`${'ETH'} (${toAddress(currentQuote?.quote?.buyToken || '')})`}
+						{`${balances?.[toAddress(currentQuote?.quote?.buyToken)]?.symbol || ''} (${toAddress(currentQuote?.quote?.buyToken || '')})`}
 					</p>
 				</span>
 				<span className={'flex flex-col justify-between md:flex-row'}>
@@ -286,7 +286,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.sellAmount || '',
-							currentQuote?.request?.outputToken?.decimals || 18
+							currentQuote?.request?.inputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.sellAmount || ''})`}
 					</p>
 				</span>
@@ -295,7 +295,7 @@ function	ApprovalWizardItem({
 					<p className={'font-number'}>
 						{`${toNormalizedBN(
 							currentQuote?.quote?.feeAmount || '',
-							currentQuote?.request?.outputToken?.decimals || 18
+							currentQuote?.request?.inputToken?.decimals || 18
 						).normalized} (${currentQuote?.quote?.feeAmount || ''})`}
 					</p>
 				</span>

@@ -21,7 +21,7 @@ type TCowQuoteError = {
 type TGetQuote = [Maybe<TOrderQuoteResponse>, BigNumber, Maybe<TCowQuoteError>]
 type TInit = [TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<TCowQuoteError>]
 type TCheckOrder = {status: TPossibleStatus, isSuccessful: boolean, error?: Error}
-type TExecuteResp = {status: TPossibleStatus, orderUID: string}
+type TExecuteResp = {status: TPossibleStatus, orderUID: string, quote: TOrderQuoteResponse, error?: {message: string}}
 type TSolverContext = {
 	init: (args: TInitSolverArgs) => Promise<TInit>;
 	signCowswapOrder: (quote: TOrderQuoteResponse) => Promise<SigningResult>;
@@ -170,7 +170,7 @@ export function useSolverCowswap(): TSolverContext {
 		onSubmitted: (orderUID: string) => void
 	): Promise<TExecuteResp> => {
 		if (!quoteOrder) {
-			return {status: 'invalid', orderUID: ''};
+			return {status: 'invalid', orderUID: '', quote: quoteOrder};
 		}
 		const	{quote} = quoteOrder;
 		const	buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
@@ -183,25 +183,28 @@ export function useSolverCowswap(): TSolverContext {
 			signature: quoteOrder.signature,
 			signingScheme: signingScheme
 		};
-		const	orderUID = await orderBookAPI?.sendOrder(orderCreation as OrderCreation);
-		if (orderUID) {
-			onSubmitted?.(orderUID);
-			if (shouldUsePresign) {
-
-				// await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 5000));
-				// toast({type: 'success', content: 'Order executed'});
-				// return {status: 'fulfilled', orderUID};
-				return {status: 'pending', orderUID};
+		try {
+			const	orderUID = await orderBookAPI?.sendOrder(orderCreation as OrderCreation);
+			if (orderUID) {
+				onSubmitted?.(orderUID);
+				if (shouldUsePresign) {
+					await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 5000));
+					toast({type: 'success', content: 'Order executed'});
+					return {status: 'fulfilled', orderUID, quote: quoteOrder};
+				// return {status: 'pending', orderUID, quote};
+				}
+				const {status, error} = await checkOrderStatus(orderUID, quote.validTo as number);
+				if (error) {
+					console.error(error);
+					toast({type: 'error', content: (error as {message: string}).message});
+				}
+				return {status, orderUID, quote: quoteOrder};
 			}
-			const {status, error} = await checkOrderStatus(orderUID, quote.validTo as number);
-			if (error) {
-				console.error(error);
-				toast({type: 'error', content: (error as {message: string}).message});
-			}
-			return {status, orderUID};
+		} catch (error) {
+			return {status: 'invalid', orderUID: '', quote: quoteOrder, error: error as {message: string}};
 		}
 
-		return {status: 'invalid', orderUID: ''};
+		return {status: 'invalid', orderUID: '', quote: quoteOrder};
 	}, [checkOrderStatus, getBuyAmountWithSlippage, orderBookAPI, toast]);
 
 	return useMemo((): TSolverContext => ({
