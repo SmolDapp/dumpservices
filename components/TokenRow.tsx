@@ -71,7 +71,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 					<div className={'yearn--table-token-section-item-image'}>
 						<ImageWithFallback
 							id={`${safeChainID}-${toAddress(tokenAddress)}-img`}
-							alt={''}
+							alt={toAddress(tokenAddress)}
 							width={40}
 							height={40}
 							quality={90}
