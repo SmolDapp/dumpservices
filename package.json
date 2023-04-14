@@ -13,6 +13,7 @@
 	},
 	"dependencies": {
 		"@cowprotocol/cow-sdk": "^2.0.1",
+		"@gnosis.pm/safe-apps-provider": "^0.15.1",
 		"@gnosis.pm/safe-apps-react-sdk": "^4.6.2",
 		"@headlessui/react": "^1.7.13",
 		"@react-hookz/web": "^23.0.0",

@@ -25,6 +25,11 @@ import type {TDict} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
 
+type TExistingTx = {
+	tx: BaseTransaction,
+	orderUID: string
+}
+
 function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string): void {
 	if (!orders.length) {
 		return;
@@ -79,7 +84,7 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	const	{selected, amounts, quotes, set_quotes} = useSweepooor();
 	const	[isApproving, set_isApproving] = useState(false);
 	const	[isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
-	const	[existingTransactions, set_existingTransactions] = useState<TDict<BaseTransaction>>({});
+	const	[existingTransactions, set_existingTransactions] = useState<TDict<TExistingTx>>({});
 	const	{sdk} = useSafeAppsSDK();
 
 	/* 🔵 - Yearn Finance **************************************************************************
@@ -128,7 +133,8 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	const	onExecuteFromGnosis = useCallback(async (): Promise<void> => {
 		const	allSelected = [...selected];
 		const	preparedTransactions: BaseTransaction[] = [];
-		const	newlyExistingTransactions: TDict<BaseTransaction> = {};
+		const	newlyExistingTransactions: TDict<TExistingTx> = {};
+		const	executedQuotes = [];
 
 		// Check approvals and add them to the batch if needed
 		for (const token of allSelected) {
@@ -149,15 +155,18 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			}
 
 			quoteOrder.signature = '0x';
-			const	quoteID = quotes?.[toAddress(token)]?.id;
+			const quoteID = quotes?.[toAddress(token)]?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${token}`);
 				continue;
 			}
-			if (existingTransactions[String(quoteOrder.id)]) {
+
+			const	existingTx = existingTransactions[String(quoteOrder.id)];
+			if (existingTx) {
 				//we already have an execute tx for this token in our batch
 				console.warn(`Execute for ${token} already in batch`);
-				preparedTransactions.push(existingTransactions[String(quoteOrder.id)]);
+				preparedTransactions.push(existingTx.tx);
+				executedQuotes.push({...quoteOrder, orderUID: existingTx.orderUID});
 				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
 				continue;
 			}
@@ -170,29 +179,25 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 					true
 				);
 
-				newlyExistingTransactions[String(quoteOrder.id)] = newPreSignatureForBatch;
+				newlyExistingTransactions[String(quoteOrder.id)] = {
+					tx: newPreSignatureForBatch,
+					orderUID
+				};
 				preparedTransactions.push(newPreSignatureForBatch);
+				executedQuotes.push({...quoteOrder, orderUID});
 				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
 			});
 		}
 
-		set_existingTransactions((existingTransactions: TDict<BaseTransaction>): TDict<BaseTransaction> => ({
+		set_existingTransactions((existingTransactions: TDict<TExistingTx>): TDict<TExistingTx> => ({
 			...existingTransactions,
 			...newlyExistingTransactions
 		}));
 		try {
 			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
-			const executedQuotes = [];
-			for (const token of allSelected) {
-				const	quoteOrder = quotes[toAddress(token)];
-				if (quoteOrder.orderUID) {
-					executedQuotes.push(quoteOrder);
-				}
-			}
 			notify(executedQuotes, 'Safe', safeTxHash);
 			set_isApproving(false);
 			console.log(safeTxHash);
-
 		} catch (error) {
 			console.error(error);
 			set_isApproving(false);
@@ -591,7 +596,10 @@ function	ViewApprovalWizard(): ReactElement {
 	const	{selected, quotes} = useSweepooor();
 	const	[currentWizardApprovalStep, set_currentWizardApprovalStep] = useState<TDict<TPossibleFlowStep>>({}); // {[orderID]: flowStep}
 	const	[currentWizardSignStep, set_currentWizardSignStep] = useState<TDict<TPossibleFlowStep>>({}); // {[orderID]: flowStep}
-	const	isGnosisSafe = walletType === 'EMBED_GNOSIS_SAFE';
+	const	isGnosisSafe = (
+		walletType === 'EMBED_GNOSIS_SAFE'
+		// || (((provider as any)?.provider?.connector?._peerMeta?.name || '').toLowerCase()).includes('safe')
+	);
 
 	return (
 		<section>
