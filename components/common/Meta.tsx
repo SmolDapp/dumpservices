@@ -30,7 +30,6 @@ function	Meta(): ReactElement {
 					rel={'mask-icon'}
 					href={'/favicons/safari-pinned-tab.svg'}
 					color={meta.theme_color} />
-
 				<link
 					rel={'shortcut icon'}
 					type={'image/x-icon'}
@@ -73,7 +72,10 @@ function	Meta(): ReactElement {
 					rel={'apple-touch-icon'}
 					sizes={'167x167'}
 					href={'/favicons/apple-icon-167x167.png'} />
-
+				<script
+					defer
+					data-domain={'dump.services'}
+					src={'/js/script.js'} />
 				<meta name={'robots'} content={'index,nofollow'} />
 				<meta name={'googlebot'} content={'index,nofollow'} />
 				<meta charSet={'utf-8'} />
