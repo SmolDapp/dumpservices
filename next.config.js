@@ -45,19 +45,7 @@ module.exports = (phase) => withTM(withPWA({
 		return [
 			{
 				source: '/github',
-				destination: 'https://github.com/Majorfi/migratooor',
-				permanent: true
-			},
-			{
-				source: '/:path*',
-				has: [{type: 'host', value: 'migratooor.com'}],
-				destination: 'https://smold.app/migratooor/:path*',
-				permanent: true
-			},
-			{
-				source: '/:path*',
-				has: [{type: 'host', value: 'tokenlistooor.com'}],
-				destination: 'https://smold.app/tokenlistooor/:path*',
+				destination: 'https://github.com/SmolDapp/dumpservices',
 				permanent: true
 			}
 		];
