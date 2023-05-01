@@ -10,6 +10,7 @@ import type {TAddress} from '@yearn-finance/web-lib/types';
 function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{receiver, set_receiver} = useSweepooor();
 	const	[tokenReceiver, set_tokenReceiver] = useState('');
+	const	[hasBeenConfirmed, set_hasBeenConfirmed] = useState(false);
 
 	useUpdateEffect((): void => {
 		if (tokenReceiver === '') {
@@ -30,11 +31,12 @@ function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					<AddressInput
 						value={tokenReceiver as TAddress}
 						onChangeValue={set_tokenReceiver}
-						shouldBeDisabled={tokenReceiver === receiver}
+						shouldBeDisabled={hasBeenConfirmed && tokenReceiver === receiver}
 						onConfirm={(newReceiver: TAddress): void => {
 							performBatchedUpdates((): void => {
 								set_receiver(newReceiver);
 								set_tokenReceiver(newReceiver);
+								set_hasBeenConfirmed(true);
 								onProceed();
 							});
 						}}/>
