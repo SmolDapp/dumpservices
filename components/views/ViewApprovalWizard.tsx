@@ -29,8 +29,12 @@ type TExistingTx = {
 	tx: BaseTransaction,
 	orderUID: string
 }
+type TSafeTxHistory = {
+	safe: string
+	nonce: number
+}
 
-function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string): void {
+function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
 	if (!orders.length) {
 		return;
 	}
@@ -64,6 +68,15 @@ function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string): 
 		);
 	}
 
+	const	extra = [] as string[];
+	if (txHash) {
+		extra.push(...[
+			'\n*📇 - Safe:*',
+			`\t\t\t\tSafeTx: [${truncateHex(txHash, 6)}](https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${txHash})`,
+			`\t\t\t\tNonce: ${safeTx?.nonce || 'N/A'})`
+		]);
+
+	}
 	axios.post('/api/notify', {
 		messages: [
 			'*🥟 New dump detected*',
@@ -73,7 +86,7 @@ function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string): 
 			`\t\t\t\tFrom: [${truncateHex(from, 4)}](https://etherscan.io/address/${from})`,
 			`\t\t\t\tTo: [${truncateHex(to, 4)}](https://etherscan.io/address/${to})`,
 			`\t\t\t\tWallet: ${origin}`,
-			txHash ? `\t\t\t\tSafeTx: [${truncateHex(txHash, 6)}](https://etherscan.io/tx/${txHash})` : ''
+			...extra
 		]
 	});
 }
@@ -195,7 +208,12 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 		}));
 		try {
 			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
-			notify(executedQuotes, 'Safe', safeTxHash);
+			try {
+				const tx = await axios.get(`https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${safeTxHash}`) as TSafeTxHistory;
+				notify(executedQuotes, 'Safe', safeTxHash, tx);
+			} catch (error) {
+				notify(executedQuotes, 'Safe', safeTxHash);
+			}
 			set_isApproving(false);
 			console.log(safeTxHash);
 		} catch (error) {
