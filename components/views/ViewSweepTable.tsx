@@ -1,4 +1,5 @@
 import React, {Fragment, useMemo, useState} from 'react';
+import FlipMove from 'react-flip-move';
 import AddressInput from 'components/AddressInput';
 import IconSpinner from 'components/icons/IconSpinner';
 import ListHead from 'components/ListHead';
@@ -156,12 +157,11 @@ function AddTokenPopover(): ReactElement {
 	);
 }
 
-
 function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{isActive, address, chainID} = useWeb3();
 	const	{selected, quotes, destination, amounts, receiver} = useSweepooor();
 	const	{balances, balancesNonce, isLoading} = useWallet();
-	const	[sortBy, set_sortBy] = useState<string>('apy');
+	const	[sortBy, set_sortBy] = useState<string>('');
 	const	[sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
 	const	[search, set_search] = useState<string>('');
 	const	currentChain = useChain().getCurrent();
@@ -198,8 +198,8 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true
 				))
 				.sort((a: [string, TMinBalanceData], b: [string, TMinBalanceData]): number => {
-					const	[, aBalance] = a;
-					const	[, bBalance] = b;
+					const	[aTokenAddress, aBalance] = a;
+					const	[bTokenAddress, bBalance] = b;
 
 					if (sortBy === 'name') {
 						return sortDirection === 'asc'
@@ -211,18 +211,33 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 							? aBalance.raw.gt(bBalance.raw) ? 1 : -1
 							: aBalance.raw.gt(bBalance.raw) ? -1 : 1;
 					}
+					//else sort by selected
+					const	isASelected = selected.includes(toAddress(aTokenAddress));
+					const	isBSelected = selected.includes(toAddress(bTokenAddress));
+					if (isASelected && !isBSelected) {
+						return sortDirection === 'desc' ? -1 : 1;
+					} if (!isASelected && isBSelected) {
+						return sortDirection === 'desc' ? 1 : -1;
+					}
+
+
 					return 0;
 				})
 				.map(([tokenAddress, balance]: [string, TMinBalanceData]): ReactElement => {
-					return <TokenRow
-						key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
-						amount={amounts[toAddress(tokenAddress)]}
-						explorer={currentChain?.block_explorer}
-						balance={balance}
-						tokenAddress={toAddress(tokenAddress)} />;
+					return (
+						<div
+							key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}`}>
+							<TokenRow
+								key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
+								amount={amounts[toAddress(tokenAddress)]}
+								explorer={currentChain?.block_explorer}
+								balance={balance}
+								tokenAddress={toAddress(tokenAddress)} />
+						</div>
+					);
 				})
 		);
-	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer, search, receiver]);
+	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer, search, receiver, selected]);
 
 	return (
 		<section>
@@ -278,7 +293,14 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 								{label: `Output (${destination.symbol})`, value: '', sortable: false, className: 'col-span-6 md:pl-7', datatype: 'text'}
 							]} />
 						<div>
-							{balancesToDisplay}
+							<FlipMove
+								duration={300}
+								maintainContainerHeight
+								easing={'ease-in-out'}
+								enterAnimation={'fade'}
+								leaveAnimation={'fade'}>
+								{balancesToDisplay}
+							</FlipMove>
 						</div>
 					</div>
 				)}
