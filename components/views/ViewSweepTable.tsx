@@ -53,10 +53,6 @@ function AddTokenPopover(): ReactElement {
 		console.log({name, symbol, decimals: decimals.toNumber(), balanceOf});
 		return ({name, symbol, decimals: decimals.toNumber(), balanceOf});
 	}, undefined);
-		// fetchTokenData.execute(provider, safeChainID, toAddress(query));
-		// 0x6982508145454Ce325dDbE47a25d4ec3d2311933
-
-	console.log(tokenData);
 
 	return (
 		<>
@@ -163,7 +159,7 @@ function AddTokenPopover(): ReactElement {
 
 function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{isActive, address, chainID} = useWeb3();
-	const	{selected, quotes, destination, amounts} = useSweepooor();
+	const	{selected, quotes, destination, amounts, receiver} = useSweepooor();
 	const	{balances, balancesNonce, isLoading} = useWallet();
 	const	[sortBy, set_sortBy] = useState<string>('apy');
 	const	[sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
@@ -219,14 +215,14 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				})
 				.map(([tokenAddress, balance]: [string, TMinBalanceData]): ReactElement => {
 					return <TokenRow
-						key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}`}
+						key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
 						amount={amounts[toAddress(tokenAddress)]}
 						explorer={currentChain?.block_explorer}
 						balance={balance}
 						tokenAddress={toAddress(tokenAddress)} />;
 				})
 		);
-	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer, search]);
+	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer, search, receiver]);
 
 	return (
 		<section>

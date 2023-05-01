@@ -35,7 +35,7 @@ export const TokenListContextApp = ({children}: {children: React.ReactElement}):
 
 	useMountEffect((): void => {
 		axios.all([
-			// axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/tokenlistooor.json'),
+			axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/tokenlistooor.json'),
 			axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/1/yearn.json')
 		]).then(axios.spread((...responses): void => {
 			const	tokenListTokens: TDict<TTokenInfo> = {};

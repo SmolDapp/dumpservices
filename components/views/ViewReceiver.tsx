@@ -1,12 +1,14 @@
-import React from 'react';
+import React, {useState} from 'react';
 import AddressInput from 'components/AddressInput';
 import {useSweepooor} from 'contexts/useSweepooor';
+import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 
 function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{receiver, set_receiver} = useSweepooor();
+	const	[tokenReceiver, set_tokenReceiver] = useState(receiver);
 
 	return (
 		<section>
@@ -19,11 +21,15 @@ function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						</p>
 					</div>
 					<AddressInput
-						value={receiver}
-						onChangeValue={set_receiver}
+						value={tokenReceiver}
+						onChangeValue={set_tokenReceiver}
+						shouldBeDisabled={tokenReceiver === receiver}
 						onConfirm={(newReceiver: TAddress): void => {
-							set_receiver(newReceiver);
-							onProceed();
+							performBatchedUpdates((): void => {
+								set_receiver(newReceiver);
+								set_tokenReceiver(newReceiver);
+								onProceed();
+							});
 						}}/>
 				</div>
 			</div>

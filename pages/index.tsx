@@ -10,7 +10,7 @@ import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUp
 import type {ReactElement} from 'react';
 
 function	Home(): ReactElement {
-	const	{currentStep, set_currentStep, set_quotes, set_selected} = useSweepooor();
+	const	{currentStep, set_currentStep, set_quotes} = useSweepooor();
 
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>
@@ -35,7 +35,17 @@ function	Home(): ReactElement {
 			<div
 				id={'tokenToReceive'}
 				className={`mt-2 pt-8 transition-opacity ${[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER, Step.DESTINATION].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
-				<ViewTokenToReceive />
+				<ViewTokenToReceive
+					onProceed={(): void => {
+						performBatchedUpdates((): void => {
+							if (currentStep === Step.DESTINATION) {
+								performBatchedUpdates((): void => {
+									set_currentStep(Step.RECEIVER);
+									set_quotes({}); // Reset quotes
+								});
+							}
+						});
+					}} />
 			</div>
 
 			<div
@@ -46,7 +56,6 @@ function	Home(): ReactElement {
 						performBatchedUpdates((): void => {
 							set_currentStep(Step.SELECTOR);
 							set_quotes({}); // Reset quotes
-							set_selected([]); // Reset selected
 						});
 					}} />
 			</div>

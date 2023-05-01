@@ -55,6 +55,12 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 		});
 	});
 
+	useMountEffect((): void => {
+		if (isSelected) {
+			setTimeout((): void => document?.getElementById(`quote-refresh-${toAddress(tokenAddress)}`)?.click(), 10);
+		}
+	});
+
 	return (
 		<div
 			id={`${safeChainID}-${toAddress(tokenAddress)}`}

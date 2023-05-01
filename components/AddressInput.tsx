@@ -14,11 +14,12 @@ import {getProvider} from '@yearn-finance/web-lib/utils/web3/providers';
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 
-function	AddressInput({value, onChangeValue, onConfirm, className}: {
+function	AddressInput({value, onChangeValue, onConfirm, className, shouldBeDisabled}: {
 	value: TAddress,
 	onChangeValue: (value: TAddress) => void,
 	onConfirm: (newReceiver: TAddress) => void,
-	className?: string
+	className?: string,
+	shouldBeDisabled?: boolean,
 }): ReactElement {
 	const	[isValidValue, set_isValidValue] = useState<boolean | 'undetermined'>('undetermined');
 	const	[isValidish, set_isValidish] = useState<boolean | 'undetermined'>('undetermined');
@@ -134,7 +135,7 @@ function	AddressInput({value, onChangeValue, onConfirm, className}: {
 							onConfirm(toAddress(value));
 						}
 					}}
-					disabled={!(isValidValue === true || isValidish === true)}>
+					disabled={!(isValidValue === true || isValidish === true )|| shouldBeDisabled}>
 					{'Confirm'}
 				</Button>
 			</div>

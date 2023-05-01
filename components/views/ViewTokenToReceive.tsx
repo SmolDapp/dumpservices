@@ -8,13 +8,14 @@ import {useMountEffect, useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {TTokenInfo, TTokenList} from 'contexts/useTokenList';
 import type {ReactElement} from 'react';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
-function	ViewTokenToReceive(): ReactElement {
-	const	{destination, set_destination, set_currentStep} = useSweepooor();
+function	ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
+	const	{currentStep, destination, set_destination} = useSweepooor();
 	const	[tokenToReceive, set_tokenToReceive] = useState<string>(ETH_TOKEN_ADDRESS);
 	const	[isValidDestination, set_isValidDestination] = useState<boolean | 'undetermined'>('undetermined');
 	const	[possibleDestinations, set_possibleDestinations] = useState<TDict<TTokenInfo>>({});
@@ -82,7 +83,23 @@ function	ViewTokenToReceive(): ReactElement {
 								possibleDestinations={possibleDestinations}
 								onAddPossibleDestination={set_possibleDestinations}
 								tokenToReceive={tokenToReceive}
-								onChangeDestination={set_tokenToReceive} />
+								onChangeDestination={(newToken): void => {
+									if ([Step.SELECTOR, Step.APPROVALS, Step.RECEIVER].includes(currentStep)) {
+										performBatchedUpdates((): void => {
+											set_tokenToReceive(newToken);
+											set_destination({
+												address: toAddress(newToken as string),
+												chainId: 1,
+												name: possibleDestinations[toAddress(newToken as string)]?.name || '',
+												symbol: possibleDestinations[toAddress(newToken as string)]?.symbol || '',
+												decimals: possibleDestinations[toAddress(newToken as string)]?.decimals || 0,
+												logoURI: possibleDestinations[toAddress(newToken as string)]?.logoURI || ''
+											});
+										});
+									} else {
+										set_tokenToReceive(newToken);
+									}
+								}} />
 						</div>
 						<div className={'col-span-12 md:col-span-3'}>
 							<Button
@@ -98,7 +115,7 @@ function	ViewTokenToReceive(): ReactElement {
 											logoURI: possibleDestinations[tokenToReceive]?.logoURI || ''
 										});
 									}
-									set_currentStep(Step.RECEIVER);
+									onProceed();
 								}}
 								isDisabled={!isValidDestination || (toAddress(tokenToReceive) === toAddress(destination.address) && destination.chainId !== 0)}>
 								{'Confirm'}
