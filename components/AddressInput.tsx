@@ -14,10 +14,11 @@ import {getProvider} from '@yearn-finance/web-lib/utils/web3/providers';
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 
-function	AddressInput({value, onChangeValue, onConfirm}: {
+function	AddressInput({value, onChangeValue, onConfirm, className}: {
 	value: TAddress,
 	onChangeValue: (value: TAddress) => void,
 	onConfirm: (newReceiver: TAddress) => void,
+	className?: string
 }): ReactElement {
 	const	[isValidValue, set_isValidValue] = useState<boolean | 'undetermined'>('undetermined');
 	const	[isValidish, set_isValidish] = useState<boolean | 'undetermined'>('undetermined');
@@ -96,7 +97,7 @@ function	AddressInput({value, onChangeValue, onConfirm}: {
 	return (
 		<form
 			onSubmit={async (e): Promise<void> => e.preventDefault()}
-			className={'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'}>
+			className={`mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6 ${className}`}>
 			<div className={'box-0 grow-1 col-span-12 flex h-10 w-full items-center p-2 md:col-span-9'}>
 				<input
 					aria-invalid={!isValidValue}

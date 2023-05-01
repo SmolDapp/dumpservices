@@ -64,12 +64,12 @@ function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDes
 	const	[query, set_query] = useState('');
 	const	[isOpen, set_isOpen] = useThrottledState(false, 400);
 
-	const [{result: tokenData}, fetchTokenData] = useAsync(async function fetchGaugeDisplayData(
+	const [{result: tokenData}, fetchTokenData] = useAsync(async function fetchToken(
 		_provider: providers.JsonRpcProvider,
 		_safeChainID: number,
 		_query: TAddress
 	): Promise<{name: string, symbol: string, decimals: number} | undefined> {
-		if (!isAddress(query)) {
+		if (!isAddress(_query)) {
 			return (undefined);
 
 		}

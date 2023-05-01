@@ -3,7 +3,7 @@ import {useTokenList} from 'contexts/useTokenList';
 import {useBalances} from 'hooks/useBalances';
 import {MATIC_TOKEN_ADDRESS} from 'utils';
 import defaultTokenList from 'utils/tokenLists.json';
-import {useMountEffect} from '@react-hookz/web';
+import {useLocalStorageValue, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -20,7 +20,7 @@ export type	TWalletContext = {
 	balancesNonce: number,
 	isLoading: boolean,
 	walletProvider: string,
-	refresh: (tokenList?: TUseBalancesTokens[]) => Promise<TDict<TMinBalanceData>>,
+	refresh: (tokenList?: TUseBalancesTokens[], shouldSaveInStorage?: boolean) => Promise<TDict<TMinBalanceData>>,
 	refreshWithList: (tokenList: TDict<TTokenInfo>) => Promise<TDict<TMinBalanceData>>,
 	set_walletProvider: Dispatch<SetStateAction<string>>,
 }
@@ -45,6 +45,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	const	{chainID, isActive} = useWeb3();
 	const	{safeChainID} = useChainID();
 	const	[walletProvider, set_walletProvider] = useState('NONE');
+	const	{value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TUseBalancesTokens[]>('dump-services/tokens', {defaultValue: []});
 
 	const	availableTokens = useMemo((): TUseBalancesTokens[] => {
 		const	withDefaultTokens = [...Object.values(tokenList), ...defaultTokenList.tokens];
@@ -69,15 +70,17 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 
 	const	{data: balances, update, updateSome, nonce, isLoading} = useBalances({tokens: availableTokens});
 
-	const	onRefresh = useCallback(async (tokenToUpdate?: TUseBalancesTokens[]): Promise<TDict<TMinBalanceData>> => {
+	const	onRefresh = useCallback(async (tokenToUpdate?: TUseBalancesTokens[], shouldSaveInStorage?: boolean): Promise<TDict<TMinBalanceData>> => {
 		if (tokenToUpdate) {
 			const updatedBalances = await updateSome(tokenToUpdate);
+			if (shouldSaveInStorage) {
+				saveExtraTokens([...(extraTokens || []), ...tokenToUpdate]);
+			}
 			return updatedBalances;
 		}
 		const updatedBalances = await update();
 		return updatedBalances;
-
-	}, [update, updateSome]);
+	}, [update, updateSome, saveExtraTokens, extraTokens]);
 
 	const	onRefreshWithList = useCallback(async (newTokenList: TDict<TTokenInfo>): Promise<TDict<TMinBalanceData>> => {
 		const	withDefaultTokens = [...Object.values(newTokenList)];
@@ -96,6 +99,13 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 		return balances[chainID];
 	}, [balances, chainID, onRefresh, safeChainID, availableTokens]);
 
+	const	onLoadExtraTokens = useCallback(async (): Promise<void> => {
+		if (extraTokens) {
+			await updateSome(extraTokens);
+		}
+	}, [extraTokens, updateSome]);
+
+
 	useMountEffect((): void => {
 		if (!isActive) {
 			performBatchedUpdates((): void => {
@@ -103,6 +113,12 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 			});
 		}
 	});
+
+	useUpdateEffect((): void => {
+		if (isActive) {
+			onLoadExtraTokens();
+		}
+	}, [isActive, onLoadExtraTokens]);
 
 
 	/* 🔵 - Yearn Finance ******************************************************

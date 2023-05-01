@@ -1,19 +1,165 @@
-import React, {useMemo, useState} from 'react';
+import React, {Fragment, useMemo, useState} from 'react';
+import AddressInput from 'components/AddressInput';
 import IconSpinner from 'components/icons/IconSpinner';
 import ListHead from 'components/ListHead';
 import SettingsPopover from 'components/SettingsPopover';
 import TokenRow from 'components/TokenRow';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
+import {Contract} from 'ethcall';
+import {BigNumber} from 'ethers';
+import {isAddress} from 'ethers/lib/utils';
+import {Dialog, Transition} from '@headlessui/react';
+import {useAsync} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChain} from '@yearn-finance/web-lib/hooks/useChain';
+import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
+import IconCross from '@yearn-finance/web-lib/icons/IconCross';
+import ERC20_ABI from '@yearn-finance/web-lib/utils/abi/erc20.abi';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import {toNormalizedValue} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {getProvider, newEthCallProvider} from '@yearn-finance/web-lib/utils/web3/providers';
 
+import type {providers} from 'ethers';
 import type {TMinBalanceData} from 'hooks/useBalances';
 import type {ReactElement} from 'react';
+import type {TAddress} from '@yearn-finance/web-lib/types';
+
+function AddTokenPopover(): ReactElement {
+	const	{provider, address} = useWeb3();
+	const	{refresh} = useWallet();
+	const	{safeChainID} = useChainID();
+	const	[isOpen, set_isOpen] = useState(false);
+	const	[token, set_token] = useState('');
+
+	const [{result: tokenData}, fetchTokenData] = useAsync(async function fetchToken(
+		_provider: providers.JsonRpcProvider,
+		_safeChainID: number,
+		_query: TAddress,
+		_address: TAddress
+	): Promise<{name: string, symbol: string, decimals: number, balanceOf: BigNumber} | undefined> {
+		if (!isAddress(_query)) {
+			return ({name: '', symbol: '', decimals: 0, balanceOf: BigNumber.from(0)});
+		}
+		const currentProvider = _safeChainID === 1 ? _provider || getProvider(1) : getProvider(1);
+		const ethcallProvider = await newEthCallProvider(currentProvider);
+		const erc20Contract = new Contract(_query, ERC20_ABI);
+
+		const calls = [erc20Contract.name(), erc20Contract.symbol(), erc20Contract.decimals(), erc20Contract.balanceOf(_address)];
+		const [name, symbol, decimals, balanceOf] = await ethcallProvider.tryAll(calls) as [string, string, BigNumber, BigNumber];
+		console.log({name, symbol, decimals: decimals.toNumber(), balanceOf});
+		return ({name, symbol, decimals: decimals.toNumber(), balanceOf});
+	}, undefined);
+		// fetchTokenData.execute(provider, safeChainID, toAddress(query));
+		// 0x6982508145454Ce325dDbE47a25d4ec3d2311933
+
+	console.log(tokenData);
+
+	return (
+		<>
+			<button
+				onClick={(): void => set_isOpen(true)}
+				className={'text-xs text-neutral-200/40 transition-colors before:mr-1 before:text-base before:content-["+"] hover:text-neutral-200'}>
+				{'Add custom token'}
+			</button>
+			<Transition
+				appear
+				show={isOpen}
+				as={Fragment}>
+				<Dialog
+					as={'div'}
+					onClose={(): void => set_isOpen(false)}
+					className={'relative z-50 flex'}>
+					<Transition.Child
+						as={Fragment}
+						enter={'ease-out duration-300'}
+						enterFrom={'opacity-0'}
+						enterTo={'opacity-100'}
+						leave={'ease-in duration-200'}
+						leaveFrom={'opacity-100'}
+						leaveTo={'opacity-0'}>
+						<div className={'fixed inset-0 bg-neutral-900/30'} />
+					</Transition.Child>
+					<div className={'fixed inset-0 overflow-y-auto'}>
+						<div className={'flex min-h-full items-center justify-center p-4'}>
+							<Transition.Child
+								as={Fragment}
+								enter={'ease-out duration-300'}
+								enterFrom={'opacity-0 scale-95'}
+								enterTo={'opacity-100 scale-100'}
+								leave={'ease-in duration-200'}
+								leaveFrom={'opacity-100 scale-100'}
+								leaveTo={'opacity-0 scale-95'}>
+								<Dialog.Panel className={'mt-[-27%]'}>
+									<div className={'box-0 relative grid w-full max-w-3xl grid-cols-12'}>
+										<button
+											onClick={(): void => set_isOpen(false)}
+											className={'absolute top-4 right-4'}>
+											<IconCross className={'h-4 w-4 text-neutral-400 transition-colors hover:text-neutral-900'} />
+										</button>
+										<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
+											<div className={'w-full md:w-3/4'}>
+												<b>{'The power to dump is in your hands.'}</b>
+												<p className={'pt-2 text-sm text-neutral-500'}>
+													{'Want to dump a token that’s not listed? Just enter it’s contract address and we’ll add it to the list so you can dump away.'}
+												</p>
+											</div>
+											<div className={'flex w-full flex-col space-y-2'}>
+												<AddressInput
+													className={'!w-full'}
+													value={token as TAddress}
+													onChangeValue={(v): void => {
+														set_token(v);
+														fetchTokenData.execute(provider, safeChainID, v, toAddress(address));
+													}}
+													onConfirm={(newToken: TAddress): void => {
+														refresh([
+															{
+																token: newToken,
+																decimals: tokenData?.decimals || 18,
+																name: tokenData?.name || '',
+																symbol: tokenData?.symbol || ''
+															}
+														], true);
+														set_isOpen(false);
+													}}/>
+												<div
+													className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
+													<div className={'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'}>
+														<span className={'flex flex-col justify-between md:flex-row'}>
+															<b>{'Address'}</b>
+															<p className={'font-number overflow-hidden text-ellipsis'}>{toAddress(token)}</p>
+														</span>
+														<span className={'flex flex-col justify-between md:flex-row'}>
+															<b>{'Name'}</b>
+															<p className={'font-number'}>{tokenData?.name || '-'}</p>
+														</span>
+														<span className={'flex flex-col justify-between md:flex-row'}>
+															<b>{'Symbol'}</b>
+															<p className={'font-number'}>{tokenData?.symbol || '-'}</p>
+														</span>
+														<span className={'flex flex-col justify-between md:flex-row'}>
+															<b>{'Balance'}</b>
+															<p className={'font-number'}>{toNormalizedValue(tokenData?.balanceOf || 0, tokenData?.decimals)}</p>
+														</span>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</Dialog.Panel>
+							</Transition.Child>
+						</div>
+					</div>
+				</Dialog>
+			</Transition>
+		</>
+	);
+}
+
 
 function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{isActive, address, chainID} = useWeb3();
@@ -105,7 +251,7 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					</div>
 				</div>
 
-				{isLoading ? (
+				{balancesToDisplay.length === 0 && isLoading ? (
 					<div className={'col-span-12 flex min-h-[200px] flex-col items-center justify-center'}>
 						<IconSpinner />
 						<p className={'mt-6 text-sm text-neutral-500'}>{'We are looking for your tokens ...'}</p>
@@ -141,8 +287,10 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					</div>
 				)}
 
-				<div className={'relative col-span-12 flex w-full max-w-4xl flex-row items-center justify-between bg-neutral-900 p-4 text-neutral-0 md:px-6 md:py-4'}>
-					<div />
+				<div className={'relative col-span-12 flex w-full max-w-4xl flex-row items-center justify-between rounded-b bg-neutral-900 p-4 text-neutral-0 md:px-6 md:py-4'}>
+					<div className={'flex flex-col'}>
+						<AddTokenPopover />
+					</div>
 					<div className={'flex flex-col'}>
 						<Button
 							className={'yearn--button !w-fit !px-6 !text-sm'}
