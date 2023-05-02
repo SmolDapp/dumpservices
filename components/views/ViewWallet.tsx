@@ -55,7 +55,10 @@ function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 	return (
 		<section id={'wallet'} className={'pt-10'}>
 			<div className={'box-0 grid w-full grid-cols-12 overflow-hidden'}>
-				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
+				<div className={'relative col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
+					<div className={'absolute top-6 right-6 flex flex-row items-center justify-center space-x-2 text-xs text-neutral-400'}>
+						<p className={''}>{'Powered by CoW Protocol'}</p>
+					</div>
 					<div className={'w-full md:w-3/4'}>
 						<a href={'#wallet'}>
 							<b>{'Connect your wallet'}</b>

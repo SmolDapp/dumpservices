@@ -26,7 +26,8 @@ module.exports = (phase) => withTM(withPWA({
 			'tryroll.com',
 			'logo.assets.tkn.eth.limo',
 			'umaproject.org',
-			'cloudflare-ipfs.com'
+			'cloudflare-ipfs.com',
+			'assets.smold.app'
 		]
 	},
 	async rewrites() {

@@ -81,7 +81,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 							width={40}
 							height={40}
 							quality={90}
-							src={`https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/multichain-tokens/${safeChainID}/${toAddress(tokenAddress)}/logo-128.png`} />
+							src={`https://assets.smold.app/api/token/${safeChainID}/${toAddress(tokenAddress)}/logo-128.png`} />
 					</div>
 					<div>
 						<div className={'flex flex-row items-center space-x-2'}>
