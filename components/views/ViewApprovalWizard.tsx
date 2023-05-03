@@ -466,7 +466,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 			forIndex++;
 			if (okOrKo.status === 'rejected') {
 				toast({type: 'error', content: okOrKo.reason});
-				executedQuotes.push({...allCowswapQuotes[forIndex], orderError: okOrKo?.reason});
+				executedQuotes.push({...allCowswapQuotes[forIndex], orderError: `allSettledErr: ${okOrKo?.reason}`});
 				continue;
 			}
 
