@@ -222,7 +222,6 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 		}
 	}, [amounts, cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected, existingTransactions]);
 
-
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
 			<button
@@ -476,6 +475,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 						signingScheme: '' as string as EcdsaSigningScheme
 					}
 				}));
+				continue;
 			}
 
 			executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
