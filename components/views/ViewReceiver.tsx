@@ -3,20 +3,23 @@ import AddressInput from 'components/AddressInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useUpdateEffect} from '@react-hookz/web';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
+import { toAddress } from '@yearn-finance/web-lib/utils/address';
 
 function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
+	const	{address} = useWeb3();
 	const	{receiver, set_receiver} = useSweepooor();
 	const	[tokenReceiver, set_tokenReceiver] = useState('');
 	const	[hasBeenConfirmed, set_hasBeenConfirmed] = useState(false);
 
 	useUpdateEffect((): void => {
 		if (tokenReceiver === '') {
-			set_tokenReceiver(receiver);
+			set_tokenReceiver(toAddress(address));
 		}
-	}, [receiver]);
+	}, [address]);
 
 	return (
 		<section>
