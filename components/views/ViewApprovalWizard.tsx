@@ -63,9 +63,15 @@ function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 		const	buyToken = order.request.outputToken.symbol;
 		const	sellToken = order.request.inputToken.symbol;
 
-		messages.push(
-			`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | [Order](https://explorer.cow.fi/orders/${order.orderUID})`
-		);
+		if (order?.orderError) {
+			messages.push(
+				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | [Order](https://explorer.cow.fi/orders/${order.orderUID}) | ❌ ERROR: ${order.orderError}`
+			);
+		} else {
+			messages.push(
+				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | [Order](https://explorer.cow.fi/orders/${order.orderUID})`
+			);
+		}
 	}
 
 	const	extra = [] as string[];
@@ -73,7 +79,7 @@ function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 		extra.push(...[
 			'\n*📇 - Safe:*',
 			`\t\t\t\tSafeTx: [${truncateHex(txHash, 6)}](https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${txHash})`,
-			`\t\t\t\tNonce: ${safeTx?.nonce || 'N/A'})`
+			`\t\t\t\tNonce: ${safeTx?.nonce || 'N/A'}`
 		]);
 
 	}
@@ -414,6 +420,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	const	onSendOrders = useCallback(async (): Promise<void> => {
 		const	allSelected = [...selected];
 		const	allCowswapExecutePromise = [];
+		const	allCowswapQuotes = [];
 		for (const token of allSelected) {
 			const	quote = quotes[toAddress(token)];
 			if (quote.orderUID && ['fulfilled', 'pending'].includes(quote?.orderStatus || '')) {
@@ -436,6 +443,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				quote.signingScheme = signingScheme;
 			}
 
+			allCowswapQuotes.push(quote);
 			allCowswapExecutePromise.push(
 				cowswap.execute(
 					quote,
@@ -450,12 +458,15 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 		}
 
 		//Wait for all promises to be resolved
-		const executedQuotes = [];
+		const executedQuotes: TOrderQuoteResponse[] = [];
 		const result = await Promise.allSettled(allCowswapExecutePromise);
 
+		let forIndex = -1;
 		for (const okOrKo of result) {
+			forIndex++;
 			if (okOrKo.status === 'rejected') {
 				toast({type: 'error', content: okOrKo.reason});
+				executedQuotes.push({...allCowswapQuotes[forIndex], orderError: okOrKo?.reason});
 				continue;
 			}
 
@@ -475,6 +486,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 						signingScheme: '' as string as EcdsaSigningScheme
 					}
 				}));
+				executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status, orderError: error.message});
 				continue;
 			}
 
