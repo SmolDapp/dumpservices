@@ -2,12 +2,12 @@ import React, {useState} from 'react';
 import AddressInput from 'components/AddressInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useUpdateEffect} from '@react-hookz/web';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
+import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
-import { toAddress } from '@yearn-finance/web-lib/utils/address';
 
 function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const	{address} = useWeb3();
