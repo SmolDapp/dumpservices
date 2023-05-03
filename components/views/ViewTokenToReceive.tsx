@@ -118,7 +118,7 @@ function	ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 									onProceed();
 								}}
 								isDisabled={!isValidDestination || (toAddress(tokenToReceive) === toAddress(destination.address) && destination.chainId !== 0)}>
-								{'Confirm'}
+								{'Next'}
 							</Button>
 						</div>
 					</form>

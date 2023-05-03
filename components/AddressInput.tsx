@@ -136,7 +136,7 @@ function	AddressInput({value, onChangeValue, onConfirm, className, shouldBeDisab
 						}
 					}}
 					disabled={!(isValidValue === true || isValidish === true )|| shouldBeDisabled}>
-					{'Confirm'}
+					{'Next'}
 				</Button>
 			</div>
 		</form>
