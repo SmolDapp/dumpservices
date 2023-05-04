@@ -511,7 +511,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				}
 			]);
 		}
-		// notify(executedQuotes, 'EOA', '');
+		notify(executedQuotes, 'EOA', '');
 	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
