@@ -248,6 +248,12 @@ function	ApprovalWizardItem({
 								</small>
 							</button>
 						)}
+						{/* <IconEdit
+							onClick={(e) => {
+								e.stopPropagation();
+								e.preventDefault();
+							}}
+							className={'ml-1 mr-2 mt-0.5 h-[10px] w-[10px] text-neutral-500 transition-colors group-hover:text-neutral-900'} /> */}
 						<IconChevronBoth className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
 					</div>
 				</div>

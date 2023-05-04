@@ -30,14 +30,18 @@ type TSolverContext = {
 
 
 const	VALID_TO_MN = 60;
+const	VALID_TO_MN_SAFE = 179;
 export function useSolverCowswap(): TSolverContext {
 	const {slippage} = useSweepooor();
-	const {provider} = useWeb3();
+	const {walletType, provider} = useWeb3();
 	const {toast} = yToast();
 	const {safeChainID} = useChainID();
-	const maxIterations = 1000; // 1000 * up to 3 seconds = 3000 seconds = 50 minutes
 	const [orderBookAPI, set_orderBookAPI] = useState<Maybe<OrderBookApi>>();
-
+	const maxIterations = 1000; // 1000 * up to 3 seconds = 3000 seconds = 50 minutes
+	const isGnosisSafe = (
+		walletType === 'EMBED_GNOSIS_SAFE'
+		// || (((provider as any)?.provider?.connector?._peerMeta?.name || '').toLowerCase()).includes('safe')
+	);
 	useEffect((): void => {
 		const api = new OrderBookApi({chainId: safeChainID});
 		set_orderBookAPI(api);
@@ -65,9 +69,13 @@ export function useSolverCowswap(): TSolverContext {
 		);
 
 		if (canExecuteFetch && orderBookAPI) {
-			quote.validTo = Math.round((new Date().setMinutes(new Date().getMinutes() + VALID_TO_MN) / 1000));
+			quote.validTo = Math.round((new Date().setMinutes(
+				new Date().getMinutes() + (isGnosisSafe ? VALID_TO_MN_SAFE : VALID_TO_MN)) / 1000)
+			);
+			console.warn(quote.validTo, (isGnosisSafe ? VALID_TO_MN_SAFE : VALID_TO_MN));
 			try {
 				const result = await orderBookAPI.getQuote(quote) as TOrderQuoteResponse;
+				console.log(result);
 				return ([result, Zero, undefined]);
 			} catch (error) {
 				const	_error = error as TCowQuoteError;
@@ -81,7 +89,7 @@ export function useSolverCowswap(): TSolverContext {
 			}
 		}
 		return [undefined, formatBN(0), undefined];
-	}, [orderBookAPI, toast]);
+	}, [isGnosisSafe, orderBookAPI, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** A slippage of 1% per default is set to avoid the transaction to fail due to price
