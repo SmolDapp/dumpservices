@@ -89,7 +89,7 @@ function	ApprovalWizardItem({
 		set_isRefreshingQuote(true);
 		const [, order] = await cowswap.init({
 			from: toAddress(currentQuote?.from),
-			receiver: toAddress(receiver),
+			receiver: toAddress(currentQuote?.quote?.receiver),
 			inputToken: currentQuote?.request?.inputToken,
 			outputToken: currentQuote?.request?.outputToken,
 			inputAmount: currentQuote?.request?.inputAmount

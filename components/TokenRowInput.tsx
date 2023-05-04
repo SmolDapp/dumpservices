@@ -83,7 +83,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				if (error?.errorType === 'UnsupportedToken') {
 					set_error('This token is currently not supported.');
 					onDisable(true);
-				} else if (error?.errorType === 'SellAmountDoesNotCoverFee') {
+				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw.gt(Zero)) {
 					set_error(`Fee is too high for this amount: ${formatAmount(Number(cowswapQuote.normalized), 4, 4)}`);
 					onDisable(cowswapQuote.raw.gte(balance.raw));
 				} else if (error?.errorType === 'NoLiquidity') {

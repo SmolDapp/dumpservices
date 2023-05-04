@@ -114,15 +114,12 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 		set_isRefreshingQuotes(true);
 		for (const currentQuote of Object.values(quotes)) {
 			if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
-				return; //skip already sent
+				continue; //skip already sent
 			}
 			const tokenAddress = toAddress(currentQuote?.request?.inputToken?.value);
 			set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
 				...quotes,
-				[tokenAddress]: {
-					...currentQuote,
-					isRefreshing: true
-				}
+				[tokenAddress]: {...currentQuote, isRefreshing: true}
 			}));
 			const [, order] = await cowswap.init({
 				from: currentQuote?.request?.from,
@@ -386,11 +383,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
 					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
-						[toAddress(token)]: {
-							...prev[toAddress(token)],
-							signature,
-							signingScheme
-						}
+						[toAddress(token)]: {...prev[toAddress(token)], signature, signingScheme}
 					}));
 				});
 			} catch (error) {
@@ -398,11 +391,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
 					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
-						[toAddress(token)]: {
-							...prev[toAddress(token)],
-							signature: '',
-							signingScheme: '' as string as EcdsaSigningScheme
-						}
+						[toAddress(token)]: {...prev[toAddress(token)], signature: '', signingScheme: '' as EcdsaSigningScheme}
 					}));
 				});
 			}
@@ -506,7 +495,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				}
 			]);
 		}
-		// notify(executedQuotes, 'EOA', '');
+		notify(executedQuotes, 'EOA', '');
 	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
