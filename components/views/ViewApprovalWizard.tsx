@@ -68,8 +68,12 @@ function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
 			);
 		} else {
+			let status = `${order.orderStatus === 'fulfilled' ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`;
+			if (txHash) {
+				status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
+			}
 			messages.push(
-				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | ${order.orderStatus === 'fulfilled' ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`
+				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | ${status}`
 			);
 		}
 	}
