@@ -34,4 +34,5 @@ export type TOrderQuoteResponse = OrderQuoteResponse & {
 	orderStatus?: TPossibleStatus,
 	orderError?: unknown
 	isRefreshing?: boolean,
+	expirationTimestamp?: number,
 }

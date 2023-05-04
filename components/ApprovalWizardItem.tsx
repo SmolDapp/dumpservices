@@ -39,7 +39,7 @@ function	ApprovalWizardItem({
 	currentWizardSignStep
 }: TApprovalWizardItem): ReactElement {
 	const	{provider} = useWeb3();
-	const	{amounts, quotes, set_quotes, destination, receiver} = useSweepooor();
+	const	{amounts, quotes, set_quotes, destination} = useSweepooor();
 	const	{balances} = useWallet();
 	const	cowswap = useSolverCowswap();
 	const	[isQuoteExpired, set_isQuoteExpired] = useState<boolean>((Number(quotes[toAddress(token)]?.quote?.validTo || 0) * 1000) < new Date().valueOf());
@@ -103,7 +103,7 @@ function	ApprovalWizardItem({
 			set_isRefreshingQuote(false);
 		});
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token, receiver]);
+	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token, currentQuote?.quote?.receiver]);
 
 	function	renderApprovalIndication(): ReactElement {
 		if (hasAllowance) {

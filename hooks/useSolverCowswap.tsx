@@ -106,6 +106,7 @@ export function useSolverCowswap(): TSolverContext {
 			const value = toNormalizedBN(buyAmountWithSlippage || 0, _request?.outputToken?.decimals || 18);
 			quote.request = _request;
 			quote.buyAmountWithSlippage = buyAmountWithSlippage;
+			quote.expirationTimestamp = Math.round((new Date(quote.expiration).getTime() / 1000));
 			return [value, quote, true, error];
 		}
 		const value = toNormalizedBN(minFeeAmount || 0, _request?.inputToken?.decimals || 18);
@@ -186,7 +187,7 @@ export function useSolverCowswap(): TSolverContext {
 			...quote,
 			buyAmount: buyAmountWithSlippage,
 			from: quoteOrder.from,
-			quoteId: quoteOrder.id,
+			// quoteId: quoteOrder.id, //Experimentation
 			signature: quoteOrder.signature,
 			signingScheme: signingScheme
 		};

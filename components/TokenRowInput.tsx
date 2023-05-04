@@ -40,7 +40,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** On error, we try to display a meaningful message to the user and we disable the token
 	** if it's not supported or if the fee is too high.
 	**********************************************************************************************/
-	const	onEstimateQuote = useCallback(async (rawAmount = amount?.raw, force = false): Promise<void> => {
+	const	onEstimateQuote = useCallback(async (rawAmount: BigNumber, force = false): Promise<void> => {
 		if (!isSelected && !force) {
 			return;
 		}
@@ -80,6 +80,11 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
+				set_quotes((prev: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => {
+					const newQuotes = {...prev};
+					delete newQuotes[tokenAddress];
+					return newQuotes;
+				});
 				if (error?.errorType === 'UnsupportedToken') {
 					set_error('This token is currently not supported.');
 					onDisable(true);
@@ -93,7 +98,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			});
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination]);
+	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, receiver, onDisable, set_selected, set_quotes]);
 
 	/**********************************************************************************************
 	** onDebouncedEstimateQuote is a debounced retrieval of the quote from the Cowswap API with the
@@ -142,6 +147,11 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
+				set_quotes((prev: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => {
+					const newQuotes = {...prev};
+					delete newQuotes[tokenAddress];
+					return newQuotes;
+				});
 				if (error?.errorType === 'UnsupportedToken') {
 					set_error('This token is currently not supported.');
 					onDisable(true);
@@ -154,8 +164,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				}
 			});
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, amount], 400);
+	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, receiver, onDisable, set_selected, set_quotes], 400);
 
 	/**********************************************************************************************
 	** onInputChange is triggered when the user is typing in the input field. It updates the
@@ -181,8 +190,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			});
 		});
 		onDebouncedEstimateQuote(newAmount.raw);
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [balance, onDebouncedEstimateQuote, tokenAddress]);
+	}, [balance, onDebouncedEstimateQuote, set_amounts, set_selected, tokenAddress]);
 
 	/**********************************************************************************************
 	** onMaxClick is triggered when the user clicks on the Max button. It updates the amount in the
@@ -203,8 +211,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			});
 		});
 		onEstimateQuote(balance?.raw, true);
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [balance, onEstimateQuote, tokenAddress]);
+	}, [balance, onEstimateQuote, set_amounts, set_selected, tokenAddress]);
 
 	/**********************************************************************************************
 	** onRefreshClick is triggered when the user clicks on the Refresh button. It triggers the

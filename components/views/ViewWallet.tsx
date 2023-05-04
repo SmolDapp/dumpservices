@@ -31,8 +31,7 @@ function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 		} catch {
 			//
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [onConnect]);
+	}, [onConnect, onSelect, set_walletProvider]);
 
 	const	detectedWallet = useMemo((): {name: string, icon: ReactElement} => {
 		if (walletType === 'EMBED_LEDGER') {

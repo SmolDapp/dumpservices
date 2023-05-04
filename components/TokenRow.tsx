@@ -43,8 +43,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 				setTimeout((): void => document?.getElementById(`quote-refresh-${toAddress(tokenAddress)}`)?.click(), 10);
 			}
 		});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isDisabled, tokenAddress]);
+	}, [set_quotes, set_selected, tokenAddress]);
 
 	useMountEffect((): void => {
 		set_amounts((amounts: TDict<TNormalizedBN>): TDict<TNormalizedBN> => {
