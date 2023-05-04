@@ -481,6 +481,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					[tokenAddress]: {
 						...quotes[tokenAddress],
 						quote: {...quotes[tokenAddress].quote, validTo: 0},
+						orderUID: orderUID,
 						orderStatus: 'invalid',
 						signature: '',
 						signingScheme: '' as string as EcdsaSigningScheme
@@ -510,7 +511,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				}
 			]);
 		}
-		notify(executedQuotes, 'EOA', '');
+		// notify(executedQuotes, 'EOA', '');
 	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************

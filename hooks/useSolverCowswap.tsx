@@ -105,6 +105,7 @@ export function useSolverCowswap(): TSolverContext {
 			const buyAmountWithSlippage = getBuyAmountWithSlippage(quote.quote, _request?.outputToken?.decimals || 18);
 			const value = toNormalizedBN(buyAmountWithSlippage || 0, _request?.outputToken?.decimals || 18);
 			quote.request = _request;
+			quote.buyAmountWithSlippage = buyAmountWithSlippage;
 			return [value, quote, true, error];
 		}
 		const value = toNormalizedBN(minFeeAmount || 0, _request?.inputToken?.decimals || 18);
@@ -125,7 +126,10 @@ export function useSolverCowswap(): TSolverContext {
 
 		// We need to sign the message WITH THE SLIPPAGE, in order to get the correct signature
 		const	{quote} = quoteOrder;
-		const	buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
+		let	buyAmountWithSlippage = quoteOrder.buyAmountWithSlippage as string;
+		if (!quoteOrder.buyAmountWithSlippage) {
+			buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
+		}
 		const	signer = provider.getSigner();
 		const	rawSignature = await OrderSigningUtils.signOrder(
 			{...quote as UnsignedOrder, buyAmount: buyAmountWithSlippage},
@@ -173,7 +177,10 @@ export function useSolverCowswap(): TSolverContext {
 			return {status: 'invalid', orderUID: '', quote: quoteOrder};
 		}
 		const	{quote} = quoteOrder;
-		const	buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
+		let	buyAmountWithSlippage = quoteOrder.buyAmountWithSlippage as string;
+		if (!quoteOrder.buyAmountWithSlippage) {
+			buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
+		}
 		const	signingScheme: SigningScheme = shouldUsePresign ? SigningScheme.PRESIGN : quoteOrder.signingScheme as string as SigningScheme;
 		const	orderCreation: OrderCreation = {
 			...quote,

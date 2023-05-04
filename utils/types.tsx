@@ -29,6 +29,7 @@ export type TOrderQuoteResponse = OrderQuoteResponse & {
 	signature: string;
 	signingScheme: EcdsaSigningScheme;
 	request: TInitSolverArgs,
+	buyAmountWithSlippage?: string,
 	orderUID?: string,
 	orderStatus?: TPossibleStatus,
 	orderError?: unknown
