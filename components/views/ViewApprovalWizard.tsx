@@ -65,7 +65,7 @@ function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 
 		if (order?.orderError) {
 			messages.push(
-				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | [Order](https://explorer.cow.fi/orders/${order.orderUID}) | ❌ ERROR: ${order.orderError}`
+				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | [Order](https://explorer.cow.fi/orders/${order.orderUID}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
 			);
 		} else {
 			messages.push(
