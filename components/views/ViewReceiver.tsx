@@ -19,7 +19,7 @@ function	ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 		if (tokenReceiver === '') {
 			set_tokenReceiver(toAddress(address));
 		}
-	}, [address]);
+	}, [tokenReceiver, address]);
 
 	return (
 		<section>

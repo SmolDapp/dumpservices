@@ -6,23 +6,21 @@ import {useWallet} from 'contexts/useWallet';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
 import {approveERC20, isApprovedERC20} from 'utils/actions/approveERC20';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/gnosis.tools';
+import notify from 'utils/notifier';
 import axios from 'axios';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
-import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
+import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
-import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 import {defaultTxStatus, Transaction} from '@yearn-finance/web-lib/utils/web3/transaction';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TOrderQuoteResponse, TPossibleFlowStep} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
-import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
 
 type TExistingTx = {
@@ -32,73 +30,6 @@ type TExistingTx = {
 type TSafeTxHistory = {
 	safe: string
 	nonce: number
-}
-
-function	notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
-	if (!orders.length) {
-		return;
-	}
-
-	const	messages = [] as string[];
-	let		from = '';
-	let		to = '';
-	for (const order of orders) {
-		from = toAddress(order.from);
-		to = toAddress(order.quote.receiver);
-		const	buyAmount = formatAmount(
-			toNormalizedBN(
-				order?.quote?.buyAmount || '',
-				order?.request?.outputToken?.decimals || 18
-			).normalized, 6, 6);
-		const	sellAmount = formatAmount(
-			toNormalizedBN(
-				order?.quote?.sellAmount || '',
-				order?.request?.inputToken?.decimals || 18
-			).normalized, 6, 6);
-		const	feeAmount = formatAmount(
-			toNormalizedBN(
-				order?.quote?.feeAmount || '',
-				order?.request?.inputToken?.decimals || 18
-			).normalized, 6, 6);
-		const	buyToken = order.request.outputToken.symbol;
-		const	sellToken = order.request.inputToken.symbol;
-
-		if (order?.orderError) {
-			messages.push(
-				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
-			);
-		} else {
-			let status = `${order.orderStatus === 'fulfilled' ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`;
-			if (txHash) {
-				status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
-			}
-			messages.push(
-				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | ${status}`
-			);
-		}
-	}
-
-	const	extra = [] as string[];
-	if (txHash) {
-		extra.push(...[
-			'\n*📇 - Safe:*',
-			`\t\t\t\tSafeTx: [${truncateHex(txHash, 6)}](https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${txHash})`,
-			`\t\t\t\tNonce: ${safeTx?.nonce || 'N/A'}`
-		]);
-
-	}
-	axios.post('/api/notify', {
-		messages: [
-			'*🥟 New dump detected*',
-			'\n*🧹 - Orders:*',
-			...messages,
-			'\n*👀 - Meta:*',
-			`\t\t\t\tFrom: [${truncateHex(from, 4)}](https://etherscan.io/address/${from})`,
-			`\t\t\t\tTo: [${truncateHex(to, 4)}](https://etherscan.io/address/${to})`,
-			`\t\t\t\tWallet: ${origin}`,
-			...extra
-		]
-	});
 }
 
 function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
@@ -254,9 +185,10 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	);
 }
 
-function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
+function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteStep}: {
 	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>,
-	onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>
+	onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>,
+	onUpdateExecuteStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>
 }): ReactElement {
 	const	{provider} = useWeb3();
 	const	{refresh} = useWallet();
@@ -266,9 +198,27 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	const	[isApproving, set_isApproving] = useState(false);
 	const	[isSigning, set_isSigning] = useState(false);
 	const	[isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
-	const	[hasSentOrder, set_hasSentOrder] = useState(false);
 	const	[, set_txStatus] = useState(defaultTxStatus);
 	const	cowswap = useSolverCowswap();
+
+
+	/* 🔵 - Yearn Finance **************************************************************************
+	** areAllApproved and areAllSigned are used to determine if all the selected tokens have been
+	** approved and signed.
+	** If so, the onSendOrders function will be called.
+	**********************************************************************************************/
+	const	areAllApproved = useMemo((): boolean => {
+		if (selected.length === 0) {
+			return false;
+		}
+		const isOk = true;
+		for (const token of selected) {
+			if (!approveStatus[toAddress(token)]) {
+				return false;
+			}
+		}
+		return isOk;
+	}, [approveStatus, selected]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Every time the selected tokens change (either a new token is added or the amount is changed),
@@ -288,7 +238,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				console.error(error);
 			});
 		}
-	}, [selected, amounts]);
+	}, [selected, amounts, provider]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** onApproveERC20 will loop through all the selected tokens and approve them if needed.
@@ -344,66 +294,6 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	}, [amounts, onUpdateApprovalStep, provider, quotes, selected]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
-	** onSignQuote will loop through all the selected tokens and sign the quote if needed.
-	** It will also update the quote to append the signature to the quote, which will be used
-	** to execute the order.
-	** If the quote is already signed, state will be updated to true but signing will not be
-	** performed.
-	**********************************************************************************************/
-	const	onSignQuote = useCallback(async (): Promise<void> => {
-		for (const token of selected) {
-			if (!quotes[toAddress(token)] || !approveStatus[toAddress(token)]) {
-				console.log('Missing quote or approval', token, quotes[toAddress(token)], approveStatus[toAddress(token)]);
-				return;
-			}
-		}
-		performBatchedUpdates((): void => {
-			set_hasSentOrder(false);
-			set_isSigning(true);
-			onUpdateSignStep({});
-		});
-
-		const	allSelected = [...selected];
-		for (const token of allSelected) {
-			const	quoteID = quotes?.[toAddress(token)]?.id;
-			if (!quoteID) {
-				console.warn(`No quote for ${token}`);
-				continue;
-			}
-
-			if ((quotes?.[toAddress(token)]?.signature || '') !== '') {
-				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-				if (token === allSelected[allSelected.length - 1]) {
-					set_isSigning(false);
-				}
-				continue;
-			}
-
-			onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-			try {
-				const quoteOrder = quotes[toAddress(token)];
-				const {signature, signingScheme} = await cowswap.signCowswapOrder(quoteOrder);
-				performBatchedUpdates((): void => {
-					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-						...prev,
-						[toAddress(token)]: {...prev[toAddress(token)], signature, signingScheme}
-					}));
-				});
-			} catch (error) {
-				performBatchedUpdates((): void => {
-					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
-					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-						...prev,
-						[toAddress(token)]: {...prev[toAddress(token)], signature: '', signingScheme: '' as EcdsaSigningScheme}
-					}));
-				});
-			}
-		}
-		set_isSigning(false);
-	}, [approveStatus, cowswap, onUpdateSignStep, quotes, selected, set_quotes]);
-
-	/* 🔵 - Yearn Finance **************************************************************************
 	** onSendOrders send the orders to the cowswap API, skipping the ones that are already sent (
 	** pending or fulfilled).
 	** It will also request an update of the signature if it appears to not be signed, and will
@@ -411,96 +301,129 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 	** aka from pending to status (fulfilled, cancelled, etc)
 	**********************************************************************************************/
 	const	onSendOrders = useCallback(async (): Promise<void> => {
-		const	allSelected = [...selected];
-		const	allCowswapExecutePromise = [];
-		const	allCowswapQuotes = [];
+		if (!areAllApproved) {
+			toast({type: 'error', content: 'Please approve all tokens before sending orders'});
+			return;
+		}
+		set_isSigning(true);
+		const allSelected = [...selected];
+		const executedQuotes: TOrderQuoteResponse[] = [];
 		for (const token of allSelected) {
-			const	quote = quotes[toAddress(token)];
+			const	tokenAddress = toAddress(token);
+			const	quote = quotes[tokenAddress];
+			const	quoteID = quotes?.[tokenAddress]?.id;
+			if (!quoteID) {
+				console.warn(`No quote for ${token}`); //should not happen
+				continue;
+			}
 			if (quote.orderUID && ['fulfilled', 'pending'].includes(quote?.orderStatus || '')) {
 				continue; //skip already sent
 			}
 
-			//Not signed, force resign
-			if ((quote?.signature || '') === '') {
-				const quoteOrder = quotes[toAddress(token)];
-				const {signature, signingScheme} = await cowswap.signCowswapOrder(quoteOrder);
-				set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-					...prev,
-					[toAddress(token)]: {...prev[toAddress(token)], signature, signingScheme}
-				}));
+			/* 🔵 - Yearn Finance ******************************************************************
+			** Sign the current quote
+			***************************************************************************************/
+			try {
+				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
+				const {signature, signingScheme} = await cowswap.signCowswapOrder(quote);
 				quote.signature = signature;
 				quote.signingScheme = signingScheme;
+				performBatchedUpdates((): void => {
+					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+						...prev,
+						[tokenAddress]: {...prev[tokenAddress], signature, signingScheme}
+					}));
+				});
+			} catch (error) {
+				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+				continue;
 			}
 
-			allCowswapQuotes.push(quote);
-			allCowswapExecutePromise.push(
-				cowswap.execute(
+			/* 🔵 - Yearn Finance ******************************************************************
+			** Send the current quote to the cowswap API
+			***************************************************************************************/
+			try {
+				onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
+				const {status, orderUID, error} = await cowswap.execute(
 					quote,
-					Boolean(process.env.SHOULD_USE_PRESIGN), // We don't want to use presign, unless specified in env variables (debug mode)
+					Boolean(process.env.SHOULD_USE_PRESIGN),
 					(orderUID): void => {
 						set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 							...prev,
-							[toAddress(token)]: {...prev[toAddress(token)], orderUID, orderStatus: 'pending'}
+							[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: 'pending'}
 						}));
-					})
-			);
-		}
-
-		//Wait for all promises to be resolved
-		const executedQuotes: TOrderQuoteResponse[] = [];
-		const result = await Promise.allSettled(allCowswapExecutePromise);
-
-		let forIndex = -1;
-		for (const okOrKo of result) {
-			forIndex++;
-			if (okOrKo.status === 'rejected') {
-				toast({type: 'error', content: okOrKo.reason});
-				executedQuotes.push({...allCowswapQuotes[forIndex], orderError: `allSettledErr: ${okOrKo?.reason}`});
-				continue;
-			}
-
-			const {status, orderUID, quote, error} = okOrKo.value;
-			const tokenAddress = toAddress(quote?.quote?.sellToken || '');
-			if (error?.message) {
-				if (error?.message?.includes('InsufficientAllowance')) {
-					set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
-				}
-				set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-					...prev,
-					[tokenAddress]: {
-						...prev[tokenAddress],
-						quote: {...prev[tokenAddress].quote, validTo: 0},
-						orderUID: orderUID,
-						orderStatus: 'invalid',
-						signature: '',
-						signingScheme: '' as string as EcdsaSigningScheme
 					}
-				}));
-				executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status, orderError: error.message});
-				continue;
-			}
-
-			executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
-			set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-				...prev,
-				[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
-			}));
-			refresh([
-				{
-					token: quote.quote.buyToken,
-					decimals: quote.request.outputToken.decimals,
-					name: quote.request.outputToken.label,
-					symbol: quote.request.outputToken.symbol
-				}, {
-					token: quote.quote.sellToken,
-					decimals: quote.request.inputToken.decimals,
-					name: quote.request.inputToken.label,
-					symbol: quote.request.inputToken.symbol
+				);
+				if (error?.message) {
+					if (error?.message?.includes('InsufficientAllowance')) {
+						performBatchedUpdates((): void => {
+							onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+							onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
+							set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
+							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+								...prev,
+								[tokenAddress]: {
+									...prev[tokenAddress],
+									quote: {...prev[tokenAddress].quote, validTo: 0},
+									orderUID: orderUID,
+									orderStatus: 'invalid'
+								}
+							}));
+						});
+					} else {
+						performBatchedUpdates((): void => {
+							onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+								...prev,
+								[tokenAddress]: {
+									...prev[tokenAddress],
+									quote: {...prev[tokenAddress].quote, validTo: 0},
+									orderUID: orderUID,
+									orderStatus: 'invalid'
+								}
+							}));
+						});
+					}
+				} else {
+					executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
+					onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+						...prev,
+						[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
+					}));
+					refresh([
+						{
+							token: quote.quote.buyToken,
+							decimals: quote.request.outputToken.decimals,
+							name: quote.request.outputToken.label,
+							symbol: quote.request.outputToken.symbol
+						}, {
+							token: quote.quote.sellToken,
+							decimals: quote.request.inputToken.decimals,
+							name: quote.request.inputToken.label,
+							symbol: quote.request.inputToken.symbol
+						}
+					]);
 				}
-			]);
+			} catch (error) {
+				performBatchedUpdates((): void => {
+					onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+						...prev,
+						[tokenAddress]: {
+							...prev[tokenAddress],
+							quote: {...prev[tokenAddress].quote, validTo: 0},
+							orderStatus: 'invalid'
+						}
+					}));
+				});
+			}
 		}
+
 		notify(executedQuotes, 'EOA', '');
-	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
+		set_isSigning(false);
+	}, [areAllApproved, selected, toast, quotes, onUpdateSignStep, cowswap, set_quotes, onUpdateExecuteStep, onUpdateApprovalStep, refresh]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
@@ -537,53 +460,10 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 		set_isRefreshingQuotes(false);
 	}, [cowswap, quotes, set_quotes]);
 
-	/* 🔵 - Yearn Finance **************************************************************************
-	** areAllApproved and areAllSigned are used to determine if all the selected tokens have been
-	** approved and signed.
-	** If so, the onSendOrders function will be called.
-	**********************************************************************************************/
-	const	areAllApproved = useMemo((): boolean => {
-		if (selected.length === 0) {
-			return false;
-		}
-		const isOk = true;
-		for (const token of selected) {
-			if (!approveStatus[toAddress(token)]) {
-				return false;
-			}
-		}
-		return isOk;
-	}, [approveStatus, selected]);
-
-	const	areAllSigned = useMemo((): boolean => {
-		if (selected.length === 0) {
-			return false;
-		}
-		const isOk = true;
-		for (const token of selected) {
-			if ((quotes[toAddress(token)]?.signature || '') === '') {
-				return false;
-			}
-		}
-		return isOk;
-	}, [quotes, selected]);
-
-	/* 🔵 - Yearn Finance **************************************************************************
-	** Trigger the onSendOrders function when all the selected tokens have been approved and signed
-	**********************************************************************************************/
-	useUpdateEffect((): void => {
-		if (hasSentOrder || isSigning) {
-			return;
-		}
-		if (areAllApproved && areAllSigned) {
-			set_hasSentOrder(true);
-			onSendOrders();
-		}
-	}, [hasSentOrder, areAllApproved, areAllSigned, isSigning]);
-
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
 			<button
+				id={'TRIGGER_ALL_REFRESH'}
 				onClick={onRefreshAllQuotes}
 				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
 				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>{'Refresh all quotes'}</p>
@@ -602,8 +482,8 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 			<Button
 				className={'yearn--button !w-fit !px-6 !text-sm'}
 				isBusy={isSigning}
-				isDisabled={(selected.length === 0) || !areAllApproved || areAllSigned}
-				onClick={onSignQuote}>
+				isDisabled={(selected.length === 0) || !areAllApproved}
+				onClick={onSendOrders}>
 				{'Sign'}
 			</Button>
 		</div>
@@ -613,12 +493,10 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 function	ViewApprovalWizard(): ReactElement {
 	const	{walletType} = useWeb3();
 	const	{selected, quotes} = useSweepooor();
-	const	[currentWizardApprovalStep, set_currentWizardApprovalStep] = useState<TDict<TPossibleFlowStep>>({}); // {[orderID]: flowStep}
-	const	[currentWizardSignStep, set_currentWizardSignStep] = useState<TDict<TPossibleFlowStep>>({}); // {[orderID]: flowStep}
-	const	isGnosisSafe = (
-		walletType === 'EMBED_GNOSIS_SAFE'
-		// || (((provider as any)?.provider?.connector?._peerMeta?.name || '').toLowerCase()).includes('safe')
-	);
+	const	[approvalStep, set_approvalStep] = useState<TDict<TPossibleFlowStep>>({});
+	const	[signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
+	const	[executeStep, set_executeStep] = useState<TDict<TPossibleFlowStep>>({});
+	const	isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
 
 	return (
 		<section>
@@ -638,19 +516,21 @@ function	ViewApprovalWizard(): ReactElement {
 							index={index}
 							isGnosisSafe={isGnosisSafe}
 							hasSignature={(quotes?.[toAddress(token)]?.signature || '') !== ''}
-							currentWizardApprovalStep={currentWizardApprovalStep}
-							currentWizardSignStep={currentWizardSignStep}/>
+							approvalStep={approvalStep}
+							signStep={signStep}
+							executeStep={executeStep} />
 					);
 				})}
 				<div className={'flex w-full flex-row items-center justify-between pt-4 md:relative'}>
 					<div className={'flex flex-col'} />
 					{isGnosisSafe ? (
 						<GnosisBatchedFlow
-							onUpdateSignStep={set_currentWizardSignStep} />
+							onUpdateSignStep={set_signStep} />
 					) : (
 						<StandardFlow
-							onUpdateApprovalStep={set_currentWizardApprovalStep}
-							onUpdateSignStep={set_currentWizardSignStep} />
+							onUpdateApprovalStep={set_approvalStep}
+							onUpdateSignStep={set_signStep}
+							onUpdateExecuteStep={set_executeStep} />
 					)}
 				</div>
 			</div>

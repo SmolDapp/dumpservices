@@ -59,7 +59,6 @@ export function useSolverCowswap(): TSolverContext {
 			validTo: 0,
 			sellAmountBeforeFee: formatBN(request?.inputAmount || 0).toString(), // amount to sell, in wei
 			signingScheme: isGnosisSafe ? SigningScheme.PRESIGN : SigningScheme.EIP712
-
 		});
 
 		const canExecuteFetch = (
@@ -71,10 +70,8 @@ export function useSolverCowswap(): TSolverContext {
 			quote.validTo = Math.round((new Date().setMinutes(
 				new Date().getMinutes() + (isGnosisSafe ? VALID_TO_MN_SAFE : VALID_TO_MN)) / 1000)
 			);
-			console.warn(quote.validTo, (isGnosisSafe ? VALID_TO_MN_SAFE : VALID_TO_MN));
 			try {
 				const result = await orderBookAPI.getQuote(quote) as TOrderQuoteResponse;
-				console.log(result);
 				return ([result, Zero, undefined]);
 			} catch (error) {
 				const	_error = error as TCowQuoteError;

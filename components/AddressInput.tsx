@@ -62,10 +62,10 @@ function	AddressInput({value, onChangeValue, onConfirm, className, shouldBeDisab
 	}, [namedValue, isValidish, value, set_namedValue]);
 
 	useUpdateEffect((): void => {
-		if (namedValue === '' || isZeroAddress(toAddress(namedValue))) {
+		if (namedValue === '' || (isZeroAddress(toAddress(namedValue)) && !isZeroAddress(toAddress(value)))) {
 			set_namedValue(value);
 		}
-	}, [value]);
+	}, [namedValue, value]);
 
 	useUpdateEffect((): void => {
 		set_isValidValue('undetermined');

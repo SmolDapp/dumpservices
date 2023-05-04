@@ -121,7 +121,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 		if (receiver === toAddress()) {
 			set_receiver(toAddress(address));
 		}
-	}, [address]);
+	}, [address, receiver]);
 
 	/**********************************************************************************************
 	** This effect is used to directly jump the UI to the DESTINATION section if the wallet is

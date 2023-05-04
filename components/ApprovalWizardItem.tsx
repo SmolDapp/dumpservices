@@ -1,12 +1,10 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import IconCheck from 'components/icons/IconCheck';
 import IconChevronBoth from 'components/icons/IconChevronBoth';
 import IconCircleCross from 'components/icons/IconCircleCross';
 import IconSpinner from 'components/icons/IconSpinner';
-import IconWarning from 'components/icons/IconWarning';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
-import {useSolverCowswap} from 'hooks/useSolverCowswap';
 import {isApprovedERC20} from 'utils/actions/approveERC20';
 import {useAsync, useIntervalEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
@@ -15,11 +13,10 @@ import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/con
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.time';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ethers} from 'ethers';
 import type {ReactElement} from 'react';
-import type {TOrderQuoteResponse, TPossibleFlowStep} from 'utils/types';
+import type {TPossibleFlowStep} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TApprovalWizardItem = {
@@ -27,29 +24,29 @@ type TApprovalWizardItem = {
 	index: number,
 	isGnosisSafe: boolean,
 	hasSignature: boolean,
-	currentWizardApprovalStep: TDict<TPossibleFlowStep>,
-	currentWizardSignStep: TDict<TPossibleFlowStep>,
+	approvalStep: TDict<TPossibleFlowStep>,
+	signStep: TDict<TPossibleFlowStep>,
+	executeStep: TDict<TPossibleFlowStep>,
 }
 function	ApprovalWizardItem({
 	token,
 	index,
 	isGnosisSafe,
 	hasSignature,
-	currentWizardApprovalStep,
-	currentWizardSignStep
+	approvalStep,
+	signStep,
+	executeStep
 }: TApprovalWizardItem): ReactElement {
-	const	{provider} = useWeb3();
-	const	{amounts, quotes, set_quotes, destination} = useSweepooor();
-	const	{balances} = useWallet();
-	const	cowswap = useSolverCowswap();
-	const	[isQuoteExpired, set_isQuoteExpired] = useState<boolean>((Number(quotes[toAddress(token)]?.quote?.validTo || 0) * 1000) < new Date().valueOf());
-	const	[expireIn, set_expireIn] = useState((Number(quotes[toAddress(token)]?.quote?.validTo || 0) * 1000) - new Date().valueOf());
-	const	[step, set_step] = useState<'Approve' | 'Sign' | 'Execute'>(isGnosisSafe ? 'Sign' : 'Approve');
-	const	[isRefreshingQuote, set_isRefreshingQuote] = useState(false);
-	const	hasQuote = Boolean(quotes[toAddress(token)]);
-	const	currentQuote = quotes[toAddress(token)];
+	const {provider} = useWeb3();
+	const {amounts, quotes, destination} = useSweepooor();
+	const {balances} = useWallet();
+	const [expireIn, set_expireIn] = useState(0);
+	const [step, set_step] = useState<'Approve' | 'Sign' | 'Execute'>(isGnosisSafe ? 'Sign' : 'Approve');
+	const hasQuote = Boolean(quotes[toAddress(token)]);
+	const currentQuote = quotes[toAddress(token)];
+	const quoteExpiration = Number(isGnosisSafe ? (currentQuote?.quote?.validTo || 0) : (currentQuote?.expirationTimestamp || 0)) * 1000;
 
-	const	[{result: hasAllowance}, triggerAllowanceCheck] = useAsync(async (): Promise<boolean> => {
+	const [{result: hasAllowance}, triggerAllowanceCheck] = useAsync(async (): Promise<boolean> => {
 		return await isApprovedERC20(
 			provider as ethers.providers.Web3Provider,
 			toAddress(token), //from
@@ -58,61 +55,38 @@ function	ApprovalWizardItem({
 		);
 	}, false);
 
-	useUpdateEffect((): void => {
-		set_expireIn((Number(currentQuote?.quote?.validTo || 0) * 1000) - new Date().valueOf());
-	}, [currentQuote?.quote?.validTo]);
-
 	useEffect((): void => {
 		triggerAllowanceCheck.execute();
-	}, [triggerAllowanceCheck, token, currentWizardApprovalStep]);
+	}, [triggerAllowanceCheck, token, approvalStep]);
 
 	useIntervalEffect((): void => {
-		const	now = new Date().valueOf();
-		const	expiration = Number(currentQuote?.quote?.validTo || 0) * 1000;
-		set_expireIn(expiration - now);
-		set_isQuoteExpired((Number(currentQuote?.quote?.validTo || 0) * 1000) < new Date().valueOf());
-	}, !hasQuote || isQuoteExpired ? undefined : 1000);
+		set_expireIn(quoteExpiration - new Date().valueOf());
+		if (quoteExpiration < new Date().valueOf()) {
+			document?.getElementById(`quote-refresh-${toAddress(toAddress(token))}`)?.click();
+		}
+	}, (!hasQuote ? undefined : 1000));
 
 	useUpdateEffect((): void => {
-		set_isQuoteExpired((Number(currentQuote?.quote?.validTo || 0) * 1000) < new Date().valueOf());
-	}, [hasQuote]);
+		set_expireIn(quoteExpiration - new Date().valueOf());
+		if (quoteExpiration < new Date().valueOf()) {
+			document?.getElementById(`quote-refresh-${toAddress(toAddress(token))}`)?.click();
+		}
+	}, [quoteExpiration]);
 
 	useUpdateEffect((): void => {
-		if (hasAllowance && isQuoteExpired) {
-			set_step('Sign');
-		} else if (hasAllowance && step === 'Approve') {
+		if (hasAllowance) {
 			set_step('Sign');
 		}
-	}, [hasAllowance, isQuoteExpired, step]);
-
-	const	estimateQuote = useCallback(async (): Promise<void> => {
-		set_isRefreshingQuote(true);
-		const [, order] = await cowswap.init({
-			from: toAddress(currentQuote?.from),
-			receiver: toAddress(currentQuote?.quote?.receiver),
-			inputToken: currentQuote?.request?.inputToken,
-			outputToken: currentQuote?.request?.outputToken,
-			inputAmount: currentQuote?.request?.inputAmount
-		});
-		performBatchedUpdates((): void => {
-			if (order) {
-				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({...quotes, [toAddress(token)]: order}));
-				set_expireIn((Number(order.quote?.validTo || 0) * 1000) - new Date().valueOf());
-				set_isQuoteExpired(false);
-			}
-			set_isRefreshingQuote(false);
-		});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [cowswap.init, currentQuote?.from, currentQuote?.request?.inputAmount, currentQuote?.request?.inputToken, currentQuote?.request?.outputToken, set_quotes, token, currentQuote?.quote?.receiver]);
+	}, [hasAllowance, step]);
 
 	function	renderApprovalIndication(): ReactElement {
 		if (hasAllowance) {
 			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
 		}
-		if (!currentQuote?.id || !currentWizardApprovalStep[currentQuote?.id] || currentWizardApprovalStep[currentQuote?.id] === 'undetermined') {
+		if (!currentQuote?.id || !approvalStep[currentQuote?.id] || approvalStep[currentQuote?.id] === 'undetermined') {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
-		if (currentWizardApprovalStep[currentQuote?.id] === 'pending') {
+		if (approvalStep[currentQuote?.id] === 'pending') {
 			return <IconSpinner />;
 		}
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
@@ -122,16 +96,13 @@ function	ApprovalWizardItem({
 		if (!currentQuote?.id) {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
-		if (step !== 'Sign' || !currentWizardSignStep[currentQuote?.id] ||currentWizardSignStep[currentQuote?.id] === 'undetermined') {
+		if (step !== 'Sign' || !signStep[currentQuote?.id] || signStep[currentQuote?.id] === 'undetermined') {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
-		}
-		if (isQuoteExpired) {
-			return (<IconWarning className={'h-4 w-4 text-[#f97316]'} />);
 		}
 		if (hasSignature) {
 			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
 		}
-		if (currentWizardSignStep[currentQuote?.id] === 'pending') {
+		if (signStep[currentQuote?.id] === 'pending') {
 			return <IconSpinner />;
 		}
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
@@ -141,10 +112,10 @@ function	ApprovalWizardItem({
 		if (!currentQuote?.orderStatus) {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
-		if (currentQuote.orderStatus === 'fulfilled') {
+		if (currentQuote.orderStatus === 'fulfilled' || executeStep[currentQuote?.id || ''] === 'valid') {
 			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
 		}
-		if (currentQuote.orderStatus === 'pending') {
+		if (currentQuote.orderStatus === 'pending' || executeStep[currentQuote?.id || ''] === 'pending') {
 			return <IconSpinner />;
 		}
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
@@ -186,7 +157,16 @@ function	ApprovalWizardItem({
 				<div className={'text-neutral-600'} style={{paddingBottom: 1}}>&rarr;</div>
 				<div className={'flex flex-row items-center space-x-2'}>
 					{renderSignatureIndication()}
-					<small>{'Signed'}</small>
+					<small>
+						{'Signed for '}
+						<span className={'font-bold tabular-nums'}>
+							{formatAmount(Number(toNormalizedBN(
+								currentQuote?.quote?.buyAmount || '',
+								currentQuote?.request?.outputToken?.decimals || 18
+							).normalized), 6, 6)}
+						</span>
+						{` ${destination.symbol}`}
+					</small>
 				</div>
 				<div className={'text-neutral-600'} style={{paddingBottom: 1}}>&rarr;</div>
 				<div className={'flex flex-row items-center space-x-2'}>
@@ -206,6 +186,41 @@ function	ApprovalWizardItem({
 				</div>
 			</div>
 		);
+	}
+
+	function	renderExpiration(): ReactElement {
+		if (Math.floor(expireIn / 1000) <= 0) {
+			return (
+				<div className={'tooltip'}>
+					<small className={'text-xs tabular-nums text-[#f97316]'}>
+						{'Updating quote...'}
+					</small>
+				</div>
+			);
+		}
+		if (Math.floor(expireIn / 1000) < 60) {
+			return (
+				<div className={'tooltip'}>
+					<small className={'text-xs tabular-nums text-neutral-500'}>
+						{`The quote will be updated in ${Math.floor(expireIn / 1000)}s`}
+					</small>
+					<span className={'tooltiptext z-[100000] text-xs'}>
+						<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
+					</span>
+				</div>
+			);
+		}
+		return (
+			<div className={'tooltip'}>
+				<small className={'text-xs tabular-nums text-neutral-500'}>
+					{`The quote will be updated in ${formatDuration(expireIn)}`}
+				</small>
+				<span className={'tooltiptext z-[100000] text-xs'}>
+					<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
+				</span>
+			</div>
+		);
+
 	}
 
 	return (
@@ -229,32 +244,8 @@ function	ApprovalWizardItem({
 						{` ${destination.symbol}`}
 					</div>
 					<div className={'flex flex-row items-center space-x-2'}>
-						{(expireIn < 0 && isRefreshingQuote) || currentQuote?.isRefreshing ? (
-							<button onClick={estimateQuote}>
-								<small className={'text-xs tabular-nums text-[#f97316]'}>
-									{'Updating quote...'}
-								</small>
-							</button>
-						) : expireIn < 0 ? (
-							<button onClick={estimateQuote}>
-								<small className={'text-xs tabular-nums text-[#f97316]'}>
-									{'Quote expired. Click to update'}
-								</small>
-							</button>
-						) : (
-							<button disabled>
-								<small className={'text-xs tabular-nums text-neutral-500'}>
-									{expireIn < 0 ? 'Expired' : `Expires in ${Math.floor(expireIn / 1000) < 60 ? `${Math.floor(expireIn / 1000)}s` : formatDuration(expireIn)}`}
-								</small>
-							</button>
-						)}
-						{/* <IconEdit
-							onClick={(e) => {
-								e.stopPropagation();
-								e.preventDefault();
-							}}
-							className={'ml-1 mr-2 mt-0.5 h-[10px] w-[10px] text-neutral-500 transition-colors group-hover:text-neutral-900'} /> */}
-						<IconChevronBoth className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
+						{renderExpiration()}
+						<IconChevronBoth className={'mt-0.5 h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
 					</div>
 				</div>
 				{renderIndicators()}
@@ -314,15 +305,9 @@ function	ApprovalWizardItem({
 				<span className={'flex flex-col justify-between md:flex-row'}>
 					<b>{'ValidTo'}</b>
 					<p className={'font-number'}>
-						{formatDate(Number(currentQuote?.quote?.validTo || 0) * 1000)}
-						{isQuoteExpired ? (
-							<span className={'font-number pl-2 text-[#f97316]'}>
-								{'Expired'}
-							</span>
-						) : null}
+						{formatDate(currentQuote?.quote?.validTo || 0)}
 					</p>
 				</span>
-
 			</div>
 		</details>
 	);

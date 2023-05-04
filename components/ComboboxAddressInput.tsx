@@ -81,6 +81,7 @@ function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDes
 		const [name, symbol, decimals] = await ethcallProvider.tryAll(calls) as [string, string, BigNumber];
 		return ({name, symbol, decimals: decimals.toNumber()});
 	}, undefined);
+
 	useUpdateEffect((): void => {
 		fetchTokenData.execute(provider, safeChainID, toAddress(query));
 	}, [fetchTokenData, provider, safeChainID, query]);

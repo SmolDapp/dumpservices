@@ -51,7 +51,6 @@ function AddTokenPopover(): ReactElement {
 
 		const calls = [erc20Contract.name(), erc20Contract.symbol(), erc20Contract.decimals(), erc20Contract.balanceOf(_address)];
 		const [name, symbol, decimals, balanceOf] = await ethcallProvider.tryAll(calls) as [string, string, BigNumber, BigNumber];
-		console.log({name, symbol, decimals: decimals.toNumber(), balanceOf});
 		return ({name, symbol, decimals: decimals.toNumber(), balanceOf});
 	}, undefined);
 
