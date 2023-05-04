@@ -387,7 +387,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
 						[toAddress(token)]: {
-							...quoteOrder,
+							...prev[toAddress(token)],
 							signature,
 							signingScheme
 						}
@@ -399,7 +399,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 						...prev,
 						[toAddress(token)]: {
-							...quotes[toAddress(token)],
+							...prev[toAddress(token)],
 							signature: '',
 							signingScheme: '' as string as EcdsaSigningScheme
 						}
@@ -433,11 +433,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				const {signature, signingScheme} = await cowswap.signCowswapOrder(quoteOrder);
 				set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 					...prev,
-					[toAddress(token)]: {
-						...quoteOrder,
-						signature,
-						signingScheme
-					}
+					[toAddress(token)]: {...prev[toAddress(token)], signature, signingScheme}
 				}));
 				quote.signature = signature;
 				quote.signingScheme = signingScheme;
@@ -451,7 +447,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					(orderUID): void => {
 						set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 							...prev,
-							[toAddress(token)]: {...quote, orderUID, orderStatus: 'pending'}
+							[toAddress(token)]: {...prev[toAddress(token)], orderUID, orderStatus: 'pending'}
 						}));
 					})
 			);
@@ -479,8 +475,8 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 					...prev,
 					[tokenAddress]: {
-						...quotes[tokenAddress],
-						quote: {...quotes[tokenAddress].quote, validTo: 0},
+						...prev[tokenAddress],
+						quote: {...prev[tokenAddress].quote, validTo: 0},
 						orderUID: orderUID,
 						orderStatus: 'invalid',
 						signature: '',
@@ -494,7 +490,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 			executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
 			set_quotes((prev): TDict<TOrderQuoteResponse> => ({
 				...prev,
-				[tokenAddress]: {...quote, orderUID, orderStatus: status}
+				[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
 			}));
 			refresh([
 				{
@@ -502,8 +498,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 					decimals: quote.request.outputToken.decimals,
 					name: quote.request.outputToken.label,
 					symbol: quote.request.outputToken.symbol
-				},
-				{
+				}, {
 					token: quote.quote.sellToken,
 					decimals: quote.request.inputToken.decimals,
 					name: quote.request.inputToken.label,
@@ -511,7 +506,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep}: {
 				}
 			]);
 		}
-		notify(executedQuotes, 'EOA', '');
+		// notify(executedQuotes, 'EOA', '');
 	}, [selected, quotes, cowswap, set_quotes, refresh, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************

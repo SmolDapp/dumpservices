@@ -191,7 +191,7 @@ export function useSolverCowswap(): TSolverContext {
 			signingScheme: signingScheme
 		};
 		try {
-			const	orderUID = await orderBookAPI?.sendOrder(orderCreation as OrderCreation);
+			const	orderUID = await orderBookAPI?.sendOrder(orderCreation);
 			if (orderUID) {
 				onSubmitted?.(orderUID);
 				if (shouldUsePresign) {
