@@ -14,7 +14,6 @@ function notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 	if (!orders.length) {
 		return;
 	}
-	return;
 
 	const	messages = [] as string[];
 	let		from = '';
