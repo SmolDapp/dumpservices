@@ -28,9 +28,8 @@ type TSolverContext = {
 	execute: (quoteOrder: TOrderQuoteResponse, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TExecuteResp>;
 }
 
-
 const	VALID_TO_MN = 60;
-const	VALID_TO_MN_SAFE = 179;
+const	VALID_TO_MN_SAFE = 4320;
 export function useSolverCowswap(): TSolverContext {
 	const {slippage} = useSweepooor();
 	const {walletType, provider} = useWeb3();
@@ -38,10 +37,8 @@ export function useSolverCowswap(): TSolverContext {
 	const {safeChainID} = useChainID();
 	const [orderBookAPI, set_orderBookAPI] = useState<Maybe<OrderBookApi>>();
 	const maxIterations = 1000; // 1000 * up to 3 seconds = 3000 seconds = 50 minutes
-	const isGnosisSafe = (
-		walletType === 'EMBED_GNOSIS_SAFE'
-		// || (((provider as any)?.provider?.connector?._peerMeta?.name || '').toLowerCase()).includes('safe')
-	);
+	const isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
+
 	useEffect((): void => {
 		const api = new OrderBookApi({chainId: safeChainID});
 		set_orderBookAPI(api);
@@ -60,7 +57,9 @@ export function useSolverCowswap(): TSolverContext {
 			partiallyFillable: false, // always false
 			kind: OrderQuoteSide.kind.SELL,
 			validTo: 0,
-			sellAmountBeforeFee: formatBN(request?.inputAmount || 0).toString() // amount to sell, in wei
+			sellAmountBeforeFee: formatBN(request?.inputAmount || 0).toString(), // amount to sell, in wei
+			signingScheme: isGnosisSafe ? SigningScheme.PRESIGN : SigningScheme.EIP712
+
 		});
 
 		const canExecuteFetch = (
