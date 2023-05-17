@@ -3,8 +3,11 @@ import {Telegram} from 'telegraf';
 import type {NextApiRequest, NextApiResponse} from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<boolean>): Promise<void> {
-	const telegram = new Telegram(process.env.TELEGRAM_BOT as string);
+	if (!process?.env?.TELEGRAM_BOT || !process?.env?.TELEGRAM_CHAT) {
+		return res.status(200).json(true);
+	}
 	try {
+		const telegram = new Telegram(process.env.TELEGRAM_BOT as string);
 		const {messages} = req.body as {messages: string[]};
 
 		await telegram.sendMessage(
