@@ -104,7 +104,7 @@ function NetworkSelector(): ReactElement {
 		<div className={'relative z-50 mr-4'}>
 			<Listbox
 				value={safeChainID}
-				onChange={(value: any): void => onSwitchChain(value.value)}>
+				onChange={(value: unknown): void => onSwitchChain((value as {value: number}).value)}>
 				{({open}): ReactElement => (
 					<>
 						<Listbox.Button
