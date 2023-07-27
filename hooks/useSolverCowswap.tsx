@@ -218,8 +218,14 @@ export function useSolverCowswap(): TSolverContext {
 				return {status, orderUID, quote: quoteOrder};
 			}
 		} catch (error) {
-			if ((error as any)?.body?.description) {
-				const err = `${(error as any)?.body?.errorType}: ${(error as any)?.body?.description}`;
+			type TError = {
+				body: {
+					errorType: string,
+					description: string
+				}
+			}
+			if ((error as TError)?.body?.description) {
+				const err = `${(error as TError)?.body?.errorType}: ${(error as TError)?.body?.description}`;
 				console.error(err);
 				toast({type: 'error', content: err});
 				return {status: 'invalid', orderUID: '', quote: quoteOrder, error: {message: err}};

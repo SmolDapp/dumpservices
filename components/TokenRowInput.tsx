@@ -238,7 +238,7 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 
 	return (
 		<Fragment>
-			<div className={'relative col-span-1 flex h-auto flex-col items-start justify-center px-0 pt-2 md:col-span-7 md:h-16 md:items-center md:py-2 md:px-6'}>
+			<div className={'relative col-span-1 flex h-auto flex-col items-start justify-center px-0 pt-2 md:col-span-7 md:h-16 md:items-center md:px-6 md:py-2'}>
 				<label className={'yearn--table-data-section-item-label'}>{'Amount to dump'}</label>
 				<div className={'box-0 flex h-10 w-full items-center p-2'}>
 					<div
@@ -269,10 +269,10 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				<label className={'yearn--table-data-section-item-label'}>{'Amount to receive'}</label>
 				<div className={'box-0 relative flex h-10 w-full items-center p-2'}>
 					<div
-						className={'flex h-10 w-full flex-row items-center justify-between py-4 px-0'}
+						className={'flex h-10 w-full flex-row items-center justify-between px-0 py-4'}
 						onClick={(e): void => e.stopPropagation()}>
 						<span
-							className={`w-full overflow-x-scroll border-none bg-transparent py-4 px-0 text-sm font-bold outline-none scrollbar-none ${isActive ? 'cursor-default' : 'cursor-not-allowed'}`}>
+							className={`w-full overflow-x-scroll border-none bg-transparent px-0 py-4 text-sm font-bold outline-none scrollbar-none ${isActive ? 'cursor-default' : 'cursor-not-allowed'}`}>
 							{quote?.normalized || '0'}
 						</span>
 						{isLoadingQuote ? (

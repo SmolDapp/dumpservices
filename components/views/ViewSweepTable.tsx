@@ -99,7 +99,7 @@ function AddTokenPopover(): ReactElement {
 									<div className={'box-0 relative grid w-full max-w-3xl grid-cols-12'}>
 										<button
 											onClick={(): void => set_isOpen(false)}
-											className={'absolute top-4 right-4'}>
+											className={'absolute right-4 top-4'}>
 											<IconCross className={'h-4 w-4 text-neutral-400 transition-colors hover:text-neutral-900'} />
 										</button>
 										<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
@@ -244,7 +244,7 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	return (
 		<section>
 			<div className={'box-0 relative grid w-full grid-cols-12'}>
-				<div className={'absolute top-4 right-4'}>
+				<div className={'absolute right-4 top-4'}>
 					<SettingsPopover />
 				</div>
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
@@ -258,7 +258,7 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						<input
 							onChange={(event): void => set_search(event.target.value)}
 							value={search}
-							className={'h-10 w-full rounded-md border border-neutral-200 py-2 px-4 text-sm focus:border-neutral-400 focus:outline-none'}
+							className={'h-10 w-full rounded-md border border-neutral-200 px-4 py-2 text-sm focus:border-neutral-400 focus:outline-none'}
 							type={'text'}
 							placeholder={'Filter tokens...'} />
 					</div>
