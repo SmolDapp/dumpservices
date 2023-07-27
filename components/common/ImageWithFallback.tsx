@@ -6,9 +6,9 @@ import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUp
 import type {ImageProps} from 'next/image';
 import type {CSSProperties, ReactElement} from 'react';
 
-function	ImageWithFallback(props: ImageProps): ReactElement {
+function ImageWithFallback(props: ImageProps): ReactElement {
 	const {alt, src, ...rest} = props;
-	const [imageSrc, set_imageSrc] = useState(src);
+	const [imageSrc, set_imageSrc] = useState(`${src}?fallback=true`);
 	const [imageStyle, set_imageStyle] = useState<CSSProperties>({});
 
 	if (alt === toAddress('0xDEf1CA1fb7FBcDC777520aa7f396b4E015F497aB')) {

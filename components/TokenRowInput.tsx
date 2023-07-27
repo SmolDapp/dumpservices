@@ -2,30 +2,29 @@ import React, {Fragment, memo, useCallback, useState} from 'react';
 import IconRefresh from 'components/icons/IconRefresh';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
-import {handleInputChangeEventValue} from 'utils';
+import {handleInputChangeEventValue} from 'utils/handleInputChangeEventValue';
 import {useDebouncedCallback} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {formatBN, toNormalizedBN, Zero} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {BigNumber} from 'ethers';
-import type {TMinBalanceData} from 'hooks/useBalances';
 import type {ChangeEvent, ReactElement} from 'react';
 import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 type TTokenRowInputProps = {
-	balance: TMinBalanceData,
+	balance: TBalanceData,
 	tokenAddress: TAddress,
 	isSelected: boolean,
 	amount: TNormalizedBN,
 	onDisable: (shouldDisable: boolean) => void,
 };
 
-const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSelected, amount, onDisable}: TTokenRowInputProps): ReactElement {
+const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSelected, amount, onDisable}: TTokenRowInputProps): ReactElement {
 	const cowswap = useSolverCowswap();
 	const {set_selected, set_amounts, set_quotes, destination, receiver} = useSweepooor();
 	const {address: fromAddress, isActive} = useWeb3();
@@ -40,7 +39,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** On error, we try to display a meaningful message to the user and we disable the token
 	** if it's not supported or if the fee is too high.
 	**********************************************************************************************/
-	const	onEstimateQuote = useCallback(async (rawAmount: BigNumber, force = false): Promise<void> => {
+	const onEstimateQuote = useCallback(async (rawAmount: bigint, force = false): Promise<void> => {
 		if (!isSelected && !force) {
 			return;
 		}
@@ -63,7 +62,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				symbol: destination.symbol,
 				decimals: destination.decimals
 			},
-			inputAmount: formatBN(rawAmount)
+			inputAmount: toBigInt(rawAmount)
 		});
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
@@ -88,9 +87,9 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				if (error?.errorType === 'UnsupportedToken') {
 					set_error('This token is currently not supported.');
 					onDisable(true);
-				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw.gt(Zero)) {
+				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw > 0n) {
 					set_error(`Fee is too high for this amount: ${formatAmount(Number(cowswapQuote.normalized), 4, 4)}`);
-					onDisable(cowswapQuote.raw.gte(balance.raw));
+					onDisable(cowswapQuote.raw >= balance.raw);
 				} else if (error?.errorType === 'NoLiquidity') {
 					set_error('No liquidity for this token.');
 					onDisable(true);
@@ -107,7 +106,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** On error, we try to display a meaningful message to the user and we disable the token
 	** if it's not supported or if the fee is too high.
 	**********************************************************************************************/
-	const	onDebouncedEstimateQuote = useDebouncedCallback(async (rawAmount: BigNumber): Promise<void> => {
+	const onDebouncedEstimateQuote = useDebouncedCallback(async (rawAmount: bigint): Promise<void> => {
 		if (!isSelected) {
 			return;
 		}
@@ -130,7 +129,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				symbol: destination.symbol,
 				decimals: destination.decimals
 			},
-			inputAmount: formatBN(rawAmount)
+			inputAmount: toBigInt(rawAmount)
 		});
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
@@ -155,9 +154,9 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				if (error?.errorType === 'UnsupportedToken') {
 					set_error('This token is currently not supported.');
 					onDisable(true);
-				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw.gt(Zero)) {
+				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw > 0n) {
 					set_error(`Fee is too high for this amount: ${formatAmount(Number(cowswapQuote.normalized), 4, 4)}`);
-					onDisable(cowswapQuote.raw.gte(balance.raw));
+					onDisable(cowswapQuote.raw >= balance.raw);
 				} else if (error?.errorType === 'NoLiquidity') {
 					set_error('No liquidity for this token.');
 					onDisable(true);
@@ -171,19 +170,19 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** amount in the state and triggers the debounced retrieval of the quote from the Cowswap API.
 	** It is set as callback to avoid unnecessary re-renders.
 	**********************************************************************************************/
-	const	onInputChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
-		let	newAmount = handleInputChangeEventValue(e, balance?.decimals || 18);
-		if (newAmount.raw.gt(balance.raw)) {
+	const onInputChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
+		let newAmount = handleInputChangeEventValue(e, balance?.decimals || 18);
+		if (newAmount.raw > balance.raw) {
 			newAmount = balance;
 		}
 		performBatchedUpdates((): void => {
 			set_error('');
 			set_amounts((amounts): TDict<TNormalizedBN> => ({...amounts, [toAddress(tokenAddress)]: newAmount}));
 			set_selected((s): TAddress[] => {
-				if (newAmount.raw.gt(0) && !s.includes(toAddress(tokenAddress))) {
+				if (newAmount.raw > 0n && !s.includes(toAddress(tokenAddress))) {
 					return [...s, toAddress(tokenAddress)];
 				}
-				if (newAmount.raw.eq(0) && s.includes(toAddress(tokenAddress))) {
+				if (newAmount.raw === 0n && s.includes(toAddress(tokenAddress))) {
 					return s.filter((item: TAddress): boolean => item !== toAddress(tokenAddress));
 				}
 				return s;
@@ -199,12 +198,12 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** The amount is set to the balance. If the balance is 0, we remove the token from the selected
 	** tokens.
 	**********************************************************************************************/
-	const	onMaxClick = useCallback((): void => {
+	const onMaxClick = useCallback((): void => {
 		performBatchedUpdates((): void => {
 			set_error('');
 			set_amounts((amounts): TDict<TNormalizedBN> => ({...amounts, [toAddress(tokenAddress)]: balance}));
 			set_selected((s): TAddress[] => {
-				if (balance.raw.gt(0) && !s.includes(toAddress(tokenAddress))) {
+				if (balance.raw > 0n && !s.includes(toAddress(tokenAddress))) {
 					return [...s, toAddress(tokenAddress)];
 				}
 				return s;
@@ -218,7 +217,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** retrieval of the quote from the Cowswap API. It is set as callback to avoid unnecessary
 	** re-renders.
 	**********************************************************************************************/
-	const	onRefreshClick = useCallback((): void => {
+	const onRefreshClick = useCallback((): void => {
 		set_error('');
 		onEstimateQuote(amount?.raw, true);
 	}, [amount?.raw, onEstimateQuote]);
@@ -230,7 +229,7 @@ const	TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** This can only be triggered by the getElementById.click() method to avoid useless and over
 	** complexe state sharings.
 	**********************************************************************************************/
-	const	onResetClick = useCallback((): void => {
+	const onResetClick = useCallback((): void => {
 		performBatchedUpdates((): void => {
 			set_error('');
 			set_quote(toNormalizedBN(0));

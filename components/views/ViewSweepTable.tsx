@@ -1,58 +1,64 @@
-import React, {Fragment, useMemo, useState} from 'react';
+import React, {Fragment, useCallback, useMemo, useState} from 'react';
 import FlipMove from 'react-flip-move';
-import AddressInput from 'components/AddressInput';
+import AddressInput, {defaultInputAddressLike} from 'components/AddressInput';
 import IconSpinner from 'components/icons/IconSpinner';
 import ListHead from 'components/ListHead';
 import SettingsPopover from 'components/SettingsPopover';
 import TokenRow from 'components/TokenRow';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
-import {Contract} from 'ethcall';
-import {BigNumber} from 'ethers';
 import {isAddress} from 'ethers/lib/utils';
+import {erc20ABI} from 'wagmi';
 import {Dialog, Transition} from '@headlessui/react';
 import {useAsync} from '@react-hookz/web';
+import {multicall} from '@wagmi/core';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChain} from '@yearn-finance/web-lib/hooks/useChain';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import IconCross from '@yearn-finance/web-lib/icons/IconCross';
-import ERC20_ABI from '@yearn-finance/web-lib/utils/abi/erc20.abi';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import {toNormalizedValue} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
+import {toBigInt, toNormalizedValue} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
-import {getProvider, newEthCallProvider} from '@yearn-finance/web-lib/utils/web3/providers';
 
-import type {providers} from 'ethers';
-import type {TMinBalanceData} from 'hooks/useBalances';
+import type {TInputAddressLike} from 'components/AddressInput';
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
+import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 
 function AddTokenPopover(): ReactElement {
-	const	{provider, address} = useWeb3();
-	const	{refresh} = useWallet();
-	const	{safeChainID} = useChainID();
-	const	[isOpen, set_isOpen] = useState(false);
-	const	[token, set_token] = useState('');
+	const {refresh} = useWallet();
+	const {address} = useWeb3();
+	const {safeChainID} = useChainID();
+	const [isOpen, set_isOpen] = useState(false);
+	const [token, set_token] = useState<TInputAddressLike>(defaultInputAddressLike);
 
-	const [{result: tokenData}, fetchTokenData] = useAsync(async function fetchToken(
-		_provider: providers.JsonRpcProvider,
+	const fetchToken = useCallback(async (
 		_safeChainID: number,
-		_query: TAddress,
-		_address: TAddress
-	): Promise<{name: string, symbol: string, decimals: number, balanceOf: BigNumber} | undefined> {
+		_query: TAddress
+	): Promise<{name: string, symbol: string, decimals: number, balanceOf: bigint} | undefined> => {
 		if (!isAddress(_query)) {
-			return ({name: '', symbol: '', decimals: 0, balanceOf: BigNumber.from(0)});
+			return (undefined);
 		}
-		const currentProvider = _safeChainID === 1 ? _provider || getProvider(1) : getProvider(1);
-		const ethcallProvider = await newEthCallProvider(currentProvider);
-		const erc20Contract = new Contract(_query, ERC20_ABI);
-
-		const calls = [erc20Contract.name(), erc20Contract.symbol(), erc20Contract.decimals(), erc20Contract.balanceOf(_address)];
-		const [name, symbol, decimals, balanceOf] = await ethcallProvider.tryAll(calls) as [string, string, BigNumber, BigNumber];
-		return ({name, symbol, decimals: decimals.toNumber(), balanceOf});
-	}, undefined);
+		const results = await multicall({
+			contracts: [
+				{address: _query, abi: erc20ABI, functionName: 'name'},
+				{address: _query, abi: erc20ABI, functionName: 'symbol'},
+				{address: _query, abi: erc20ABI, functionName: 'decimals'},
+				{address: _query, abi: erc20ABI, functionName: 'balanceOf', args: [toAddress(address)]}
+			],
+			chainId: _safeChainID
+		});
+		const name = decodeAsString(results[0]);
+		const symbol = decodeAsString(results[1]);
+		const decimals = decodeAsNumber(results[2]);
+		const balanceOf = decodeAsBigInt(results[3]);
+		await refresh([{decimals, name, symbol, token: _query}]);
+		return ({name, symbol, decimals, balanceOf});
+	}, [address, refresh]);
+	const [{result: tokenData}, fetchTokenData] = useAsync(fetchToken);
 
 	return (
 		<>
@@ -106,40 +112,37 @@ function AddTokenPopover(): ReactElement {
 											<div className={'flex w-full flex-col space-y-2'}>
 												<AddressInput
 													className={'!w-full'}
-													value={token as TAddress}
-													onChangeValue={(v): void => {
-														set_token(v);
-														fetchTokenData.execute(provider, safeChainID, v, toAddress(address));
-													}}
-													onConfirm={(newToken: TAddress): void => {
-														refresh([
-															{
-																token: newToken,
-																decimals: tokenData?.decimals || 18,
-																name: tokenData?.name || '',
-																symbol: tokenData?.symbol || ''
-															}
-														], true);
-														set_isOpen(false);
-													}}/>
+													value={token}
+													onChangeValue={(e): void => {
+														set_token(e);
+														fetchTokenData.execute(safeChainID, toAddress(e.address || ''));
+													}} />
 												<div
 													className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
 													<div className={'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'}>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Address'}</b>
-															<p className={'font-number overflow-hidden text-ellipsis'}>{toAddress(token)}</p>
+															<p className={'font-number overflow-hidden text-ellipsis'}>
+																{toAddress(token?.address || '')}
+															</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Name'}</b>
-															<p className={'font-number'}>{tokenData?.name || '-'}</p>
+															<p className={'font-number'}>
+																{tokenData?.name || '-'}
+															</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Symbol'}</b>
-															<p className={'font-number'}>{tokenData?.symbol || '-'}</p>
+															<p className={'font-number'}>
+																{tokenData?.symbol || '-'}
+															</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Balance'}</b>
-															<p className={'font-number'}>{toNormalizedValue(tokenData?.balanceOf || 0, tokenData?.decimals)}</p>
+															<p className={'font-number'}>
+																{toNormalizedValue(toBigInt(tokenData?.balanceOf), tokenData?.decimals)}
+															</p>
 														</span>
 													</div>
 												</div>
@@ -156,26 +159,26 @@ function AddTokenPopover(): ReactElement {
 	);
 }
 
-function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
-	const	{isActive, address, chainID} = useWeb3();
-	const	{selected, quotes, destination, amounts, receiver} = useSweepooor();
-	const	{balances, balancesNonce, isLoading} = useWallet();
-	const	[sortBy, set_sortBy] = useState<string>('');
-	const	[sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
-	const	[search, set_search] = useState<string>('');
-	const	currentChain = useChain().getCurrent();
+function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
+	const {isActive, address, chainID} = useWeb3();
+	const {selected, quotes, destination, amounts, receiver} = useSweepooor();
+	const {balances, balancesNonce, isLoading} = useWallet();
+	const [sortBy, set_sortBy] = useState<string>('');
+	const [sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
+	const [search, set_search] = useState<string>('');
+	const currentChain = useChain().getCurrent();
 
-	const	hasQuoteForEverySelectedToken = useMemo((): boolean => {
+	const hasQuoteForEverySelectedToken = useMemo((): boolean => {
 		return (selected.length > 0 && selected.every((tokenAddress: string): boolean => (
 			quotes[toAddress(tokenAddress)] !== undefined
 		)));
 	}, [selected, quotes]);
 
-	const	balancesToDisplay = useMemo((): ReactElement[] => {
+	const balancesToDisplay = useMemo((): ReactElement[] => {
 		balancesNonce;
 		return (
 			Object.entries(balances || [])
-				.filter(([tokenAddress, tokenData]: [string, TMinBalanceData]): boolean => {
+				.filter(([tokenAddress, tokenData]: [string, TBalanceData]): boolean => {
 					if (search) {
 						const searchArray = search.split(/[\s,]+/);
 						return searchArray.some((searchTerm: string): boolean => {
@@ -187,18 +190,18 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					}
 					return true;
 				})
-				.filter(([, balance]: [string, TMinBalanceData]): boolean => (
-					(balance?.raw && !balance.raw.isZero()) || (balance?.force || false)
+				.filter(([, balance]: [string, TBalanceData]): boolean => (
+					(balance?.raw && balance.raw !== 0n) || (balance?.force || false)
 				))
-				.filter(([tokenAddress]: [string, TMinBalanceData]): boolean => (
+				.filter(([tokenAddress]: [string, TBalanceData]): boolean => (
 					toAddress(tokenAddress) !== destination.address && toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS
 				))
-				.filter(([tokenAddress]: [string, TMinBalanceData]): boolean => (
+				.filter(([tokenAddress]: [string, TBalanceData]): boolean => (
 					destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true
 				))
-				.sort((a: [string, TMinBalanceData], b: [string, TMinBalanceData]): number => {
-					const	[aTokenAddress, aBalance] = a;
-					const	[bTokenAddress, bBalance] = b;
+				.sort((a: [string, TBalanceData], b: [string, TBalanceData]): number => {
+					const [aTokenAddress, aBalance] = a;
+					const [bTokenAddress, bBalance] = b;
 
 					if (sortBy === 'name') {
 						return sortDirection === 'asc'
@@ -207,12 +210,12 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					}
 					if (sortBy === 'balance') {
 						return sortDirection === 'asc'
-							? aBalance.raw.gt(bBalance.raw) ? 1 : -1
-							: aBalance.raw.gt(bBalance.raw) ? -1 : 1;
+							? aBalance.raw > bBalance.raw ? 1 : -1
+							: bBalance.raw > aBalance.raw ? -1 : 1;
 					}
 					//else sort by selected
-					const	isASelected = selected.includes(toAddress(aTokenAddress));
-					const	isBSelected = selected.includes(toAddress(bTokenAddress));
+					const isASelected = selected.includes(toAddress(aTokenAddress));
+					const isBSelected = selected.includes(toAddress(bTokenAddress));
 					if (isASelected && !isBSelected) {
 						return sortDirection === 'desc' ? -1 : 1;
 					} if (!isASelected && isBSelected) {
@@ -222,7 +225,7 @@ function	ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 
 					return 0;
 				})
-				.map(([tokenAddress, balance]: [string, TMinBalanceData]): ReactElement => {
+				.map(([tokenAddress, balance]: [string, TBalanceData]): ReactElement => {
 					return (
 						<div
 							key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}`}>

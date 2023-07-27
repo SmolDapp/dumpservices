@@ -3,6 +3,7 @@ import {Inter} from 'next/font/google';
 import AppWrapper from 'components/common/AppWrapper';
 import {TokenListContextApp} from 'contexts/useTokenList';
 import {WalletContextApp} from 'contexts/useWallet';
+import config from 'utils/wagmiConfig';
 import {SafeProvider} from '@gnosis.pm/safe-apps-react-sdk';
 import {WithYearn} from '@yearn-finance/web-lib/contexts/WithYearn';
 
@@ -18,16 +19,11 @@ const inter = Inter({
 	variable: '--inter-font'
 });
 
-function	MyApp(props: AppProps): ReactElement {
+function MyApp(props: AppProps): ReactElement {
 	return (
 		<>
 			<style jsx global>{`html {font-family: ${inter.style.fontFamily};}`}</style>
-			<WithYearn
-				options={{
-					web3: {
-						supportedChainID: [1, 1337]
-					}
-				}}>
+			<WithYearn config={config}>
 				<TokenListContextApp>
 					<WalletContextApp>
 						<SafeProvider>

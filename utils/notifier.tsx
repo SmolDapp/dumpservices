@@ -15,29 +15,29 @@ function notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 		return;
 	}
 
-	const	messages = [] as string[];
-	let		from = '';
-	let		to = '';
+	const messages = [] as string[];
+	let from = '';
+	let to = '';
 	for (const order of orders) {
 		from = toAddress(order.from);
 		to = toAddress(order.quote.receiver);
-		const	buyAmount = formatAmount(
+		const buyAmount = formatAmount(
 			toNormalizedBN(
 				order?.quote?.buyAmount || '',
 				order?.request?.outputToken?.decimals || 18
 			).normalized, 6, 6);
-		const	sellAmount = formatAmount(
+		const sellAmount = formatAmount(
 			toNormalizedBN(
 				order?.quote?.sellAmount || '',
 				order?.request?.inputToken?.decimals || 18
 			).normalized, 6, 6);
-		const	feeAmount = formatAmount(
+		const feeAmount = formatAmount(
 			toNormalizedBN(
 				order?.quote?.feeAmount || '',
 				order?.request?.inputToken?.decimals || 18
 			).normalized, 6, 6);
-		const	buyToken = order.request.outputToken.symbol;
-		const	sellToken = order.request.inputToken.symbol;
+		const buyToken = order.request.outputToken.symbol;
+		const sellToken = order.request.inputToken.symbol;
 
 		if (order?.orderError) {
 			messages.push(
@@ -54,7 +54,7 @@ function notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, s
 		}
 	}
 
-	const	extra = [] as string[];
+	const extra = [] as string[];
 	if (txHash) {
 		extra.push(...[
 			'\n*📇 - Safe:*',

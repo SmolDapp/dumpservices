@@ -5,7 +5,7 @@ import meta from 'public/manifest.json';
 
 import type {ReactElement} from 'react';
 
-function	Meta(): ReactElement {
+function Meta(): ReactElement {
 	return (
 		<>
 			<Head>

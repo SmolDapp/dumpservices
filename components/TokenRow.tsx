@@ -10,26 +10,26 @@ import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {TMinBalanceData} from 'hooks/useBalances';
 import type {ReactElement} from 'react';
 import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 type TTokenRowProps = {
-	balance: TMinBalanceData,
+	balance: TBalanceData,
 	tokenAddress: TAddress,
 	amount: TNormalizedBN,
 	explorer?: string
 };
-const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer}: TTokenRowProps): ReactElement {
+const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer}: TTokenRowProps): ReactElement {
 	const {set_selected, set_amounts, set_quotes, selected} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const [isDisabled, set_isDisabled] = useState(false);
 	const isSelected = Boolean(selected.includes(toAddress(tokenAddress)) || false);
 
-	const	onToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
-		const	isNowChecked = event.target.checked;
+	const onToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
+		const isNowChecked = event.target.checked;
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {

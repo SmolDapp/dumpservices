@@ -54,9 +54,7 @@ module.exports = (phase) => withTM(withPWA({
 	env: {
 		JSON_RPC_URL: {
 			1: process.env.RPC_URL_MAINNET,
-			10: process.env.RPC_URL_OPTIMISM,
-			250: 'https://rpc3.fantom.network' || process.env.RPC_URL_FANTOM,
-			42161: process.env.RPC_URL_ARBITRUM
+			1337: 'http://localhost:8080'
 		},
 		RECEIVER_ADDRESS: '0x10001192576E8079f12d6695b0948C2F41320040',
 		DISPERSE_ADDRESS: '0xD152f549545093347A162Dce210e7293f1452150',
@@ -64,6 +62,7 @@ module.exports = (phase) => withTM(withPWA({
 		COWSWAP_APP_DATA: '0x36feff31915bd0063a70753d8b240559cc79b55029756877924452f43b7090b4',
 		SHOULD_USE_PRESIGN: false,
 		TELEGRAM_BOT: process.env.TELEGRAM_BOT,
-		TELEGRAM_CHAT: process.env.TELEGRAM_CHAT
+		TELEGRAM_CHAT: process.env.TELEGRAM_CHAT,
+		WALLETCONNECT_PROJECT_ID: process.env.WALLETCONNECT_PROJECT_ID
 	}
 }));

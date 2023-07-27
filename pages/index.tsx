@@ -9,8 +9,8 @@ import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUp
 
 import type {ReactElement} from 'react';
 
-function	Home(): ReactElement {
-	const	{currentStep, set_currentStep, set_quotes} = useSweepooor();
+function Home(): ReactElement {
+	const {currentStep, set_currentStep, set_quotes} = useSweepooor();
 
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>

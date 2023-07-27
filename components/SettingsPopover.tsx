@@ -7,8 +7,8 @@ import IconSettings from '@yearn-finance/web-lib/icons/IconSettings';
 import type {ReactElement} from 'react';
 
 export default function SettingsPopover(): ReactElement {
-	const	{slippage} = useSweepooor();
-	const	[slippageValue, set_slippageValue] = useState(0.1);
+	const {slippage} = useSweepooor();
+	const [slippageValue, set_slippageValue] = useState(0.1);
 
 	useEffect((): void => {
 		set_slippageValue((prev): number => {

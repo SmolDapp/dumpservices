@@ -1,145 +1,128 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 import IconCheck from 'components/icons/IconCheck';
 import IconCircleCross from 'components/icons/IconCircleCross';
-import {isAddress} from 'ethers/lib/utils';
-import {checkENSValidity, checkLensValidity} from 'utils';
-import lensProtocol from 'utils/lens.tools';
-import {useUpdateEffect} from '@react-hookz/web';
-import {Button} from '@yearn-finance/web-lib/components/Button';
+import {checkENSValidity} from 'utils/tools.ens';
+import {checkLensValidity} from 'utils/tools.lens';
 import IconLoader from '@yearn-finance/web-lib/icons/IconLoader';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
+import {cl} from '@yearn-finance/web-lib/utils/cl';
+import {ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
-import {getProvider} from '@yearn-finance/web-lib/utils/web3/providers';
 
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 
-function	AddressInput({value, onChangeValue, onConfirm, className, shouldBeDisabled}: {
-	value: TAddress,
-	onChangeValue: (value: TAddress) => void,
-	onConfirm: (newReceiver: TAddress) => void,
-	className?: string,
-	shouldBeDisabled?: boolean,
+export type TInputAddressLike = {
+	address: TAddress | undefined,
+	label: string,
+	isValid: boolean | 'undetermined',
+}
+export const defaultInputAddressLike: TInputAddressLike = {
+	address: undefined,
+	label: '',
+	isValid: false
+};
+
+function AddressInput({value, onChangeValue, className, shouldBeDisabled}: {
+	value: TInputAddressLike,
+	onChangeValue: (value: TInputAddressLike) => void,
+	className?: string
+	shouldBeDisabled?: boolean
 }): ReactElement {
-	const	[isValidValue, set_isValidValue] = useState<boolean | 'undetermined'>('undetermined');
-	const	[isValidish, set_isValidish] = useState<boolean | 'undetermined'>('undetermined');
-	const	[isLoadingValidish, set_isLoadingValidish] = useState<boolean>(false);
-	const	[namedValue, set_namedValue] = useState<string>('');
-
-	const	checkDestinationValidity = useCallback(async (): Promise<void> => {
-		set_isValidValue('undetermined');
-		if (namedValue && isValidish) {
-			set_isValidValue(true);
-		} else if (!isZeroAddress(toAddress(value))) {
-			set_isValidValue(true);
-		} else {
-			if (value.endsWith('.eth')) {
-				const	resolvedAddress = await getProvider(1).resolveName(value);
-				if (resolvedAddress) {
-					if (isAddress(resolvedAddress)) {
-						performBatchedUpdates((): void => {
-							set_namedValue(toAddress(resolvedAddress));
-							set_isValidValue(true);
-						});
-						return;
-					}
-				}
-			}
-			if (value.endsWith('.lens')) {
-				const	resolvedAddress = await lensProtocol.getAddressFromHandle(value);
-				if (resolvedAddress) {
-					if (isAddress(resolvedAddress)) {
-						performBatchedUpdates((): void => {
-							set_namedValue(toAddress(resolvedAddress));
-							set_isValidValue(true);
-						});
-						return;
-					}
-				}
-			}
-			set_isValidValue(false);
+	const [isLoadingValidish, set_isLoadingValidish] = useState<boolean>(false);
+	const currentLabel = useRef<string>(value.label);
+	const isFocused = useRef<boolean>(false);
+	const status = useMemo((): 'valid' | 'invalid' | 'warning' | 'pending' | 'none' => {
+		if (value.isValid === true) {
+			return 'valid';
 		}
-	}, [namedValue, isValidish, value, set_namedValue]);
-
-	useUpdateEffect((): void => {
-		if (namedValue === '' || (isZeroAddress(toAddress(namedValue)) && !isZeroAddress(toAddress(value)))) {
-			set_namedValue(value);
+		if (value.isValid === false && value.label !== '' && value.address === ZERO_ADDRESS) {
+			return 'invalid';
 		}
-	}, [namedValue, value]);
+		if (value.isValid === false && value.label !== '' && !isLoadingValidish && !isFocused.current) {
+			return 'invalid';
+		}
+		if (isLoadingValidish) {
+			return 'pending';
+		}
+		return 'none';
+	}, [value, isLoadingValidish, isFocused]);
 
-	useUpdateEffect((): void => {
-		set_isValidValue('undetermined');
-		set_isValidish('undetermined');
-		if (value.endsWith('.eth')) {
-			set_isLoadingValidish(true);
-			checkENSValidity(value).then(([validishDest, isValid]): void => {
-				performBatchedUpdates((): void => {
-					set_isLoadingValidish(false);
-					set_isValidish(isValid);
-					set_namedValue(validishDest);
-				});
+	const onChange = useCallback(async (label: string): Promise<void> => {
+		currentLabel.current = label;
+
+		if (label.endsWith('.eth') && label.length > 4) {
+			performBatchedUpdates((): void => {
+				onChangeValue({address: undefined, label, isValid: 'undetermined'});
+				set_isLoadingValidish(true);
 			});
-		} else if (value.endsWith('.lens')) {
-			set_isLoadingValidish(true);
-			checkLensValidity(value).then(([validishDest, isValid]): void => {
-				performBatchedUpdates((): void => {
-					set_isLoadingValidish(false);
-					set_isValidish(isValid);
-					set_namedValue(validishDest);
-				});
+			const [address, isValid] = await checkENSValidity(label);
+			performBatchedUpdates((): void => {
+				if (currentLabel.current === label) {
+					onChangeValue({address, label, isValid});
+				}
+				set_isLoadingValidish(false);
 			});
-		} else if (!isZeroAddress(toAddress(value))) {
-			set_isValidValue(true);
+		} else if (label.endsWith('.lens') && label.length > 5) {
+			performBatchedUpdates((): void => {
+				onChangeValue({address: undefined, label, isValid: 'undetermined'});
+				set_isLoadingValidish(true);
+			});
+			const [address, isValid] = await checkLensValidity(label);
+			performBatchedUpdates((): void => {
+				if (currentLabel.current === label) {
+					onChangeValue({address, label, isValid});
+				}
+				set_isLoadingValidish(false);
+			});
+		} else if (!isZeroAddress(toAddress(label))) {
+			onChangeValue({address: toAddress(label), label, isValid: true});
 		} else {
-			set_isValidish(false);
+			onChangeValue({address: undefined, label, isValid: false});
 		}
-	}, [value]);
+	}, [onChangeValue, currentLabel]);
 
 	return (
-		<form
-			onSubmit={async (e): Promise<void> => e.preventDefault()}
-			className={`mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6 ${className}`}>
-			<div className={'box-0 grow-1 col-span-12 flex h-10 w-full items-center p-2 md:col-span-9'}>
+		<div className={cl('box-0 flex h-10 w-full items-center p-2', className)}>
+			<div className={'flex h-10 w-full flex-row items-center justify-between px-0 py-4'}>
 				<input
-					aria-invalid={!isValidValue}
-					onFocus={async (): Promise<void> => checkDestinationValidity()}
-					onBlur={async (): Promise<void> => checkDestinationValidity()}
+					disabled={shouldBeDisabled}
+					aria-invalid={status === 'invalid'}
+					onFocus={async (): Promise<void> => {
+						isFocused.current = true;
+						onChange(value.label);
+					}}
+					onBlur={(): void => {
+						isFocused.current = false;
+					}}
+					onChange={async (e): Promise<void> => onChange(e.target.value)}
 					required
+					autoComplete={'off'}
 					spellCheck={false}
 					placeholder={'0x...'}
 					type={'text'}
-					value={value}
-					onChange={(e): void => {
-						set_isValidValue('undetermined');
-						onChangeValue(e.target.value as never);
-					}}
-					className={'w-full overflow-x-scroll border-none bg-transparent py-4 px-0 font-mono text-sm font-bold outline-none scrollbar-none'} />
-				<div className={'pointer-events-none relative h-4 w-4'}>
-					<IconCheck
-						className={`absolute h-4 w-4 text-[#16a34a] transition-opacity ${isValidValue === true || isValidish === true ? 'opacity-100' : 'opacity-0'}`} />
-					<IconCircleCross
-						className={`absolute h-4 w-4 text-[#e11d48] transition-opacity ${(isValidValue === false && toAddress(value) !== toAddress() && !isLoadingValidish) ? 'opacity-100' : 'opacity-0'}`} />
-					<div className={'absolute inset-0 flex items-center justify-center'}>
-						<IconLoader className={`h-4 w-4 animate-spin text-neutral-900 transition-opacity ${isLoadingValidish ? 'opacity-100' : 'opacity-0'}`} />
+					value={value.label}
+					className={'w-full overflow-x-scroll border-none bg-transparent px-0 py-4 font-mono text-sm font-bold outline-none scrollbar-none'} />
+			</div>
+			<label
+				className={status === 'invalid' || status === 'warning' ? 'relative' : 'pointer-events-none relative h-4 w-4'}>
+				<span className={status === 'invalid' || status === 'warning' ? 'tooltip' : 'pointer-events-none'}>
+					<div className={'pointer-events-none relative h-4 w-4'}>
+						<IconCheck
+							className={`absolute h-4 w-4 text-[#16a34a] transition-opacity ${status === 'valid' ? 'opacity-100' : 'opacity-0'}`} />
+						<IconCircleCross
+							className={`absolute h-4 w-4 text-[#e11d48] transition-opacity ${status === 'invalid' ? 'opacity-100' : 'opacity-0'}`} />
+						<div className={'absolute inset-0 flex items-center justify-center'}>
+							<IconLoader className={`h-4 w-4 animate-spin text-neutral-900 transition-opacity ${status === 'pending' ? 'opacity-100' : 'opacity-0'}`} />
+						</div>
 					</div>
-				</div>
-			</div>
-
-			<div className={'col-span-12 md:col-span-3'}>
-				<Button
-					className={'yearn--button !w-[160px] rounded-md !text-sm'}
-					onClick={(): void => {
-						if (value.endsWith('.eth') || value.endsWith('.lens')) {
-							onConfirm(toAddress(namedValue));
-						} else if (isAddress(value)) {
-							onConfirm(toAddress(value));
-						}
-					}}
-					disabled={!(isValidValue === true || isValidish === true )|| shouldBeDisabled}>
-					{'Next'}
-				</Button>
-			</div>
-		</form>
+					<span className={'tooltiptextsmall'}>
+						{status === 'invalid' && 'This address is invalid'}
+						{status === 'warning' && 'This address is already in use'}
+					</span>
+				</span>
+			</label>
+		</div>
 	);
 }
 

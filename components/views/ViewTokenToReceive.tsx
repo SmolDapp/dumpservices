@@ -1,68 +1,58 @@
 import React, {useState} from 'react';
 import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
-import {isAddress} from 'ethers/lib/utils';
-import cowswapTokenList from 'utils/tokenLists.json';
-import axios from 'axios';
-import {useMountEffect, useUpdateEffect} from '@react-hookz/web';
+import {type TTokenInfo, useTokenList} from 'contexts/useTokenList';
+import {getNativeToken} from 'utils/wagmiProvider';
+import {useDeepCompareEffect, useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
+import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
-import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import {ETH_TOKEN_ADDRESS, ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {TTokenInfo, TTokenList} from 'contexts/useTokenList';
 import type {ReactElement} from 'react';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
-function	ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
-	const	{currentStep, destination, set_destination} = useSweepooor();
-	const	[tokenToReceive, set_tokenToReceive] = useState<string>(ETH_TOKEN_ADDRESS);
-	const	[isValidDestination, set_isValidDestination] = useState<boolean | 'undetermined'>('undetermined');
-	const	[possibleDestinations, set_possibleDestinations] = useState<TDict<TTokenInfo>>({});
+function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
+	const {currentStep, destination, set_destination} = useSweepooor();
+	// const [tokenToReceive, set_tokenToReceive] = useState<string>(ETH_TOKEN_ADDRESS);
+	// const [isValidDestination, set_isValidDestination] = useState<boolean | 'undetermined'>('undetermined');
+	// const [possibleDestinations, set_possibleDestinations] = useState<TDict<TTokenInfo>>({});
+
+	const {safeChainID} = useChainID();
+	const {tokenList} = useTokenList();
+	const [tokenToSend, set_tokenToSend] = useState<string>(ETH_TOKEN_ADDRESS);
+	const [isValidTokenToReceive, set_isValidTokenToReceive] = useState<boolean | 'undetermined'>(true);
+	const [possibleTokenToReceive, set_possibleTokenToReceive] = useState<TDict<TTokenInfo>>({});
+
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** On mount, fetch the token list from the tokenlistooor repo for the cowswap token list, which
-	** will be used to populate the destination token combobox.
+	** will be used to populate the tokenToDisperse token combobox.
 	** Only the tokens in that list will be displayed as possible destinations.
 	**********************************************************************************************/
-	useMountEffect((): void => {
-		axios.all([axios.get('https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/1/yearn.json')]).then(axios.spread((yearnResponse): void => {
-			const	cowswapTokenListResponse = cowswapTokenList as TTokenList;
-			const	yearnTokenListResponse = yearnResponse.data as TTokenList;
-			const	possibleDestinationsTokens: TDict<TTokenInfo> = {};
-			possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = {
-				address: ETH_TOKEN_ADDRESS,
-				chainId: 1,
-				name: 'Ether',
-				symbol: 'ETH',
-				decimals: 18,
-				logoURI: `https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/multichain-tokens/1/${ETH_TOKEN_ADDRESS}/logo-128.png`
-			};
-			for (const eachToken of cowswapTokenListResponse.tokens) {
-				if (eachToken.extra) {
-					continue;
-				}
+	useDeepCompareEffect((): void => {
+		const possibleDestinationsTokens: TDict<TTokenInfo> = {};
+		possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = getNativeToken(safeChainID);
+		for (const eachToken of Object.values(tokenList)) {
+			if (eachToken.chainId === safeChainID) {
 				possibleDestinationsTokens[toAddress(eachToken.address)] = eachToken;
 			}
-			for (const eachToken of yearnTokenListResponse.tokens) {
-				if (eachToken.symbol.startsWith('yv')) {
-					possibleDestinationsTokens[toAddress(eachToken.address)] = eachToken;
-				}
-			}
-			set_possibleDestinations(possibleDestinationsTokens);
-		}));
-	});
+		}
+		set_possibleTokenToReceive(possibleDestinationsTokens);
+	}, [tokenList, safeChainID]);
+
 
 	/* 🔵 - Yearn Finance **************************************************************************
-	** When the destination token changes, check if it is a valid destination token. The check is
+	** When the tokenToDisperse token changes, check if it is a valid tokenToDisperse token. The check is
 	** trivial as we only check if the address is valid.
 	**********************************************************************************************/
 	useUpdateEffect((): void => {
-		set_isValidDestination('undetermined');
-		if (!isZeroAddress(toAddress(tokenToReceive))) {
-			set_isValidDestination(true);
+		set_isValidTokenToReceive('undetermined');
+		if (!isZeroAddress(toAddress(tokenToSend))) {
+			set_isValidTokenToReceive(true);
 		}
-	}, [tokenToReceive]);
+	}, [tokenToSend]);
 
 	return (
 		<section>
@@ -80,44 +70,46 @@ function	ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 						className={'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'}>
 						<div className={'grow-1 col-span-12 flex h-10 w-full items-center md:col-span-9'}>
 							<ComboboxAddressInput
-								possibleDestinations={possibleDestinations}
-								onAddPossibleDestination={set_possibleDestinations}
-								tokenToReceive={tokenToReceive}
-								onChangeDestination={(newToken): void => {
-									if ([Step.SELECTOR, Step.APPROVALS, Step.RECEIVER].includes(currentStep)) {
+								shouldSort={false}
+								value={tokenToSend}
+								possibleValues={possibleTokenToReceive}
+								onAddValue={set_possibleTokenToReceive}
+								onChangeValue={(newToken): void => {
+									if ([Step.SELECTOR].includes(currentStep)) {
 										performBatchedUpdates((): void => {
-											set_tokenToReceive(newToken);
+											set_tokenToSend(newToken);
 											set_destination({
 												address: toAddress(newToken as string),
 												chainId: 1,
-												name: possibleDestinations[toAddress(newToken as string)]?.name || '',
-												symbol: possibleDestinations[toAddress(newToken as string)]?.symbol || '',
-												decimals: possibleDestinations[toAddress(newToken as string)]?.decimals || 0,
-												logoURI: possibleDestinations[toAddress(newToken as string)]?.logoURI || ''
+												name: possibleTokenToReceive[toAddress(newToken as string)]?.name || '',
+												symbol: possibleTokenToReceive[toAddress(newToken as string)]?.symbol || '',
+												decimals: possibleTokenToReceive[toAddress(newToken as string)]?.decimals || 0,
+												logoURI: possibleTokenToReceive[toAddress(newToken as string)]?.logoURI || ''
 											});
 										});
 									} else {
-										set_tokenToReceive(newToken);
+										set_tokenToSend(newToken);
 									}
 								}} />
 						</div>
 						<div className={'col-span-12 md:col-span-3'}>
 							<Button
+								variant={'filled'}
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
 								onClick={(): void => {
-									if (isAddress(tokenToReceive)) {
+									if (toAddress(tokenToSend) !== ZERO_ADDRESS) {
 										set_destination({
-											address: toAddress(tokenToReceive),
+											address: toAddress(tokenToSend),
 											chainId: 1,
-											name: possibleDestinations[tokenToReceive]?.name || '',
-											symbol: possibleDestinations[tokenToReceive]?.symbol || '',
-											decimals: possibleDestinations[tokenToReceive]?.decimals || 0,
-											logoURI: possibleDestinations[tokenToReceive]?.logoURI || ''
+											name: possibleTokenToReceive[tokenToSend]?.name || '',
+											symbol: possibleTokenToReceive[tokenToSend]?.symbol || '',
+											decimals: possibleTokenToReceive[tokenToSend]?.decimals || 0,
+											logoURI: possibleTokenToReceive[tokenToSend]?.logoURI || ''
 										});
 									}
 									onProceed();
 								}}
-								isDisabled={!isValidDestination || (toAddress(tokenToReceive) === toAddress(destination.address) && destination.chainId !== 0)}>
+								isDisabled={!isValidTokenToReceive || destination.chainId === 0}>
 								{'Next'}
 							</Button>
 						</div>
