@@ -86,8 +86,10 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 				set_amounts(defaultProps.amounts);
 				set_destination(defaultProps.destination);
 			});
+		} else if (isActive) {
+			set_receiver((d): TAddress => d === defaultProps.receiver ? toAddress(address) : d);
 		}
-	}, [isActive]);
+	}, [isActive, address]);
 
 	/**********************************************************************************************
 	** If the address changes, we need to update the receiver to the connected wallet address.

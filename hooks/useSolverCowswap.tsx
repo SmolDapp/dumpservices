@@ -1,13 +1,13 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {ethers} from 'ethers';
-import {getEthersSigner} from 'utils/wagmiEthersAdapter';
 import {OrderBookApi, OrderQuoteSide, OrderSigningUtils, SigningScheme} from '@cowprotocol/cow-sdk';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {getEthersSigner} from '@yearn-finance/web-lib/utils/wagmi/ethersAdapter';
 
 import type {Maybe, TInitSolverArgs, TOrderQuoteResponse, TPossibleStatus} from 'utils/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';

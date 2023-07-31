@@ -14,7 +14,6 @@ import {useAsync} from '@react-hookz/web';
 import {multicall} from '@wagmi/core';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
-import {useChain} from '@yearn-finance/web-lib/hooks/useChain';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import IconCross from '@yearn-finance/web-lib/icons/IconCross';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -22,6 +21,7 @@ import {ETH_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/util
 import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
 import {toBigInt, toNormalizedValue} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
 import type {TInputAddressLike} from 'components/AddressInput';
 import type {ReactElement} from 'react';
@@ -163,10 +163,11 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const {isActive, address, chainID} = useWeb3();
 	const {selected, quotes, destination, amounts, receiver} = useSweepooor();
 	const {balances, balancesNonce, isLoading} = useWallet();
+	const {safeChainID} = useChainID();
 	const [sortBy, set_sortBy] = useState<string>('');
 	const [sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
 	const [search, set_search] = useState<string>('');
-	const currentChain = useChain().getCurrent();
+	const currentChain = getNetwork(safeChainID);
 
 	const hasQuoteForEverySelectedToken = useMemo((): boolean => {
 		return (selected.length > 0 && selected.every((tokenAddress: string): boolean => (
@@ -232,14 +233,14 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 							<TokenRow
 								key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
 								amount={amounts[toAddress(tokenAddress)]}
-								explorer={currentChain?.block_explorer}
+								explorer={currentChain?.defaultBlockExplorer}
 								balance={balance}
 								tokenAddress={toAddress(tokenAddress)} />
 						</div>
 					);
 				})
 		);
-	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.block_explorer, search, receiver, selected]);
+	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, amounts, currentChain?.defaultBlockExplorer, search, receiver, selected]);
 
 	return (
 		<section>

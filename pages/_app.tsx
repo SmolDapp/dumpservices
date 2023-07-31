@@ -3,7 +3,7 @@ import {Inter} from 'next/font/google';
 import AppWrapper from 'components/common/AppWrapper';
 import {TokenListContextApp} from 'contexts/useTokenList';
 import {WalletContextApp} from 'contexts/useWallet';
-import config from 'utils/wagmiConfig';
+import {mainnet} from 'wagmi';
 import {SafeProvider} from '@gnosis.pm/safe-apps-react-sdk';
 import {WithYearn} from '@yearn-finance/web-lib/contexts/WithYearn';
 
@@ -23,7 +23,7 @@ function MyApp(props: AppProps): ReactElement {
 	return (
 		<>
 			<style jsx global>{`html {font-family: ${inter.style.fontFamily};}`}</style>
-			<WithYearn config={config}>
+			<WithYearn supportedChains={[mainnet]}>
 				<TokenListContextApp>
 					<WalletContextApp>
 						<SafeProvider>

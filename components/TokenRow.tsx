@@ -1,9 +1,9 @@
 import React, {memo, useCallback, useState} from 'react';
 import Link from 'next/link';
-import {ImageWithFallback} from 'components/common/ImageWithFallback';
 import TokenRowInput from 'components/TokenRowInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useMountEffect} from '@react-hookz/web';
+import {ImageWithFallback} from '@yearn-finance/web-lib/components/ImageWithFallback';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import IconLinkOut from '@yearn-finance/web-lib/icons/IconLinkOut';
 import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
@@ -89,7 +89,7 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 								{` - ${balance.name}`}
 							</p>
 						</div>
-						<p className={'hidden text-ellipsis font-mono text-xs text-neutral-500 md:line-clamp-1 md:block'}>
+						<p className={'md:line-clamp-1 hidden text-ellipsis font-mono text-xs text-neutral-500 md:block'}>
 							{balance.name}
 						</p>
 						<Link

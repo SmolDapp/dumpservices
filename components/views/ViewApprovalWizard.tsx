@@ -348,7 +348,7 @@ function StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 			***************************************************************************************/
 			try {
 				onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-				const {status, orderUID, error} = await cowswap.execute(
+				cowswap.execute(
 					quote,
 					Boolean(process.env.SHOULD_USE_PRESIGN),
 					(orderUID): void => {
@@ -357,58 +357,59 @@ function StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 							[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: 'pending'}
 						}));
 					}
-				);
-				if (error?.message) {
-					if (error?.message?.includes('InsufficientAllowance')) {
-						performBatchedUpdates((): void => {
-							onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
-							onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
-							set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
-							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-								...prev,
-								[tokenAddress]: {
-									...prev[tokenAddress],
-									quote: {...prev[tokenAddress].quote, validTo: 0},
-									orderUID: orderUID,
-									orderStatus: 'invalid'
-								}
-							}));
-						});
-					} else {
-						performBatchedUpdates((): void => {
-							onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
-							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-								...prev,
-								[tokenAddress]: {
-									...prev[tokenAddress],
-									quote: {...prev[tokenAddress].quote, validTo: 0},
-									orderUID: orderUID,
-									orderStatus: 'invalid'
-								}
-							}));
-						});
-					}
-				} else {
-					executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
-					onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-						...prev,
-						[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
-					}));
-					refresh([
-						{
-							token: toAddress(quote.quote.buyToken),
-							decimals: quote.request.outputToken.decimals,
-							name: quote.request.outputToken.label,
-							symbol: quote.request.outputToken.symbol
-						}, {
-							token: toAddress(quote.quote.sellToken),
-							decimals: quote.request.inputToken.decimals,
-							name: quote.request.inputToken.label,
-							symbol: quote.request.inputToken.symbol
+				).then(async ({status, orderUID, error}): Promise<void> => {
+					if (error?.message) {
+						if (error?.message?.includes('InsufficientAllowance')) {
+							performBatchedUpdates((): void => {
+								onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+								onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
+								set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
+								set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+									...prev,
+									[tokenAddress]: {
+										...prev[tokenAddress],
+										quote: {...prev[tokenAddress].quote, validTo: 0},
+										orderUID: orderUID,
+										orderStatus: 'invalid'
+									}
+								}));
+							});
+						} else {
+							performBatchedUpdates((): void => {
+								onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+								set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+									...prev,
+									[tokenAddress]: {
+										...prev[tokenAddress],
+										quote: {...prev[tokenAddress].quote, validTo: 0},
+										orderUID: orderUID,
+										orderStatus: 'invalid'
+									}
+								}));
+							});
 						}
-					]);
-				}
+					} else {
+						executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
+						onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
+						set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+							...prev,
+							[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
+						}));
+						refresh([
+							{
+								token: toAddress(quote.quote.buyToken),
+								decimals: quote.request.outputToken.decimals,
+								name: quote.request.outputToken.label,
+								symbol: quote.request.outputToken.symbol
+							}, {
+								token: toAddress(quote.quote.sellToken),
+								decimals: quote.request.inputToken.decimals,
+								name: quote.request.inputToken.label,
+								symbol: quote.request.inputToken.symbol
+							}
+						]);
+					}
+				});
 			} catch (error) {
 				performBatchedUpdates((): void => {
 					onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));

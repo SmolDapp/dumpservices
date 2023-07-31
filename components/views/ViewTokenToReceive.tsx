@@ -2,13 +2,13 @@ import React, {useState} from 'react';
 import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {type TTokenInfo, useTokenList} from 'contexts/useTokenList';
-import {getNativeToken} from 'utils/wagmiProvider';
 import {useDeepCompareEffect, useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS, ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
 import type {ReactElement} from 'react';
 import type {TDict} from '@yearn-finance/web-lib/types';
@@ -33,7 +33,17 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	**********************************************************************************************/
 	useDeepCompareEffect((): void => {
 		const possibleDestinationsTokens: TDict<TTokenInfo> = {};
-		possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = getNativeToken(safeChainID);
+		const {wrappedToken} = getNetwork(safeChainID).contracts;
+		if (wrappedToken) {
+			possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = {
+				address: ETH_TOKEN_ADDRESS,
+				chainId: safeChainID,
+				name: wrappedToken.coinName,
+				symbol: wrappedToken.coinSymbol,
+				decimals: wrappedToken.decimals,
+				logoURI: `https://assets.smold.app/api/token/${safeChainID}/${ETH_TOKEN_ADDRESS}/logo-128.png`
+			};
+		}
 		for (const eachToken of Object.values(tokenList)) {
 			if (eachToken.chainId === safeChainID) {
 				possibleDestinationsTokens[toAddress(eachToken.address)] = eachToken;

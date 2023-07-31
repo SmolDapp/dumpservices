@@ -1,7 +1,6 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import AddressInput, {defaultInputAddressLike} from 'components/AddressInput';
 import {useSweepooor} from 'contexts/useSweepooor';
-import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -16,9 +15,9 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const [tokenReceiver, set_tokenReceiver] = useState<TInputAddressLike>(defaultInputAddressLike);
 	const [hasBeenConfirmed, set_hasBeenConfirmed] = useState(false);
 
-	useUpdateEffect((): void => {
-		if (String(tokenReceiver?.address) === '') {
-			set_tokenReceiver({address, isValid: true, label: ''});
+	useEffect((): void => {
+		if (!tokenReceiver?.label && toAddress(address) !== toAddress()) {
+			set_tokenReceiver({address, isValid: true, label: address as string});
 		}
 	}, [tokenReceiver, address]);
 

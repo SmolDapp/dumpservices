@@ -1,11 +1,12 @@
-import {assertAddress, handleTx, toWagmiProvider} from 'utils/wagmiProvider';
 import {erc20ABI, readContract} from '@wagmi/core';
 import {MAX_UINT_256} from '@yearn-finance/web-lib/utils/constants';
 import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {handleTx, toWagmiProvider} from '@yearn-finance/web-lib/utils/wagmi/provider';
+import {assertAddress} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
-import type {TWriteTransaction} from 'utils/wagmiProvider';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '@yearn-finance/web-lib/types';
+import type {TWriteTransaction} from '@yearn-finance/web-lib/utils/wagmi/provider';
 import type {TTxResponse} from '@yearn-finance/web-lib/utils/web3/transaction';
 
 //Because USDT do not return a boolean on approve, we need to use this ABI

@@ -1,5 +1,4 @@
 import React, {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
-import {ImageWithFallback} from 'components/common/ImageWithFallback';
 import IconCheck from 'components/icons/IconCheck';
 import IconChevronBoth from 'components/icons/IconChevronBoth';
 import IconSpinner from 'components/icons/IconSpinner';
@@ -9,6 +8,7 @@ import {erc20ABI} from 'wagmi';
 import {Combobox, Transition} from '@headlessui/react';
 import {useAsync, useThrottledState} from '@react-hookz/web';
 import {multicall} from '@wagmi/core';
+import {ImageWithFallback} from '@yearn-finance/web-lib/components/ImageWithFallback';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
