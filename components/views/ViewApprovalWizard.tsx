@@ -8,19 +8,21 @@ import {approveERC20, isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
 import axios from 'axios';
+import {SigningScheme} from '@cowprotocol/cow-sdk';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import {MAX_UINT_256, SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 import {defaultTxStatus} from '@yearn-finance/web-lib/utils/web3/transaction';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TOrderQuoteResponse, TPossibleFlowStep} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
+import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
 
 type TExistingTx = {
@@ -87,6 +89,7 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 		const newlyExistingTransactions: TDict<TExistingTx> = {};
 		const executedQuotes = [];
 
+		console.log(allSelected);
 		// Check approvals and add them to the batch if needed
 		for (const token of allSelected) {
 			const quoteOrder = quotes[toAddress(token)];
@@ -94,11 +97,11 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 				connector: provider,
 				contractAddress: toAddress(token),
 				spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
-				amount: amounts[toAddress(token)]?.raw
+				amount: MAX_UINT_256
 			});
 			if (!isApproved) {
 				const newApprovalForBatch = getApproveTransaction(
-					amounts[toAddress(token)]?.raw.toString(),
+					MAX_UINT_256.toString(),
 					toAddress(token),
 					toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS)
 				);
@@ -106,6 +109,7 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			}
 
 			quoteOrder.signature = '0x';
+			quoteOrder.signingScheme = SigningScheme.PRESIGN as unknown as EcdsaSigningScheme;
 			const quoteID = quotes?.[toAddress(token)]?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${token}`);
@@ -123,28 +127,45 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			}
 
 			onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-			await cowswap.execute(quoteOrder, true, (orderUID): void => {
-				const newPreSignatureForBatch = getSetPreSignatureTransaction(
-					toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
-					orderUID,
-					true
-				);
+			console.log('HeeeeeERRRE');
+			try {
+				await cowswap.execute(quoteOrder, true, (orderUID): void => {
+					console.log(orderUID);
+					const newPreSignatureForBatch = getSetPreSignatureTransaction(
+						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
+						orderUID,
+						true
+					);
+					console.log('1');
 
-				newlyExistingTransactions[String(quoteOrder.id)] = {
-					tx: newPreSignatureForBatch,
-					orderUID
-				};
-				preparedTransactions.push(newPreSignatureForBatch);
-				executedQuotes.push({...quoteOrder, orderUID});
-				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-			});
+					newlyExistingTransactions[String(quoteOrder.id)] = {
+						tx: newPreSignatureForBatch,
+						orderUID
+					};
+					console.log('2');
+					preparedTransactions.push(newPreSignatureForBatch);
+					console.log('3');
+					executedQuotes.push({...quoteOrder, orderUID});
+					console.log('4');
+					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
+					console.log('5');
+				}).then((): void => {
+					console.log('here?');
+				});
+			} catch (error) {
+				console.error(error);
+				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+			}
+			console.log('HeeeeeERRRE2');
 		}
+		console.log('here????');
 
 		set_existingTransactions((existingTransactions: TDict<TExistingTx>): TDict<TExistingTx> => ({
 			...existingTransactions,
 			...newlyExistingTransactions
 		}));
 		try {
+			console.log(`WILL SEND ${preparedTransactions.length} TXS`);
 			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
 			try {
 				const tx = await axios.get(`https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${safeTxHash}`) as TSafeTxHistory;
@@ -158,7 +179,7 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			console.error(error);
 			set_isApproving(false);
 		}
-	}, [amounts, cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected, existingTransactions]);
+	}, [cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected, existingTransactions]);
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
