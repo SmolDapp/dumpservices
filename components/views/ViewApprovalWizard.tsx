@@ -89,7 +89,6 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 		const newlyExistingTransactions: TDict<TExistingTx> = {};
 		const executedQuotes = [];
 
-		console.log(allSelected);
 		// Check approvals and add them to the batch if needed
 		for (const token of allSelected) {
 			const quoteOrder = quotes[toAddress(token)];
@@ -127,45 +126,31 @@ function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			}
 
 			onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-			console.log('HeeeeeERRRE');
 			try {
 				await cowswap.execute(quoteOrder, true, (orderUID): void => {
-					console.log(orderUID);
 					const newPreSignatureForBatch = getSetPreSignatureTransaction(
 						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
 						orderUID,
 						true
 					);
-					console.log('1');
-
 					newlyExistingTransactions[String(quoteOrder.id)] = {
 						tx: newPreSignatureForBatch,
 						orderUID
 					};
-					console.log('2');
 					preparedTransactions.push(newPreSignatureForBatch);
-					console.log('3');
 					executedQuotes.push({...quoteOrder, orderUID});
-					console.log('4');
 					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-					console.log('5');
-				}).then((): void => {
-					console.log('here?');
 				});
 			} catch (error) {
-				console.error(error);
 				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
 			}
-			console.log('HeeeeeERRRE2');
 		}
-		console.log('here????');
 
 		set_existingTransactions((existingTransactions: TDict<TExistingTx>): TDict<TExistingTx> => ({
 			...existingTransactions,
 			...newlyExistingTransactions
 		}));
 		try {
-			console.log(`WILL SEND ${preparedTransactions.length} TXS`);
 			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
 			try {
 				const tx = await axios.get(`https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${safeTxHash}`) as TSafeTxHistory;

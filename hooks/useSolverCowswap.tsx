@@ -182,7 +182,6 @@ export function useSolverCowswap(): TSolverContext {
 		shouldUsePresign: boolean,
 		onSubmitted: (orderUID: string) => void
 	): Promise<TExecuteResp> => {
-		shouldUsePresign = false;
 		if (!quoteOrder) {
 			return {status: 'invalid', orderUID: '', quote: quoteOrder};
 		}
