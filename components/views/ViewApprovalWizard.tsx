@@ -37,7 +37,7 @@ type TSafeTxHistory = {
 function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
 	const {provider} = useWeb3();
 	const cowswap = useSolverCowswap();
-	const {selected, amounts, quotes, set_quotes} = useSweepooor();
+	const {selected, quotes, set_quotes} = useSweepooor();
 	const [isApproving, set_isApproving] = useState(false);
 	const [isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
 	const [existingTransactions, set_existingTransactions] = useState<TDict<TExistingTx>>({});
