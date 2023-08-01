@@ -5,7 +5,7 @@ import IconCircleCross from 'components/icons/IconCircleCross';
 import IconSpinner from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
-import {isApprovedERC20} from 'utils/actions/approveERC20';
+import {isApprovedERC20} from 'utils/actions';
 import {useAsync, useIntervalEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -14,7 +14,6 @@ import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 
-import type {ethers} from 'ethers';
 import type {ReactElement} from 'react';
 import type {TPossibleFlowStep} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
@@ -28,7 +27,7 @@ type TApprovalWizardItem = {
 	signStep: TDict<TPossibleFlowStep>,
 	executeStep: TDict<TPossibleFlowStep>,
 }
-function	ApprovalWizardItem({
+function ApprovalWizardItem({
 	token,
 	index,
 	isGnosisSafe,
@@ -47,12 +46,12 @@ function	ApprovalWizardItem({
 	const quoteExpiration = Number(isGnosisSafe ? (currentQuote?.quote?.validTo || 0) : (currentQuote?.expirationTimestamp || 0)) * 1000;
 
 	const [{result: hasAllowance}, triggerAllowanceCheck] = useAsync(async (): Promise<boolean> => {
-		return await isApprovedERC20(
-			provider as ethers.providers.Web3Provider,
-			toAddress(token), //from
-			toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS), //migrator
-			amounts[toAddress(token)]?.raw
-		);
+		return await isApprovedERC20({
+			connector: provider,
+			contractAddress: toAddress(token),
+			spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
+			amount: amounts[toAddress(token)]?.raw
+		});
 	}, false);
 
 	useEffect((): void => {
@@ -61,14 +60,14 @@ function	ApprovalWizardItem({
 
 	useIntervalEffect((): void => {
 		set_expireIn(quoteExpiration - new Date().valueOf());
-		if (quoteExpiration < new Date().valueOf()) {
+		if (quoteExpiration < new Date().valueOf() && !currentQuote?.orderUID) {
 			document?.getElementById(`quote-refresh-${toAddress(toAddress(token))}`)?.click();
 		}
 	}, (!hasQuote ? undefined : 1000));
 
 	useUpdateEffect((): void => {
 		set_expireIn(quoteExpiration - new Date().valueOf());
-		if (quoteExpiration < new Date().valueOf()) {
+		if (quoteExpiration < new Date().valueOf() && !currentQuote?.orderUID) {
 			document?.getElementById(`quote-refresh-${toAddress(toAddress(token))}`)?.click();
 		}
 	}, [quoteExpiration]);
@@ -79,7 +78,7 @@ function	ApprovalWizardItem({
 		}
 	}, [hasAllowance, step]);
 
-	function	renderApprovalIndication(): ReactElement {
+	function renderApprovalIndication(): ReactElement {
 		if (hasAllowance) {
 			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
 		}
@@ -92,7 +91,7 @@ function	ApprovalWizardItem({
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
 	}
 
-	function	renderSignatureIndication(): ReactElement {
+	function renderSignatureIndication(): ReactElement {
 		if (!currentQuote?.id) {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
@@ -108,7 +107,7 @@ function	ApprovalWizardItem({
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
 	}
 
-	function	renderExecuteIndication(): ReactElement {
+	function renderExecuteIndication(): ReactElement {
 		if (!currentQuote?.orderStatus) {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
@@ -121,7 +120,7 @@ function	ApprovalWizardItem({
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
 	}
 
-	function	renderIndicators(): ReactElement {
+	function renderIndicators(): ReactElement {
 		if (isGnosisSafe) {
 			return (
 				<div className={'flex flex-row items-center space-x-2 pt-2 md:space-x-4'}>
@@ -188,7 +187,15 @@ function	ApprovalWizardItem({
 		);
 	}
 
-	function	renderExpiration(): ReactElement {
+	function renderExpiration(): ReactElement {
+		if (currentQuote?.orderUID) {
+			return (
+				<small className={'text-xs tabular-nums text-neutral-500'}>
+					&nbsp;
+				</small>
+			);
+		}
+
 		if (Math.floor(expireIn / 1000) <= 0) {
 			return (
 				<div className={'tooltip'}>

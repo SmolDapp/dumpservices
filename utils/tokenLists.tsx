@@ -1,4 +1,4 @@
-const	TOKEN_LISTS = [
+const TOKEN_LISTS = [
 	{
 		name: 'CoinGecko',
 		uri: 'https://tokens.coingecko.com/uniswap/all.json',

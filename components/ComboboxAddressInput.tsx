@@ -1,99 +1,222 @@
-import React, {Fragment, useState} from 'react';
-import Image from 'next/image';
+import React, {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import IconCheck from 'components/icons/IconCheck';
 import IconChevronBoth from 'components/icons/IconChevronBoth';
-import {Contract} from 'ethcall';
-import {isAddress} from 'ethers/lib/utils';
+import IconSpinner from 'components/icons/IconSpinner';
+import {useWallet} from 'contexts/useWallet';
+import {isAddress} from 'viem';
+import {erc20ABI} from 'wagmi';
 import {Combobox, Transition} from '@headlessui/react';
-import {useAsync, useThrottledState, useUpdateEffect} from '@react-hookz/web';
-import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
+import {useAsync, useThrottledState} from '@react-hookz/web';
+import {multicall} from '@wagmi/core';
+import {ImageWithFallback} from '@yearn-finance/web-lib/components/ImageWithFallback';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
-import ERC20_ABI from '@yearn-finance/web-lib/utils/abi/erc20.abi';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import {decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
+import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
-import {getProvider, newEthCallProvider} from '@yearn-finance/web-lib/utils/web3/providers';
 
 import type {TTokenInfo} from 'contexts/useTokenList';
-import type {BigNumber, providers} from 'ethers';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TComboboxAddressInput = {
-	possibleDestinations: TDict<TTokenInfo>;
-	tokenToReceive: string;
-	onChangeDestination: Dispatch<SetStateAction<string>>,
-	onAddPossibleDestination: Dispatch<SetStateAction<TDict<TTokenInfo>>>
+	value: string;
+	possibleValues: TDict<TTokenInfo>;
+	onChangeValue: Dispatch<SetStateAction<string>>,
+	onAddValue: Dispatch<SetStateAction<TDict<TTokenInfo>>>,
+	shouldSort?: boolean
+}
+
+type TElement = {
+	address: TAddress;
+	logoURI: string;
+	symbol: string;
+	decimals: number;
+	balanceNormalized: number;
+}
+function Element(props: TElement): ReactElement {
+	return (
+		<div className={'flex w-full flex-row items-center space-x-4'}>
+			<div className={'h-6 w-6'}>
+				<ImageWithFallback
+					alt={''}
+					unoptimized
+					src={props.logoURI || ''}
+					width={24}
+					height={24} />
+			</div>
+			<div className={'flex flex-col font-sans text-neutral-900'}>
+				<div className={'flex flex-row items-center'}>
+					{props.symbol}
+				</div>
+				<small className={'font-number text-xs text-neutral-500'}>{toAddress(props.address)}</small>
+			</div>
+		</div>
+	);
 }
 
 function ComboboxOption({option}: {option: TTokenInfo}): ReactElement {
+	const {balances} = useWallet();
+
 	return (
 		<Combobox.Option
 			className={({active: isActive}): string => `relative cursor-pointer select-none py-2 px-4 ${isActive ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-900'}`}
 			value={toAddress(option.address)}>
 			{({selected: isSelected}): ReactElement => (
-				<div className={'flex w-full flex-row items-center space-x-4'}>
-					<div className={'h-6 w-6'}>
-						{(option?.logoURI || '') !== '' ? (
-							<Image
-								alt={''}
-								unoptimized
-								src={option?.logoURI}
-								width={24}
-								height={24} />
-						) : <div className={'h-6 w-6 rounded-full bg-neutral-0'} />}
-					</div>
-					<div className={'flex flex-col font-sans text-neutral-900'}>
-						{option.symbol}
-						<small className={'font-number text-xs text-neutral-500'}>{toAddress(option.address)}</small>
-					</div>
+				<>
+					<Element
+						logoURI={option.logoURI}
+						symbol={option.symbol}
+						address={option.address}
+						decimals={option.decimals}
+						balanceNormalized={balances?.[toAddress(option.address)]?.normalized || 0}
+					/>
 					{isSelected ? (
 						<span
 							className={'absolute inset-y-0 right-8 flex items-center'}>
 							<IconCheck className={'absolute h-4 w-4 text-neutral-900'} />
 						</span>
 					) : null}
-				</div>
+				</>
 			)}
 		</Combobox.Option>
 	);
 }
 
-function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDestination, onAddPossibleDestination}: TComboboxAddressInput): ReactElement {
-	const	{provider} = useWeb3();
-	const	{safeChainID} = useChainID();
-	const	[query, set_query] = useState('');
-	const	[isOpen, set_isOpen] = useThrottledState(false, 400);
+function ComboboxAddressInput({
+	possibleValues,
+	value,
+	onChangeValue,
+	onAddValue,
+	shouldSort = true
+}: TComboboxAddressInput): ReactElement {
+	const {safeChainID} = useChainID();
+	const {balances, refresh} = useWallet();
+	const [query, set_query] = useState('');
+	const [isOpen, set_isOpen] = useThrottledState(false, 100);
+	const [isLoadingTokenData, set_isLoadingTokenData] = useState(false);
 
-	const [{result: tokenData}, fetchTokenData] = useAsync(async function fetchToken(
-		_provider: providers.JsonRpcProvider,
+	const fetchToken = useCallback(async (
 		_safeChainID: number,
 		_query: TAddress
-	): Promise<{name: string, symbol: string, decimals: number} | undefined> {
+	): Promise<{name: string, symbol: string, decimals: number} | undefined> => {
 		if (!isAddress(_query)) {
 			return (undefined);
-
 		}
-		const currentProvider = _safeChainID === 1 ? _provider || getProvider(1) : getProvider(1);
-		const ethcallProvider = await newEthCallProvider(currentProvider);
-		const erc20Contract = new Contract(_query, ERC20_ABI);
+		const results = await multicall({
+			contracts: [
+				{address: _query, abi: erc20ABI, functionName: 'name'},
+				{address: _query, abi: erc20ABI, functionName: 'symbol'},
+				{address: _query, abi: erc20ABI, functionName: 'decimals'}
+			],
+			chainId: _safeChainID
+		});
+		const name = decodeAsString(results[0]);
+		const symbol = decodeAsString(results[1]);
+		const decimals = decodeAsNumber(results[2]);
+		await refresh([{decimals, name, symbol, token: _query}]);
+		return ({name, symbol, decimals});
+	}, [refresh]);
+	const [{result: tokenData}, fetchTokenData] = useAsync(fetchToken);
 
-		const calls = [erc20Contract.name(), erc20Contract.symbol(), erc20Contract.decimals()];
-		const [name, symbol, decimals] = await ethcallProvider.tryAll(calls) as [string, string, BigNumber];
-		return ({name, symbol, decimals: decimals.toNumber()});
-	}, undefined);
+	const onChange = useCallback(async (_selected: TAddress): Promise<void> => {
+		let _tokenData = possibleValues[_selected];
+		if (!_tokenData || (!_tokenData.name && !_tokenData.symbol && !_tokenData.decimals)) {
+			set_isLoadingTokenData(true);
+			const result = await fetchToken(safeChainID, _selected);
+			_tokenData = {
+				..._tokenData,
+				name: result?.name || '',
+				symbol: result?.symbol || '',
+				decimals: result?.decimals || 0,
+				chainId: safeChainID
+			};
+			set_isLoadingTokenData(false);
+		}
 
-	useUpdateEffect((): void => {
-		fetchTokenData.execute(provider, safeChainID, toAddress(query));
-	}, [fetchTokenData, provider, safeChainID, query]);
+		performBatchedUpdates((): void => {
+			onAddValue((prev: TDict<TTokenInfo>): TDict<TTokenInfo> => {
+				if (prev[_selected]) {
+					return (prev);
+				}
+				return ({
+					...prev,
+					[toAddress(_selected)]: {
+						address: toAddress(_selected),
+						name: _tokenData?.name || '',
+						symbol: _tokenData?.symbol || '',
+						decimals: _tokenData?.decimals || 18,
+						chainId: safeChainID,
+						logoURI: `https://assets.smold.app/api/token/${safeChainID}/${toAddress(_selected)}/logo-128.png`
+					}
+				});
+			});
+			onChangeValue(_selected);
+			set_isOpen(false);
+		});
+	}, [possibleValues, fetchToken, safeChainID, onAddValue, onChangeValue, set_isOpen]);
 
-	const filteredDestinations = query === ''
-		? Object.values(possibleDestinations || [])
-		: Object.values(possibleDestinations || []).filter((dest): boolean =>
+	useEffect((): void => {
+		fetchTokenData.execute(safeChainID, toAddress(query));
+	}, [fetchTokenData, safeChainID, query]);
+
+	const filteredValues = query === ''
+		? Object.values(possibleValues || [])
+		: Object.values(possibleValues || []).filter((dest): boolean =>
 			`${dest.name}_${dest.symbol}`
 				.toLowerCase()
 				.replace(/\s+/g, '')
 				.includes(query.toLowerCase().replace(/\s+/g, ''))
 		);
+
+	const filteredBalances = useMemo((): [TTokenInfo[], TTokenInfo[]] => {
+		if (!shouldSort) {
+			return ([filteredValues, []]);
+		}
+		const withBalance = [];
+		const withoutBalance = [];
+		for (const dest of filteredValues) {
+			if (toBigInt(balances?.[toAddress(dest.address)]?.raw) > 0n) {
+				withBalance.push(dest);
+			} else {
+				withoutBalance.push(dest);
+			}
+		}
+		return ([withBalance, withoutBalance]);
+	}, [balances, filteredValues, shouldSort]);
+
+	function renderElement(): ReactElement {
+		const currentElement = possibleValues?.[toAddress(value)];
+		return (
+			<div className={'relative flex w-full flex-row items-center space-x-4'}>
+				<div key={`${value}_${currentElement?.chainId || 0}`} className={'h-6 w-6'}>
+					<ImageWithFallback
+						alt={''}
+						unoptimized
+						src={currentElement?.logoURI || ''}
+						width={24}
+						height={24} />
+				</div>
+				<div className={'flex flex-col text-left font-sans text-neutral-900'}>
+					<p className={'w-full overflow-x-hidden text-ellipsis whitespace-nowrap pr-4 font-normal text-neutral-900 scrollbar-none'}>
+						<Combobox.Input
+							className={'font-inter w-full cursor-default overflow-x-scroll border-none bg-transparent p-0 outline-none scrollbar-none'}
+							displayValue={(dest: TAddress): string => possibleValues?.[toAddress(dest)]?.symbol || ''}
+							placeholder={'0x...'}
+							autoComplete={'off'}
+							autoCorrect={'off'}
+							spellCheck={false}
+							onChange={(event): void => {
+								performBatchedUpdates((): void => {
+									set_isOpen(true);
+									set_query(event.target.value);
+								});
+							}} />
+					</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className={'w-full'}>
@@ -106,61 +229,19 @@ function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDes
 						set_isOpen(false);
 					}} />
 			) : null}
-			<Combobox<any>
-				value={tokenToReceive}
-				onChange={(_selected: TAddress): void => {
-					onAddPossibleDestination((prev: TDict<TTokenInfo>): TDict<TTokenInfo> => {
-						if (prev[_selected]) {
-							return (prev);
-						}
-						return ({
-							...prev,
-							[toAddress(_selected)]: {
-								address: toAddress(_selected),
-								name: tokenData?.name || '',
-								symbol: tokenData?.symbol || '',
-								decimals: tokenData?.decimals || 18,
-								chainId: safeChainID,
-								logoURI: ''
-							}
-						});
-					});
-					performBatchedUpdates((): void => {
-						onChangeDestination(_selected);
-						set_isOpen(false);
-					});
-				}}>
+			<Combobox<unknown>
+				value={value}
+				onChange={onChange}>
 				<div className={'relative'}>
 					<Combobox.Button
 						onClick={(): void => set_isOpen((o: boolean): boolean => !o)}
-						className={'box-0 grow-1 col-span-12 flex h-10 w-full items-center p-2 px-4 md:col-span-9'}>
-						<div className={'relative flex w-full flex-row items-center space-x-4'}>
-							<div key={tokenToReceive} className={'h-6 w-6'}>
-								{(possibleDestinations?.[toAddress(tokenToReceive)]?.logoURI || '') !== '' ? (
-									<Image
-										alt={''}
-										unoptimized
-										src={possibleDestinations?.[toAddress(tokenToReceive)]?.logoURI}
-										width={24}
-										height={24} />
-								) : <div className={'h-6 w-6 rounded-full bg-neutral-0'} />}
+						className={'box-0 grow-1 col-span-12 flex h-12 w-full items-center p-2 px-4 md:col-span-9'}>
+						{renderElement()}
+						{isLoadingTokenData && (
+							<div className={'absolute right-8'}>
+								<IconSpinner className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
 							</div>
-							<p className={'w-full overflow-x-hidden text-ellipsis whitespace-nowrap pr-4 font-normal text-neutral-900 scrollbar-none'}>
-								<Combobox.Input
-									className={'font-inter w-full cursor-default overflow-x-scroll border-none bg-transparent p-0 outline-none scrollbar-none'}
-									displayValue={(dest: TAddress): string => possibleDestinations?.[toAddress(dest)]?.symbol || ''}
-									placeholder={'Ethereum'}
-									autoComplete={'off'}
-									autoCorrect={'off'}
-									spellCheck={false}
-									onChange={(event): void => {
-										performBatchedUpdates((): void => {
-											set_isOpen(true);
-											set_query(event.target.value);
-										});
-									}} />
-							</p>
-						</div>
+						)}
 						<div className={'absolute right-2 md:right-3'}>
 							<IconChevronBoth className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
 						</div>
@@ -176,11 +257,11 @@ function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDes
 						leaveTo={'transform scale-95 opacity-0'}
 						afterLeave={(): void => set_query('')}>
 						<Combobox.Options className={'box-0 absolute left-0 z-50 mt-1 flex max-h-60 w-full min-w-fit flex-col overflow-y-auto scrollbar-none'}>
-							{filteredDestinations.length === 0 && query !== '' && !tokenData ? (
-								<div className={'relative cursor-default select-none py-2 px-4 text-neutral-500'}>
+							{filteredValues.length === 0 && query !== '' && !tokenData ? (
+								<div className={'relative cursor-default select-none px-4 py-2 text-neutral-500'}>
 									{'No token found.'}
 								</div>
-							) : filteredDestinations.length === 0 && query !== '' && tokenData ? (
+							) : filteredValues.length === 0 && query !== '' && tokenData ? (
 								<ComboboxOption
 									option={{
 										address: toAddress(query),
@@ -192,9 +273,13 @@ function ComboboxAddressInput({possibleDestinations, tokenToReceive, onChangeDes
 									}} />
 
 							) : (
-								filteredDestinations.map((dest): ReactElement => (
-									<ComboboxOption key={dest.address} option={dest} />
-								))
+								[...filteredBalances[0], ...filteredBalances[1]]
+									.slice(0, 100)
+									.map((dest): ReactElement => (
+										<ComboboxOption
+											key={`${dest.address}_${dest.chainId}`}
+											option={dest} />
+									))
 							)}
 						</Combobox.Options>
 					</Transition>

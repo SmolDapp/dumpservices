@@ -7,8 +7,8 @@ import IconSettings from '@yearn-finance/web-lib/icons/IconSettings';
 import type {ReactElement} from 'react';
 
 export default function SettingsPopover(): ReactElement {
-	const	{slippage} = useSweepooor();
-	const	[slippageValue, set_slippageValue] = useState(0.1);
+	const {slippage} = useSweepooor();
+	const [slippageValue, set_slippageValue] = useState(0.1);
 
 	useEffect((): void => {
 		set_slippageValue((prev): number => {
@@ -35,7 +35,7 @@ export default function SettingsPopover(): ReactElement {
 						leave={'transition ease-in duration-150'}
 						leaveFrom={'opacity-100 translate-y-0'}
 						leaveTo={'opacity-0 translate-y-1'}>
-						<Popover.Panel className={'absolute right-0 top-6 isolate z-[1000] mt-3 w-screen max-w-[280px] md:top-4 md:-right-10'}>
+						<Popover.Panel className={'absolute right-0 top-6 isolate z-[1000] mt-3 w-screen max-w-[280px] md:-right-10 md:top-4'}>
 							<div className={'relative rounded-md border border-neutral-900 bg-neutral-900 p-4'}>
 								<div>
 									<label

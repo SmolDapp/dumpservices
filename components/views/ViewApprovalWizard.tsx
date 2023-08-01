@@ -4,23 +4,25 @@ import IconSpinner from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
-import {approveERC20, isApprovedERC20} from 'utils/actions/approveERC20';
-import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/gnosis.tools';
+import {approveERC20, isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
+import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
 import axios from 'axios';
+import {SigningScheme} from '@cowprotocol/cow-sdk';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import {MAX_UINT_256, SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
-import {defaultTxStatus, Transaction} from '@yearn-finance/web-lib/utils/web3/transaction';
+import {defaultTxStatus} from '@yearn-finance/web-lib/utils/web3/transaction';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TOrderQuoteResponse, TPossibleFlowStep} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
+import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
 
 type TExistingTx = {
@@ -32,20 +34,20 @@ type TSafeTxHistory = {
 	nonce: number
 }
 
-function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
-	const	{provider} = useWeb3();
-	const	cowswap = useSolverCowswap();
-	const	{selected, amounts, quotes, set_quotes} = useSweepooor();
-	const	[isApproving, set_isApproving] = useState(false);
-	const	[isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
-	const	[existingTransactions, set_existingTransactions] = useState<TDict<TExistingTx>>({});
-	const	{sdk} = useSafeAppsSDK();
+function GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
+	const {provider} = useWeb3();
+	const cowswap = useSolverCowswap();
+	const {selected, quotes, set_quotes} = useSweepooor();
+	const [isApproving, set_isApproving] = useState(false);
+	const [isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
+	const [existingTransactions, set_existingTransactions] = useState<TDict<TExistingTx>>({});
+	const {sdk} = useSafeAppsSDK();
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
 	** time. This function will refresh all the quotes, and update the UI accordingly.
 	**********************************************************************************************/
-	const	onRefreshAllQuotes = useCallback(async (): Promise<void> => {
+	const onRefreshAllQuotes = useCallback(async (): Promise<void> => {
 		set_isRefreshingQuotes(true);
 		for (const currentQuote of Object.values(quotes)) {
 			if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
@@ -81,24 +83,24 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	** - The quote will be sent to the Cowswap API with signingScheme set to 'presign'
 	** - A orderUID will be returned
 	**********************************************************************************************/
-	const	onExecuteFromGnosis = useCallback(async (): Promise<void> => {
-		const	allSelected = [...selected];
-		const	preparedTransactions: BaseTransaction[] = [];
-		const	newlyExistingTransactions: TDict<TExistingTx> = {};
-		const	executedQuotes = [];
+	const onExecuteFromGnosis = useCallback(async (): Promise<void> => {
+		const allSelected = [...selected];
+		const preparedTransactions: BaseTransaction[] = [];
+		const newlyExistingTransactions: TDict<TExistingTx> = {};
+		const executedQuotes = [];
 
 		// Check approvals and add them to the batch if needed
 		for (const token of allSelected) {
-			const	quoteOrder = quotes[toAddress(token)];
-			const	isApproved = await isApprovedERC20(
-				provider,
-				toAddress(token), //from
-				toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS), //migrator
-				amounts[toAddress(token)]?.raw
-			);
+			const quoteOrder = quotes[toAddress(token)];
+			const isApproved = await isApprovedERC20({
+				connector: provider,
+				contractAddress: toAddress(token),
+				spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
+				amount: MAX_UINT_256
+			});
 			if (!isApproved) {
 				const newApprovalForBatch = getApproveTransaction(
-					amounts[toAddress(token)]?.raw.toString(),
+					MAX_UINT_256.toString(),
 					toAddress(token),
 					toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS)
 				);
@@ -106,13 +108,14 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			}
 
 			quoteOrder.signature = '0x';
+			quoteOrder.signingScheme = SigningScheme.PRESIGN as unknown as EcdsaSigningScheme;
 			const quoteID = quotes?.[toAddress(token)]?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${token}`);
 				continue;
 			}
 
-			const	existingTx = existingTransactions[String(quoteOrder.id)];
+			const existingTx = existingTransactions[String(quoteOrder.id)];
 			if (existingTx) {
 				//we already have an execute tx for this token in our batch
 				console.warn(`Execute for ${token} already in batch`);
@@ -123,21 +126,24 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			}
 
 			onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-			await cowswap.execute(quoteOrder, true, (orderUID): void => {
-				const newPreSignatureForBatch = getSetPreSignatureTransaction(
-					toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
-					orderUID,
-					true
-				);
-
-				newlyExistingTransactions[String(quoteOrder.id)] = {
-					tx: newPreSignatureForBatch,
-					orderUID
-				};
-				preparedTransactions.push(newPreSignatureForBatch);
-				executedQuotes.push({...quoteOrder, orderUID});
-				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-			});
+			try {
+				await cowswap.execute(quoteOrder, true, (orderUID): void => {
+					const newPreSignatureForBatch = getSetPreSignatureTransaction(
+						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
+						orderUID,
+						true
+					);
+					newlyExistingTransactions[String(quoteOrder.id)] = {
+						tx: newPreSignatureForBatch,
+						orderUID
+					};
+					preparedTransactions.push(newPreSignatureForBatch);
+					executedQuotes.push({...quoteOrder, orderUID});
+					onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
+				});
+			} catch (error) {
+				onUpdateSignStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+			}
 		}
 
 		set_existingTransactions((existingTransactions: TDict<TExistingTx>): TDict<TExistingTx> => ({
@@ -158,7 +164,7 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 			console.error(error);
 			set_isApproving(false);
 		}
-	}, [amounts, cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected, existingTransactions]);
+	}, [cowswap, onUpdateSignStep, provider, quotes, sdk.txs, selected, existingTransactions]);
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
@@ -185,21 +191,21 @@ function	GnosisBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetSt
 	);
 }
 
-function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteStep}: {
+function StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteStep}: {
 	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>,
 	onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>,
 	onUpdateExecuteStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>
 }): ReactElement {
-	const	{provider} = useWeb3();
-	const	{refresh} = useWallet();
-	const	{selected, amounts, quotes, set_quotes} = useSweepooor();
-	const	{toast} = yToast();
-	const	[approveStatus, set_approveStatus] = useState<TDict<boolean>>({});
-	const	[isApproving, set_isApproving] = useState(false);
-	const	[isSigning, set_isSigning] = useState(false);
-	const	[isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
-	const	[, set_txStatus] = useState(defaultTxStatus);
-	const	cowswap = useSolverCowswap();
+	const {provider} = useWeb3();
+	const {refresh} = useWallet();
+	const {selected, amounts, quotes, set_quotes} = useSweepooor();
+	const {toast} = yToast();
+	const [approveStatus, set_approveStatus] = useState<TDict<boolean>>({});
+	const [isApproving, set_isApproving] = useState(false);
+	const [isSigning, set_isSigning] = useState(false);
+	const [isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
+	const [, set_txStatus] = useState(defaultTxStatus);
+	const cowswap = useSolverCowswap();
 
 
 	/* 🔵 - Yearn Finance **************************************************************************
@@ -207,7 +213,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 	** approved and signed.
 	** If so, the onSendOrders function will be called.
 	**********************************************************************************************/
-	const	areAllApproved = useMemo((): boolean => {
+	const areAllApproved = useMemo((): boolean => {
 		if (selected.length === 0) {
 			return false;
 		}
@@ -225,14 +231,14 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 	** we will check if the allowance is enough for the amount to be swept.
 	**********************************************************************************************/
 	useUpdateEffect((): void => {
-		const	allSelected = [...selected];
+		const allSelected = [...selected];
 		for (const token of allSelected) {
-			isApprovedERC20(
-				provider,
-				toAddress(token), //from
-				toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS), //migrator
-				amounts[toAddress(token)]?.raw
-			).then((isApproved): void => {
+			isApprovedERC20({
+				connector: provider,
+				contractAddress: toAddress(token),
+				spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
+				amount: amounts[toAddress(token)]?.raw
+			}).then((isApproved): void => {
 				set_approveStatus((prev): TDict<boolean> => ({...prev, [toAddress(token)]: isApproved}));
 			}).catch((error): void => {
 				console.error(error);
@@ -246,40 +252,43 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 	** If the token is already approved, state will be updated to true but approval will not be
 	** performed.
 	**********************************************************************************************/
-	const	onApproveERC20 = useCallback(async (): Promise<void> => {
+	const onApproveERC20 = useCallback(async (): Promise<void> => {
 		performBatchedUpdates((): void => {
 			onUpdateApprovalStep({});
 			set_isApproving(true);
 		});
 
-		const	allSelected = [...selected];
+		const allSelected = [...selected];
 		for (const token of allSelected) {
-			const	quoteID = quotes?.[toAddress(token)]?.id;
+			const quoteID = quotes?.[toAddress(token)]?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${token}`);
 				continue;
 			}
 			try {
-				const	isApproved = await isApprovedERC20(
-					provider,
-					toAddress(token), //from
-					toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS), //migrator
-					amounts[toAddress(token)]?.raw
-				);
+				const isApproved = await isApprovedERC20({
+					connector: provider,
+					contractAddress: toAddress(token),
+					spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
+					amount: amounts[toAddress(token)]?.raw
+				});
 
 				if (!isApproved) {
 					onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-					const {isSuccessful} = await new Transaction(provider, approveERC20, set_txStatus).populate(
-						toAddress(token),
-						toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
-						amounts[toAddress(token)]?.raw
-					).onSuccess(async (): Promise<void> => {
+
+					const result = await approveERC20({
+						connector: provider,
+						contractAddress: toAddress(token),
+						spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
+						amount: amounts[toAddress(token)]?.raw,
+						statusHandler: set_txStatus
+					});
+					if (result.isSuccessful) {
 						performBatchedUpdates((): void => {
 							set_approveStatus((prev): TDict<boolean> => ({...prev, [toAddress(token)]: true}));
 							onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
 						});
-					}).perform();
-					if (!isSuccessful) {
+					} else {
 						onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
 					}
 				} else {
@@ -300,7 +309,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 	** update the quote to append the orderUID which will be used to track execution of the order,
 	** aka from pending to status (fulfilled, cancelled, etc)
 	**********************************************************************************************/
-	const	onSendOrders = useCallback(async (): Promise<void> => {
+	const onSendOrders = useCallback(async (): Promise<void> => {
 		if (!areAllApproved) {
 			toast({type: 'error', content: 'Please approve all tokens before sending orders'});
 			return;
@@ -309,9 +318,9 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 		const allSelected = [...selected];
 		const executedQuotes: TOrderQuoteResponse[] = [];
 		for (const token of allSelected) {
-			const	tokenAddress = toAddress(token);
-			const	quote = quotes[tokenAddress];
-			const	quoteID = quotes?.[tokenAddress]?.id;
+			const tokenAddress = toAddress(token);
+			const quote = quotes[tokenAddress];
+			const quoteID = quotes?.[tokenAddress]?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${token}`); //should not happen
 				continue;
@@ -345,7 +354,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 			***************************************************************************************/
 			try {
 				onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'pending'}));
-				const {status, orderUID, error} = await cowswap.execute(
+				cowswap.execute(
 					quote,
 					Boolean(process.env.SHOULD_USE_PRESIGN),
 					(orderUID): void => {
@@ -354,58 +363,59 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 							[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: 'pending'}
 						}));
 					}
-				);
-				if (error?.message) {
-					if (error?.message?.includes('InsufficientAllowance')) {
-						performBatchedUpdates((): void => {
-							onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
-							onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
-							set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
-							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-								...prev,
-								[tokenAddress]: {
-									...prev[tokenAddress],
-									quote: {...prev[tokenAddress].quote, validTo: 0},
-									orderUID: orderUID,
-									orderStatus: 'invalid'
-								}
-							}));
-						});
-					} else {
-						performBatchedUpdates((): void => {
-							onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
-							set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-								...prev,
-								[tokenAddress]: {
-									...prev[tokenAddress],
-									quote: {...prev[tokenAddress].quote, validTo: 0},
-									orderUID: orderUID,
-									orderStatus: 'invalid'
-								}
-							}));
-						});
-					}
-				} else {
-					executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
-					onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
-					set_quotes((prev): TDict<TOrderQuoteResponse> => ({
-						...prev,
-						[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
-					}));
-					refresh([
-						{
-							token: quote.quote.buyToken,
-							decimals: quote.request.outputToken.decimals,
-							name: quote.request.outputToken.label,
-							symbol: quote.request.outputToken.symbol
-						}, {
-							token: quote.quote.sellToken,
-							decimals: quote.request.inputToken.decimals,
-							name: quote.request.inputToken.label,
-							symbol: quote.request.inputToken.symbol
+				).then(async ({status, orderUID, error}): Promise<void> => {
+					if (error?.message) {
+						if (error?.message?.includes('InsufficientAllowance')) {
+							performBatchedUpdates((): void => {
+								onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+								onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'undetermined'}));
+								set_approveStatus((prev): TDict<boolean> => ({...prev, [tokenAddress]: false}));
+								set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+									...prev,
+									[tokenAddress]: {
+										...prev[tokenAddress],
+										quote: {...prev[tokenAddress].quote, validTo: 0},
+										orderUID: orderUID,
+										orderStatus: 'invalid'
+									}
+								}));
+							});
+						} else {
+							performBatchedUpdates((): void => {
+								onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
+								set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+									...prev,
+									[tokenAddress]: {
+										...prev[tokenAddress],
+										quote: {...prev[tokenAddress].quote, validTo: 0},
+										orderUID: orderUID,
+										orderStatus: 'invalid'
+									}
+								}));
+							});
 						}
-					]);
-				}
+					} else {
+						executedQuotes.push({...quote, orderUID: orderUID, orderStatus: status});
+						onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'valid'}));
+						set_quotes((prev): TDict<TOrderQuoteResponse> => ({
+							...prev,
+							[tokenAddress]: {...prev[tokenAddress], orderUID, orderStatus: status}
+						}));
+						refresh([
+							{
+								token: toAddress(quote.quote.buyToken),
+								decimals: quote.request.outputToken.decimals,
+								name: quote.request.outputToken.label,
+								symbol: quote.request.outputToken.symbol
+							}, {
+								token: toAddress(quote.quote.sellToken),
+								decimals: quote.request.inputToken.decimals,
+								name: quote.request.inputToken.label,
+								symbol: quote.request.inputToken.symbol
+							}
+						]);
+					}
+				});
 			} catch (error) {
 				performBatchedUpdates((): void => {
 					onUpdateExecuteStep((prev): TDict<TPossibleFlowStep> => ({...prev, [quoteID]: 'invalid'}));
@@ -429,7 +439,7 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 	** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
 	** time. This function will refresh all the quotes, and update the UI accordingly.
 	**********************************************************************************************/
-	const	onRefreshAllQuotes = useCallback(async (): Promise<void> => {
+	const onRefreshAllQuotes = useCallback(async (): Promise<void> => {
 		set_isRefreshingQuotes(true);
 		for (const currentQuote of Object.values(quotes)) {
 			if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
@@ -490,13 +500,13 @@ function	StandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateExecuteSt
 	);
 }
 
-function	ViewApprovalWizard(): ReactElement {
-	const	{walletType} = useWeb3();
-	const	{selected, quotes} = useSweepooor();
-	const	[approvalStep, set_approvalStep] = useState<TDict<TPossibleFlowStep>>({});
-	const	[signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
-	const	[executeStep, set_executeStep] = useState<TDict<TPossibleFlowStep>>({});
-	const	isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
+function ViewApprovalWizard(): ReactElement {
+	const {walletType} = useWeb3();
+	const {selected, quotes} = useSweepooor();
+	const [approvalStep, set_approvalStep] = useState<TDict<TPossibleFlowStep>>({});
+	const [signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
+	const [executeStep, set_executeStep] = useState<TDict<TPossibleFlowStep>>({});
+	const isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
 
 	return (
 		<section>

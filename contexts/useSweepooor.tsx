@@ -1,4 +1,5 @@
 import React, {createContext, useContext, useEffect, useMemo, useState} from 'react';
+import {scrollToTargetAdjusted} from 'utils/animations';
 import {useLocalStorageValue, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -36,12 +37,12 @@ export type TSelected = {
 	slippage: UseStorageValueResult<number, number>
 }
 
-const	defaultProps: TSelected = {
+const defaultProps: TSelected = {
 	selected: [],
 	amounts: {},
 	quotes: {},
 	destination: {
-		chainId: 0,
+		chainId: 1,
 		address: ETH_TOKEN_ADDRESS,
 		name: 'Ether',
 		symbol: 'ETH',
@@ -64,30 +65,16 @@ const	defaultProps: TSelected = {
 	}
 };
 
-
-function scrollToTargetAdjusted(element: HTMLElement): void {
-	const headerOffset = 81 - 16;
-	if (!element) {
-		return;
-	}
-	const elementPosition = element.getBoundingClientRect().top;
-	const offsetPosition = elementPosition + window.scrollY - headerOffset;
-	window.scrollTo({
-		top: Math.round(offsetPosition),
-		behavior: 'smooth'
-	});
-}
-
-const	SweepooorContext = createContext<TSelected>(defaultProps);
+const SweepooorContext = createContext<TSelected>(defaultProps);
 export const SweepooorContextApp = ({children}: {children: React.ReactElement}): React.ReactElement => {
-	const	{address, isActive, walletType} = useWeb3();
-	const	[selected, set_selected] = useState<TAddress[]>(defaultProps.selected);
-	const	[destination, set_destination] = useState<TTokenInfo>(defaultProps.destination);
-	const	[receiver, set_receiver] = useState<TAddress>(toAddress(address));
-	const	[quotes, set_quotes] = useState<TDict<TOrderQuoteResponse>>(defaultProps.quotes);
-	const	[amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
-	const	[currentStep, set_currentStep] = useState<Step>(Step.WALLET);
-	const	slippage = useLocalStorageValue<number>('dump-services/slippage', {defaultValue: 0.1, initializeWithValue: true});
+	const {address, isActive, walletType} = useWeb3();
+	const [selected, set_selected] = useState<TAddress[]>(defaultProps.selected);
+	const [destination, set_destination] = useState<TTokenInfo>(defaultProps.destination);
+	const [receiver, set_receiver] = useState<TAddress>(toAddress(address));
+	const [quotes, set_quotes] = useState<TDict<TOrderQuoteResponse>>(defaultProps.quotes);
+	const [amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
+	const [currentStep, set_currentStep] = useState<Step>(Step.WALLET);
+	const slippage = useLocalStorageValue<number>('dump-services/slippage', {defaultValue: 0.1, initializeWithValue: true});
 
 	/**********************************************************************************************
 	** If the user is not active, reset the state to the default values.
@@ -99,8 +86,10 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 				set_amounts(defaultProps.amounts);
 				set_destination(defaultProps.destination);
 			});
+		} else if (isActive) {
+			set_receiver((d): TAddress => d === defaultProps.receiver ? toAddress(address) : d);
 		}
-	}, [isActive]);
+	}, [isActive, address]);
 
 	/**********************************************************************************************
 	** If the address changes, we need to update the receiver to the connected wallet address.
@@ -144,7 +133,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	**********************************************************************************************/
 	useMountEffect((): void => {
 		setTimeout((): void => {
-			const	isEmbedWallet = ['EMBED_LEDGER', 'EMBED_GNOSIS_SAFE'].includes(walletType);
+			const isEmbedWallet = ['EMBED_LEDGER', 'EMBED_GNOSIS_SAFE'].includes(walletType);
 			if (currentStep === Step.WALLET && !isEmbedWallet) {
 				document?.getElementById('wallet')?.scrollIntoView({behavior: 'smooth', block: 'start'});
 			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
@@ -183,7 +172,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			} else if (currentStep === Step.APPROVALS) {
 				currentStepContainer = document?.getElementById('approvals');
 			}
-			const	currentElementHeight = currentStepContainer?.offsetHeight;
+			const currentElementHeight = currentStepContainer?.offsetHeight;
 			if (scalooor?.style) {
 				scalooor.style.height = `calc(100vh - ${currentElementHeight}px - ${headerHeight}px + 36px)`;
 			}
@@ -193,7 +182,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 		}, 0);
 	}, [currentStep, walletType]);
 
-	const	contextValue = useMemo((): TSelected => ({
+	const contextValue = useMemo((): TSelected => ({
 		selected,
 		set_selected,
 		amounts,

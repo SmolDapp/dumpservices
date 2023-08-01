@@ -1,35 +1,35 @@
 import React, {memo, useCallback, useState} from 'react';
 import Link from 'next/link';
-import {ImageWithFallback} from 'components/common/ImageWithFallback';
 import TokenRowInput from 'components/TokenRowInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useMountEffect} from '@react-hookz/web';
+import {ImageWithFallback} from '@yearn-finance/web-lib/components/ImageWithFallback';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import IconLinkOut from '@yearn-finance/web-lib/icons/IconLinkOut';
 import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {TMinBalanceData} from 'hooks/useBalances';
 import type {ReactElement} from 'react';
 import type {TOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 type TTokenRowProps = {
-	balance: TMinBalanceData,
+	balance: TBalanceData,
 	tokenAddress: TAddress,
 	amount: TNormalizedBN,
 	explorer?: string
 };
-const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer}: TTokenRowProps): ReactElement {
+const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer}: TTokenRowProps): ReactElement {
 	const {set_selected, set_amounts, set_quotes, selected} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const [isDisabled, set_isDisabled] = useState(false);
 	const isSelected = Boolean(selected.includes(toAddress(tokenAddress)) || false);
 
-	const	onToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
-		const	isNowChecked = event.target.checked;
+	const onToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
+		const isNowChecked = event.target.checked;
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {
@@ -63,7 +63,7 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 	return (
 		<div
 			id={`${safeChainID}-${toAddress(tokenAddress)}`}
-			className={'group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 px-4 pb-3 pt-0 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:py-3 md:px-6'}>
+			className={'group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 px-4 pb-3 pt-0 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:px-6 md:py-3'}>
 			<div className={'absolute left-3 top-7 z-10 flex h-full justify-center md:left-6 md:top-0 md:items-center'}>
 				<input
 					type={'checkbox'}
@@ -85,11 +85,11 @@ const	TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 					<div>
 						<div className={'flex flex-row items-center space-x-2'}>
 							<b>{balance.symbol}</b>
-							<p className={'block text-ellipsis font-mono text-xs text-neutral-500 line-clamp-1 md:hidden'}>
+							<p className={'line-clamp-1 block text-ellipsis font-mono text-xs text-neutral-500 md:hidden'}>
 								{` - ${balance.name}`}
 							</p>
 						</div>
-						<p className={'hidden text-ellipsis font-mono text-xs text-neutral-500 md:block md:line-clamp-1'}>
+						<p className={'md:line-clamp-1 hidden text-ellipsis font-mono text-xs text-neutral-500 md:block'}>
 							{balance.name}
 						</p>
 						<Link

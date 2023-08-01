@@ -6,9 +6,9 @@ import {yToast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
-import {formatBN, toNormalizedBN, Zero} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {getEthersSigner} from '@yearn-finance/web-lib/utils/wagmi/ethersAdapter';
 
-import type {BigNumber} from 'ethers';
 import type {Maybe, TInitSolverArgs, TOrderQuoteResponse, TPossibleStatus} from 'utils/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {OrderCreation, OrderParameters, OrderQuoteRequest, SigningResult, UnsignedOrder} from '@cowprotocol/cow-sdk';
@@ -18,7 +18,7 @@ type TCowQuoteError = {
 	errorType: string,
 	data: {fee_amount: string}
 }
-type TGetQuote = [Maybe<TOrderQuoteResponse>, BigNumber, Maybe<TCowQuoteError>]
+type TGetQuote = [Maybe<TOrderQuoteResponse>, bigint, Maybe<TCowQuoteError>]
 type TInit = [TNormalizedBN, Maybe<TOrderQuoteResponse>, boolean, Maybe<TCowQuoteError>]
 type TCheckOrder = {status: TPossibleStatus, isSuccessful: boolean, error?: Error}
 type TExecuteResp = {status: TPossibleStatus, orderUID: string, quote: TOrderQuoteResponse, error?: {message: string}}
@@ -28,11 +28,11 @@ type TSolverContext = {
 	execute: (quoteOrder: TOrderQuoteResponse, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TExecuteResp>;
 }
 
-const	VALID_TO_MN = 60;
-const	VALID_TO_MN_SAFE = 4320;
+const VALID_TO_MN = 60;
+const VALID_TO_MN_SAFE = 4320;
 export function useSolverCowswap(): TSolverContext {
 	const {slippage} = useSweepooor();
-	const {walletType, provider} = useWeb3();
+	const {walletType} = useWeb3();
 	const {toast} = yToast();
 	const {safeChainID} = useChainID();
 	const [orderBookAPI, set_orderBookAPI] = useState<Maybe<OrderBookApi>>();
@@ -48,7 +48,7 @@ export function useSolverCowswap(): TSolverContext {
 		request: TInitSolverArgs,
 		shouldPreventErrorToast = false
 	): Promise<TGetQuote> => {
-		const	quote: OrderQuoteRequest = ({
+		const quote: OrderQuoteRequest = ({
 			sellToken: toAddress(request.inputToken.value), // token to spend
 			buyToken: toAddress(request.outputToken.value), // token to receive
 			from: request.from,
@@ -57,13 +57,13 @@ export function useSolverCowswap(): TSolverContext {
 			partiallyFillable: false, // always false
 			kind: OrderQuoteSide.kind.SELL,
 			validTo: 0,
-			sellAmountBeforeFee: formatBN(request?.inputAmount || 0).toString(), // amount to sell, in wei
+			sellAmountBeforeFee: toBigInt(request?.inputAmount || 0).toString(), // amount to sell, in wei
 			signingScheme: isGnosisSafe ? SigningScheme.PRESIGN : SigningScheme.EIP712
 		});
 
 		const canExecuteFetch = (
 			!(isZeroAddress(quote.from) || isZeroAddress(quote.sellToken) || isZeroAddress(quote.buyToken))
-			&& !formatBN(request?.inputAmount || 0).isZero()
+			&& toBigInt(request?.inputAmount || 0) > 0n
 		);
 
 		if (canExecuteFetch && orderBookAPI) {
@@ -72,19 +72,19 @@ export function useSolverCowswap(): TSolverContext {
 			);
 			try {
 				const result = await orderBookAPI.getQuote(quote) as TOrderQuoteResponse;
-				return ([result, Zero, undefined]);
+				return ([result, 0n, undefined]);
 			} catch (error) {
-				const	_error = error as TCowQuoteError;
+				const _error = error as TCowQuoteError;
 				if (shouldPreventErrorToast) {
-					return [undefined, formatBN(_error.data?.fee_amount || 0), _error];
+					return [undefined, toBigInt(_error.data?.fee_amount || 0), _error];
 				}
 				console.error(error);
-				const	message = `Zap not possible ${_error.description ? `(Reason: ${_error.description})` : ''}`;
+				const message = `Zap not possible ${_error.description ? `(Reason: ${_error.description})` : ''}`;
 				toast({type: 'error', content: message});
-				return [undefined, formatBN(_error?.data?.fee_amount || 0), _error];
+				return [undefined, toBigInt(_error?.data?.fee_amount || 0), _error];
 			}
 		}
-		return [undefined, formatBN(0), undefined];
+		return [undefined, toBigInt(0), undefined];
 	}, [isGnosisSafe, orderBookAPI, toast]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
@@ -123,26 +123,30 @@ export function useSolverCowswap(): TSolverContext {
 	** If shouldUsePresign is set to true, the signature is not required and the approval is
 	** skipped. This should only be used for debugging purposes.
 	**********************************************************************************************/
-	const	signCowswapOrder = useCallback(async (quoteOrder: TOrderQuoteResponse): Promise<SigningResult> => {
+	const signCowswapOrder = useCallback(async (quoteOrder: TOrderQuoteResponse): Promise<SigningResult> => {
 		if (process.env.SHOULD_USE_PRESIGN) { //sleep 1 second to simulate the signing process
 			await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 1000));
-			return ({signature: '0x', signingScheme: 'presign'} as any);
+			return ({signature: '0x', signingScheme: 'presign'} as unknown as SigningResult);
 		}
 
 		// We need to sign the message WITH THE SLIPPAGE, in order to get the correct signature
-		const	{quote} = quoteOrder;
-		let	buyAmountWithSlippage = quoteOrder.buyAmountWithSlippage as string;
+		const {quote} = quoteOrder;
+		let buyAmountWithSlippage = quoteOrder.buyAmountWithSlippage as string;
 		if (!quoteOrder.buyAmountWithSlippage) {
 			buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
 		}
-		const	signer = provider.getSigner();
-		const	rawSignature = await OrderSigningUtils.signOrder(
+		const signer = await getEthersSigner({chainId: safeChainID});
+		if (!signer) {
+			console.error(`No signer found for chain ${safeChainID}`);
+			return ({signature: '0x', signingScheme: 'none'} as unknown as SigningResult);
+		}
+		const rawSignature = await OrderSigningUtils.signOrder(
 			{...quote as UnsignedOrder, buyAmount: buyAmountWithSlippage},
 			safeChainID,
 			signer
 		);
 		return rawSignature;
-	}, [getBuyAmountWithSlippage, provider, safeChainID]);
+	}, [getBuyAmountWithSlippage, safeChainID]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Cowswap orders have a validity period and the return value on submit is not the execution
@@ -150,7 +154,7 @@ export function useSolverCowswap(): TSolverContext {
 	** boolean value indicating whether the order was successful or not.
 	** It will timeout once the order is no longer valid or after 50 minutes (max should be 30mn)
 	**********************************************************************************************/
-	const	checkOrderStatus = useCallback(async (orderUID: string, validTo: number): Promise<TCheckOrder> => {
+	const checkOrderStatus = useCallback(async (orderUID: string, validTo: number): Promise<TCheckOrder> => {
 		for (let i = 0; i < maxIterations; i++) {
 			const order = await orderBookAPI?.getOrder(orderUID);
 			if (order?.status === 'fulfilled') {
@@ -181,13 +185,13 @@ export function useSolverCowswap(): TSolverContext {
 		if (!quoteOrder) {
 			return {status: 'invalid', orderUID: '', quote: quoteOrder};
 		}
-		const	{quote} = quoteOrder;
-		let	buyAmountWithSlippage = quoteOrder.buyAmountWithSlippage as string;
+		const {quote} = quoteOrder;
+		let buyAmountWithSlippage = quoteOrder.buyAmountWithSlippage as string;
 		if (!quoteOrder.buyAmountWithSlippage) {
 			buyAmountWithSlippage = getBuyAmountWithSlippage(quote, quoteOrder.request.outputToken.decimals);
 		}
-		const	signingScheme: SigningScheme = shouldUsePresign ? SigningScheme.PRESIGN : quoteOrder.signingScheme as string as SigningScheme;
-		const	orderCreation: OrderCreation = {
+		const signingScheme: SigningScheme = shouldUsePresign ? SigningScheme.PRESIGN : quoteOrder.signingScheme as string as SigningScheme;
+		const orderCreation: OrderCreation = {
 			...quote,
 			buyAmount: buyAmountWithSlippage,
 			from: quoteOrder.from,
@@ -196,7 +200,7 @@ export function useSolverCowswap(): TSolverContext {
 			signingScheme: signingScheme
 		};
 		try {
-			const	orderUID = await orderBookAPI?.sendOrder(orderCreation);
+			const orderUID = await orderBookAPI?.sendOrder(orderCreation);
 			if (orderUID) {
 				onSubmitted?.(orderUID);
 				if (shouldUsePresign) {
@@ -213,6 +217,19 @@ export function useSolverCowswap(): TSolverContext {
 				return {status, orderUID, quote: quoteOrder};
 			}
 		} catch (error) {
+			type TError = {
+				body: {
+					errorType: string,
+					description: string
+				}
+			}
+			if ((error as TError)?.body?.description) {
+				const err = `${(error as TError)?.body?.errorType}: ${(error as TError)?.body?.description}`;
+				console.error(err);
+				toast({type: 'error', content: err});
+				return {status: 'invalid', orderUID: '', quote: quoteOrder, error: {message: err}};
+			}
+			console.error(error);
 			return {status: 'invalid', orderUID: '', quote: quoteOrder, error: error as {message: string}};
 		}
 

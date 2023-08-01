@@ -17,13 +17,13 @@ type TViewWalletProps = {
 	onSelect: () => void;
 };
 
-function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
-	const	{onConnect, walletType} = useWeb3();
-	const	{walletProvider, set_walletProvider} = useWallet();
-	const	detectedWalletProvider = useInjectedWallet();
-	const	isEmbedWallet = useMemo((): boolean => ['EMBED_LEDGER', 'EMBED_GNOSIS_SAFE'].includes(walletType), [walletType]);
+function ViewWallet({onSelect}: TViewWalletProps): ReactElement {
+	const {onConnect, walletType} = useWeb3();
+	const {walletProvider, set_walletProvider} = useWallet();
+	const detectedWalletProvider = useInjectedWallet();
+	const isEmbedWallet = useMemo((): boolean => ['EMBED_LEDGER', 'EMBED_GNOSIS_SAFE'].includes(walletType), [walletType]);
 
-	const	onSelectWallet = useCallback(async (walletType: string): Promise<void> => {
+	const onSelectWallet = useCallback(async (walletType: string): Promise<void> => {
 		try {
 			set_walletProvider(walletType);
 			onSelect();
@@ -33,7 +33,7 @@ function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 		}
 	}, [onConnect, onSelect, set_walletProvider]);
 
-	const	detectedWallet = useMemo((): {name: string, icon: ReactElement} => {
+	const detectedWallet = useMemo((): {name: string, icon: ReactElement} => {
 		if (walletType === 'EMBED_LEDGER') {
 			return ({
 				name: 'Ledger',
@@ -55,7 +55,7 @@ function	ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 		<section id={'wallet'} className={'pt-10'}>
 			<div className={'box-0 grid w-full grid-cols-12 overflow-hidden'}>
 				<div className={'relative col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
-					<div className={'absolute top-6 right-6 flex flex-row items-center justify-center space-x-2 text-xs text-neutral-400'}>
+					<div className={'absolute right-6 top-6 flex flex-row items-center justify-center space-x-2 text-xs text-neutral-400'}>
 						<p className={''}>{'Powered by CoW Protocol'}</p>
 					</div>
 					<div className={'w-full md:w-3/4'}>

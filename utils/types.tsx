@@ -1,4 +1,3 @@
-import type {BigNumber} from 'ethers';
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme, OrderQuoteResponse} from '@cowprotocol/cow-sdk';
@@ -22,7 +21,7 @@ export type TInitSolverArgs = {
 	receiver: TAddress,
 	inputToken: TToken
 	outputToken: TToken
-	inputAmount: BigNumber
+	inputAmount: bigint
 }
 
 export type TOrderQuoteResponse = OrderQuoteResponse & {
