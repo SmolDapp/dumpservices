@@ -47,7 +47,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	const {isActive} = useWeb3();
 	const {safeChainID} = useChainID();
 	const [walletProvider, set_walletProvider] = useState('NONE');
-	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TUseBalancesTokens[]>('smoldapp/tokens', {defaultValue: []});
+	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TUseBalancesTokens[]>('dumpservices/tokens', {defaultValue: []});
 
 	const availableTokens = useMemo((): TUseBalancesTokens[] => {
 		const withDefaultTokens = [...Object.values(tokenList), ...defaultTokenList.tokens];
