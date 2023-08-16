@@ -3,14 +3,14 @@ import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 
-import type {TOrderQuoteResponse} from 'utils/types';
+import type {TCowswapOrderQuoteResponse} from 'utils/types';
 
 type TSafeTxHistory = {
 	safe: string
 	nonce: number
 }
 
-function notify(orders: TOrderQuoteResponse[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
+function notify(orders: TCowswapOrderQuoteResponse[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
 	if (!orders.length) {
 		return;
 	}

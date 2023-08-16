@@ -12,7 +12,7 @@ import type {TTxResponse} from '@yearn-finance/web-lib/utils/web3/transaction';
 //Because USDT do not return a boolean on approve, we need to use this ABI
 const ALTERNATE_ERC20_APPROVE_ABI = [{'constant': false, 'inputs': [{'name': '_spender', 'type': 'address'}, {'name': '_value', 'type': 'uint256'}], 'name': 'approve', 'outputs': [], 'payable': false, 'stateMutability': 'nonpayable', 'type': 'function'}] as const;
 
-/* 🔵 - Yearn Finance **********************************************************
+/* 🔵 - SmolDapp ***************************************************************
 ** isApprovedERC20 is a _VIEW_ function that checks if a token is approved for
 ** a spender.
 ******************************************************************************/
@@ -34,7 +34,7 @@ export async function isApprovedERC20(props: TIsApprovedERC20): Promise<boolean>
 	return (result || 0n) >= toBigInt(props.amount || MAX_UINT_256);
 }
 
-/* 🔵 - Yearn Finance **********************************************************
+/* 🔵 - SmolDapp ***************************************************************
 ** approveERC20 is a _WRITE_ function that approves a token for a spender.
 **
 ** @param spenderAddress - The address of the spender.

@@ -5,6 +5,7 @@ import {TokenListContextApp} from 'contexts/useTokenList';
 import {WalletContextApp} from 'contexts/useWallet';
 import {mainnet} from 'wagmi';
 import {SafeProvider} from '@gnosis.pm/safe-apps-react-sdk';
+import {polygon} from '@wagmi/chains';
 import {WithYearn} from '@yearn-finance/web-lib/contexts/WithYearn';
 import {localhost} from '@yearn-finance/web-lib/utils/wagmi/networks';
 
@@ -24,7 +25,7 @@ function MyApp(props: AppProps): ReactElement {
 	return (
 		<>
 			<style jsx global>{`html {font-family: ${inter.style.fontFamily};}`}</style>
-			<WithYearn supportedChains={[mainnet, localhost]}>
+			<WithYearn supportedChains={[mainnet, polygon, localhost]}>
 				<TokenListContextApp>
 					<WalletContextApp>
 						<SafeProvider>

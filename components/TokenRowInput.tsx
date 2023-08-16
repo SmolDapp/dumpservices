@@ -1,6 +1,7 @@
 import React, {Fragment, memo, useCallback, useState} from 'react';
 import IconRefresh from 'components/icons/IconRefresh';
 import {useSweepooor} from 'contexts/useSweepooor';
+import {isCowswapOrder} from 'hooks/assertSolver';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
 import {handleInputChangeEventValue} from 'utils/handleInputChangeEventValue';
 import {useDebouncedCallback} from '@react-hookz/web';
@@ -11,7 +12,7 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ChangeEvent, ReactElement} from 'react';
-import type {TOrderQuoteResponse} from 'utils/types';
+import type {TCowswapOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
@@ -32,14 +33,7 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	const [isLoadingQuote, set_isLoadingQuote] = useState(false);
 	const [error, set_error] = useState('');
 
-	/**********************************************************************************************
-	** onEstimateQuote is a direct retrieval of the quote from the Cowswap API with the rawAmount
-	** sent as parameter. This is used when some actions are performed, but not when the user is
-	** typing in the input field to avoid spamming the API.
-	** On error, we try to display a meaningful message to the user and we disable the token
-	** if it's not supported or if the fee is too high.
-	**********************************************************************************************/
-	const onEstimateQuote = useCallback(async (rawAmount: bigint, force = false): Promise<void> => {
+	const onHandleQuote = useCallback(async (rawAmount: bigint, force = false): Promise<void> => {
 		if (!isSelected && !force) {
 			return;
 		}
@@ -47,7 +41,8 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			set_error('');
 			set_isLoadingQuote(true);
 		});
-		const [cowswapQuote, order, isSuccess, error] = await cowswap.init({
+
+		const {estimateOut, quoteResponse, isSuccess, error} = await cowswap.init({
 			from: toAddress(fromAddress || ''),
 			receiver: toAddress(receiver),
 			inputToken: {
@@ -66,20 +61,20 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		});
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
-				if (order) {
-					set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
+				if (isCowswapOrder(quoteResponse)) {
+					set_quotes((quotes): TDict<TCowswapOrderQuoteResponse> => ({
 						...quotes,
-						[toAddress(tokenAddress)]: order
+						[toAddress(tokenAddress)]: quoteResponse
 					}));
 				}
-				set_quote(cowswapQuote);
+				set_quote(estimateOut);
 				set_isLoadingQuote(false);
 			});
 		} else {
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
-				set_quotes((prev: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => {
+				set_quotes((prev): TDict<TCowswapOrderQuoteResponse> => {
 					const newQuotes = {...prev};
 					delete newQuotes[tokenAddress];
 					return newQuotes;
@@ -87,9 +82,9 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 				if (error?.errorType === 'UnsupportedToken') {
 					set_error('This token is currently not supported.');
 					onDisable(true);
-				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw > 0n) {
-					set_error(`Fee is too high for this amount: ${formatAmount(Number(cowswapQuote.normalized), 4, 4)}`);
-					onDisable(cowswapQuote.raw >= balance.raw);
+				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && estimateOut.raw > 0n) {
+					set_error(`Fee is too high for this amount: ${formatAmount(Number(estimateOut.normalized), 4, 4)}`);
+					onDisable(estimateOut.raw >= balance.raw);
 				} else if (error?.errorType === 'NoLiquidity') {
 					set_error('No liquidity for this token.');
 					onDisable(true);
@@ -97,7 +92,18 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			});
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, receiver, onDisable, set_selected, set_quotes]);
+	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, receiver, onDisable]);
+
+	/**********************************************************************************************
+	** onEstimateQuote is a direct retrieval of the quote from the Cowswap API with the rawAmount
+	** sent as parameter. This is used when some actions are performed, but not when the user is
+	** typing in the input field to avoid spamming the API.
+	** On error, we try to display a meaningful message to the user and we disable the token
+	** if it's not supported or if the fee is too high.
+	**********************************************************************************************/
+	const onEstimateQuote = useCallback(async (rawAmount: bigint, force = false): Promise<void> => {
+		onHandleQuote(rawAmount, force);
+	}, [onHandleQuote]);
 
 	/**********************************************************************************************
 	** onDebouncedEstimateQuote is a debounced retrieval of the quote from the Cowswap API with the
@@ -107,63 +113,8 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	** if it's not supported or if the fee is too high.
 	**********************************************************************************************/
 	const onDebouncedEstimateQuote = useDebouncedCallback(async (rawAmount: bigint): Promise<void> => {
-		if (!isSelected) {
-			return;
-		}
-		performBatchedUpdates((): void => {
-			set_error('');
-			set_isLoadingQuote(true);
-		});
-		const [cowswapQuote, order, isSuccess, error] = await cowswap.init({
-			from: toAddress(fromAddress || ''),
-			receiver: toAddress(receiver),
-			inputToken: {
-				value: toAddress(tokenAddress),
-				label: balance.symbol,
-				symbol: balance.symbol,
-				decimals: balance.decimals
-			},
-			outputToken: {
-				value: destination.address,
-				label: destination.name,
-				symbol: destination.symbol,
-				decimals: destination.decimals
-			},
-			inputAmount: toBigInt(rawAmount)
-		});
-		if (isSuccess) {
-			performBatchedUpdates((): void => {
-				if (order) {
-					set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => ({
-						...quotes,
-						[toAddress(tokenAddress)]: order
-					}));
-				}
-				set_quote(cowswapQuote);
-				set_isLoadingQuote(false);
-			});
-		} else {
-			performBatchedUpdates((): void => {
-				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
-				set_isLoadingQuote(false);
-				set_quotes((prev: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => {
-					const newQuotes = {...prev};
-					delete newQuotes[tokenAddress];
-					return newQuotes;
-				});
-				if (error?.errorType === 'UnsupportedToken') {
-					set_error('This token is currently not supported.');
-					onDisable(true);
-				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && cowswapQuote.raw > 0n) {
-					set_error(`Fee is too high for this amount: ${formatAmount(Number(cowswapQuote.normalized), 4, 4)}`);
-					onDisable(cowswapQuote.raw >= balance.raw);
-				} else if (error?.errorType === 'NoLiquidity') {
-					set_error('No liquidity for this token.');
-					onDisable(true);
-				}
-			});
-		}
-	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, receiver, onDisable, set_selected, set_quotes], 400);
+		onHandleQuote(rawAmount, false);
+	}, [onHandleQuote], 400);
 
 	/**********************************************************************************************
 	** onInputChange is triggered when the user is typing in the input field. It updates the

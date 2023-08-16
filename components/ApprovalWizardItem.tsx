@@ -5,11 +5,12 @@ import IconCircleCross from 'components/icons/IconCircleCross';
 import IconSpinner from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
+import {getSpender} from 'hooks/useSolverCowswap';
 import {isApprovedERC20} from 'utils/actions';
 import {useAsync, useIntervalEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
+import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {SOLVER_COW_VAULT_RELAYER_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.time';
@@ -44,12 +45,13 @@ function ApprovalWizardItem({
 	const hasQuote = Boolean(quotes[toAddress(token)]);
 	const currentQuote = quotes[toAddress(token)];
 	const quoteExpiration = Number(isGnosisSafe ? (currentQuote?.quote?.validTo || 0) : (currentQuote?.expirationTimestamp || 0)) * 1000;
+	const {safeChainID} = useChainID();
 
 	const [{result: hasAllowance}, triggerAllowanceCheck] = useAsync(async (): Promise<boolean> => {
 		return await isApprovedERC20({
 			connector: provider,
 			contractAddress: toAddress(token),
-			spenderAddress: toAddress(SOLVER_COW_VAULT_RELAYER_ADDRESS),
+			spenderAddress: getSpender({chainID: safeChainID}),
 			amount: amounts[toAddress(token)]?.raw
 		});
 	}, false);

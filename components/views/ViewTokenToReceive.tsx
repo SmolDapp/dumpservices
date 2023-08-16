@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {type TTokenInfo, useTokenList} from 'contexts/useTokenList';
@@ -15,10 +15,6 @@ import type {TDict} from '@yearn-finance/web-lib/types';
 
 function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const {currentStep, destination, set_destination} = useSweepooor();
-	// const [tokenToReceive, set_tokenToReceive] = useState<string>(ETH_TOKEN_ADDRESS);
-	// const [isValidDestination, set_isValidDestination] = useState<boolean | 'undetermined'>('undetermined');
-	// const [possibleDestinations, set_possibleDestinations] = useState<TDict<TTokenInfo>>({});
-
 	const {safeChainID} = useChainID();
 	const {tokenList} = useTokenList();
 	const [tokenToSend, set_tokenToSend] = useState<string>(ETH_TOKEN_ADDRESS);
@@ -26,7 +22,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	const [possibleTokenToReceive, set_possibleTokenToReceive] = useState<TDict<TTokenInfo>>({});
 
 
-	/* 🔵 - Yearn Finance **************************************************************************
+	/* 🔵 - Smoldapp *******************************************************************************
 	** On mount, fetch the token list from the tokenlistooor repo for the cowswap token list, which
 	** will be used to populate the tokenToDisperse token combobox.
 	** Only the tokens in that list will be displayed as possible destinations.
@@ -53,9 +49,9 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	}, [tokenList, safeChainID]);
 
 
-	/* 🔵 - Yearn Finance **************************************************************************
-	** When the tokenToDisperse token changes, check if it is a valid tokenToDisperse token. The check is
-	** trivial as we only check if the address is valid.
+	/* 🔵 - Smoldapp *******************************************************************************
+	** When the tokenToDisperse token changes, check if it is a valid tokenToDisperse token. The
+	** check is trivial as we only check if the address is valid.
 	**********************************************************************************************/
 	useUpdateEffect((): void => {
 		set_isValidTokenToReceive('undetermined');
@@ -63,6 +59,45 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 			set_isValidTokenToReceive(true);
 		}
 	}, [tokenToSend]);
+
+	/* 🔵 - Smoldapp *******************************************************************************
+	** On selecting a new tokenToDisperse token, update the destination object with the new token
+	**********************************************************************************************/
+	const onUpdateToken = useCallback((newToken: string): void => {
+		if ([Step.SELECTOR].includes(currentStep)) {
+			performBatchedUpdates((): void => {
+				set_tokenToSend(newToken);
+				set_destination({
+					address: toAddress(newToken),
+					chainId: safeChainID,
+					name: possibleTokenToReceive[toAddress(newToken)]?.name || '',
+					symbol: possibleTokenToReceive[toAddress(newToken)]?.symbol || '',
+					decimals: possibleTokenToReceive[toAddress(newToken)]?.decimals || 0,
+					logoURI: possibleTokenToReceive[toAddress(newToken)]?.logoURI || ''
+				});
+			});
+		} else {
+			set_tokenToSend(newToken);
+		}
+	}, [currentStep, possibleTokenToReceive, safeChainID, set_destination]);
+
+	/* 🔵 - Smoldapp *******************************************************************************
+	** When the user clicks the "Next" button, check if the tokenToDisperse token is valid. If it is
+	** then proceed to the next step.
+	**********************************************************************************************/
+	const onProceedToNextStep = useCallback((): void => {
+		if (toAddress(tokenToSend) !== ZERO_ADDRESS) {
+			set_destination({
+				address: toAddress(tokenToSend),
+				chainId: safeChainID,
+				name: possibleTokenToReceive[tokenToSend]?.name || '',
+				symbol: possibleTokenToReceive[tokenToSend]?.symbol || '',
+				decimals: possibleTokenToReceive[tokenToSend]?.decimals || 0,
+				logoURI: possibleTokenToReceive[tokenToSend]?.logoURI || ''
+			});
+		}
+		onProceed();
+	}, [onProceed, possibleTokenToReceive, safeChainID, set_destination, tokenToSend]);
 
 	return (
 		<section>
@@ -84,41 +119,13 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 								value={tokenToSend}
 								possibleValues={possibleTokenToReceive}
 								onAddValue={set_possibleTokenToReceive}
-								onChangeValue={(newToken): void => {
-									if ([Step.SELECTOR].includes(currentStep)) {
-										performBatchedUpdates((): void => {
-											set_tokenToSend(newToken);
-											set_destination({
-												address: toAddress(newToken as string),
-												chainId: 1,
-												name: possibleTokenToReceive[toAddress(newToken as string)]?.name || '',
-												symbol: possibleTokenToReceive[toAddress(newToken as string)]?.symbol || '',
-												decimals: possibleTokenToReceive[toAddress(newToken as string)]?.decimals || 0,
-												logoURI: possibleTokenToReceive[toAddress(newToken as string)]?.logoURI || ''
-											});
-										});
-									} else {
-										set_tokenToSend(newToken);
-									}
-								}} />
+								onChangeValue={(newToken): void => onUpdateToken(newToken as string)} />
 						</div>
 						<div className={'col-span-12 md:col-span-3'}>
 							<Button
 								variant={'filled'}
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
-								onClick={(): void => {
-									if (toAddress(tokenToSend) !== ZERO_ADDRESS) {
-										set_destination({
-											address: toAddress(tokenToSend),
-											chainId: 1,
-											name: possibleTokenToReceive[tokenToSend]?.name || '',
-											symbol: possibleTokenToReceive[tokenToSend]?.symbol || '',
-											decimals: possibleTokenToReceive[tokenToSend]?.decimals || 0,
-											logoURI: possibleTokenToReceive[tokenToSend]?.logoURI || ''
-										});
-									}
-									onProceed();
-								}}
+								onClick={onProceedToNextStep}
 								isDisabled={!isValidTokenToReceive || destination.chainId === 0}>
 								{'Next'}
 							</Button>

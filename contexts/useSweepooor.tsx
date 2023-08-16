@@ -7,7 +7,7 @@ import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {Dispatch, SetStateAction} from 'react';
-import type {TOrderQuoteResponse} from 'utils/types';
+import type {TCowswapOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {UseStorageValueResult} from '@react-hookz/web/cjs/useStorageValue';
@@ -24,13 +24,13 @@ export enum	Step {
 export type TSelected = {
 	selected: TAddress[],
 	amounts: TDict<TNormalizedBN>,
-	quotes: TDict<TOrderQuoteResponse>,
+	quotes: TDict<TCowswapOrderQuoteResponse>,
 	destination: TTokenInfo,
 	currentStep: Step,
 	receiver: TAddress,
 	set_selected: Dispatch<SetStateAction<TAddress[]>>,
 	set_amounts: Dispatch<SetStateAction<TDict<TNormalizedBN>>>,
-	set_quotes: Dispatch<SetStateAction<TDict<TOrderQuoteResponse>>>,
+	set_quotes: Dispatch<SetStateAction<TDict<TCowswapOrderQuoteResponse>>>,
 	set_currentStep: Dispatch<SetStateAction<Step>>,
 	set_destination: Dispatch<SetStateAction<TTokenInfo>>,
 	set_receiver: Dispatch<SetStateAction<TAddress>>,
@@ -71,7 +71,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const [selected, set_selected] = useState<TAddress[]>(defaultProps.selected);
 	const [destination, set_destination] = useState<TTokenInfo>(defaultProps.destination);
 	const [receiver, set_receiver] = useState<TAddress>(toAddress(address));
-	const [quotes, set_quotes] = useState<TDict<TOrderQuoteResponse>>(defaultProps.quotes);
+	const [quotes, set_quotes] = useState<TDict<TCowswapOrderQuoteResponse>>(defaultProps.quotes);
 	const [amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
 	const [currentStep, set_currentStep] = useState<Step>(Step.WALLET);
 	const slippage = useLocalStorageValue<number>('dump-services/slippage', {defaultValue: 0.1, initializeWithValue: true});

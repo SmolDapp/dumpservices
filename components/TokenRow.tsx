@@ -11,7 +11,7 @@ import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
-import type {TOrderQuoteResponse} from 'utils/types';
+import type {TCowswapOrderQuoteResponse} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
@@ -33,7 +33,7 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {
-				set_quotes((quotes: TDict<TOrderQuoteResponse>): TDict<TOrderQuoteResponse> => {
+				set_quotes((quotes: TDict<TCowswapOrderQuoteResponse>): TDict<TCowswapOrderQuoteResponse> => {
 					const newQuotes = {...quotes};
 					delete newQuotes[toAddress(tokenAddress)];
 					return newQuotes;
