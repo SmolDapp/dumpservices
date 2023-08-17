@@ -1,56 +1,63 @@
+import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
+import {type TOrderQuote,TPossibleStatus} from 'utils/types';
 import axios from 'axios';
 import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
-
-import type {TCowswapOrderQuoteResponse} from 'utils/types';
 
 type TSafeTxHistory = {
 	safe: string
 	nonce: number
 }
 
-function notify(orders: TCowswapOrderQuoteResponse[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
+function notify(orders: TOrderQuote[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
 	if (!orders.length) {
 		return;
 	}
+
 
 	const messages = [] as string[];
 	let from = '';
 	let to = '';
 	for (const order of orders) {
-		from = toAddress(order.from);
-		to = toAddress(order.quote.receiver);
-		const buyAmount = formatAmount(
-			toNormalizedBN(
-				order?.quote?.buyAmount || '',
-				order?.request?.outputToken?.decimals || 18
-			).normalized, 6, 6);
-		const sellAmount = formatAmount(
-			toNormalizedBN(
-				order?.quote?.sellAmount || '',
-				order?.request?.inputToken?.decimals || 18
-			).normalized, 6, 6);
-		const feeAmount = formatAmount(
-			toNormalizedBN(
-				order?.quote?.feeAmount || '',
-				order?.request?.inputToken?.decimals || 18
-			).normalized, 6, 6);
-		const buyToken = order.request.outputToken.symbol;
-		const sellToken = order.request.inputToken.symbol;
+		if (isCowswapOrder(order)) {
+			from = toAddress(order.from);
+			to = toAddress(order.quote.receiver);
+			const buyAmount = formatAmount(
+				toNormalizedBN(
+					order?.quote?.buyAmount || '',
+					order?.request?.outputToken?.decimals || 18
+				).normalized, 6, 6);
+			const sellAmount = formatAmount(
+				toNormalizedBN(
+					order?.quote?.sellAmount || '',
+					order?.request?.inputToken?.decimals || 18
+				).normalized, 6, 6);
+			const feeAmount = formatAmount(
+				toNormalizedBN(
+					order?.quote?.feeAmount || '',
+					order?.request?.inputToken?.decimals || 18
+				).normalized, 6, 6);
+			const buyToken = order.request.outputToken.symbol;
+			const sellToken = order.request.inputToken.symbol;
 
-		if (order?.orderError) {
-			messages.push(
-				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
-			);
-		} else {
-			let status = `${order.orderStatus === 'fulfilled' ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`;
-			if (txHash) {
-				status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
+			if (order?.orderError) {
+				messages.push(
+					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
+				);
+			} else {
+				let status = `${order.orderStatus === TPossibleStatus.COWSWAP_FULFILLED ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`;
+				if (txHash) {
+					status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
+				}
+				messages.push(
+					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | ${status}`
+				);
 			}
-			messages.push(
-				`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | ${status}`
-			);
+		}
+
+		if (isBebopOrder(order)) {
+			console.warn('TODO: Not implemented yet');
 		}
 	}
 

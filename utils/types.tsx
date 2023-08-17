@@ -5,8 +5,26 @@ import type {EcdsaSigningScheme, OrderQuoteResponse} from '@cowprotocol/cow-sdk'
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export type Maybe<T> = T | null | undefined;
 
-export type TPossibleStatus = 'pending' | 'expired' | 'fulfilled' | 'cancelled' | 'invalid'
-export type TPossibleFlowStep = 'valid' | 'invalid' | 'pending' | 'undetermined';
+export enum TPossibleStatus {
+	INVALID = 'invalid',
+	PENDING = 'pending',
+
+	//COWSWAP specific status
+	COWSWAP_EXPIRED = 'cowswap_expired',
+	COWSWAP_FULFILLED = 'cowswap_fulfilled',
+	COWSWAP_CANCELLED = 'cowswap_cancelled',
+
+	//BEBOP specific status
+	BEBOP_CONFIRMED = 'bebop_confirmed',
+	BEBOP_FAILED = 'bebop_failed'
+}
+
+export enum TPossibleFlowStep {
+	VALID = 'valid',
+	INVALID = 'invalid',
+	PENDING = 'pending',
+	UNDETERMINED = 'undetermined'
+}
 
 export type TToken = {
 	label: string;
@@ -26,15 +44,28 @@ export type TInitSolverArgs = {
 
 export type TCowswapOrderQuoteResponse = OrderQuoteResponse & {
 	solverType: 'COWSWAP';
+	// quote: OrderParameters;
+	// from?: TAddress;
+	// expiration: string;
+	// id?: number;
 	signature: string;
 	signingScheme: EcdsaSigningScheme;
 	request: TInitSolverArgs;
 	buyAmountWithSlippage?: string;
-	orderUID?: string;
+
+	// Used for the UI, not part of the quote nor returned by the API
+	orderUID?: string; // Unique identifier for the order on cowswap system
 	orderStatus?: TPossibleStatus;
 	orderError?: unknown;
 	isRefreshing?: boolean;
 	expirationTimestamp?: number;
+}
+
+export type TCowQuoteError = {
+	solverType: 'COWSWAP';
+	description: string,
+	errorType: string,
+	data: {fee_amount: string}
 }
 
 export type TBebopToken = {
@@ -49,10 +80,10 @@ export type TBebopOrderQuoteResponse = {
 	solverType: 'BEBOP';
 	status: string;
 	type: string;
-	quoteId: string;
+	id: string; //quoteId -> id
 	chainId: number;
 	receiver: TAddress
-	expiry: number;
+	expirationTimestamp: number; // expirity -> expirationTimestamp
 	buyTokens: TDict<TBebopToken>
 	sellTokens: TDict<TBebopToken>
 	toSign: {
@@ -65,5 +96,22 @@ export type TBebopOrderQuoteResponse = {
 		taker_amounts: string[][];
 		maker_amounts: string[][];
 		receiver: TAddress;
+	},
+
+	// Used for the UI, not part of the quote nor returned by the API
+	orderStatus?: TPossibleStatus;
+	orderUID?: string; // Match the hash of the TX that created the order
+	primaryBuyToken: TBebopToken;
+}
+
+
+export type TBebopOrderQuoteError = {
+	solverType: 'BEBOP';
+	error: {
+		errorCode: number,
+		message: string
 	}
 }
+
+export type TOrderQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse
+export type TOrderQuoteError = TCowQuoteError | TBebopOrderQuoteError

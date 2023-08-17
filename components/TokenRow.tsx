@@ -2,6 +2,7 @@ import React, {memo, useCallback, useState} from 'react';
 import Link from 'next/link';
 import TokenRowInput from 'components/TokenRowInput';
 import {useSweepooor} from 'contexts/useSweepooor';
+import {useTokenList} from 'contexts/useTokenList';
 import {useMountEffect} from '@react-hookz/web';
 import {ImageWithFallback} from '@yearn-finance/web-lib/components/ImageWithFallback';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
@@ -11,7 +12,7 @@ import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
-import type {TCowswapOrderQuoteResponse} from 'utils/types';
+import type {TOrderQuote} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
@@ -23,6 +24,7 @@ type TTokenRowProps = {
 	explorer?: string
 };
 const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer}: TTokenRowProps): ReactElement {
+	const {tokenList} = useTokenList();
 	const {set_selected, set_amounts, set_quotes, selected} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const [isDisabled, set_isDisabled] = useState(false);
@@ -33,7 +35,7 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {
-				set_quotes((quotes: TDict<TCowswapOrderQuoteResponse>): TDict<TCowswapOrderQuoteResponse> => {
+				set_quotes((quotes: TDict<TOrderQuote>): TDict<TOrderQuote> => {
 					const newQuotes = {...quotes};
 					delete newQuotes[toAddress(tokenAddress)];
 					return newQuotes;
@@ -76,11 +78,12 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 					<div className={'yearn--table-token-section-item-image'}>
 						<ImageWithFallback
 							id={`${safeChainID}-${toAddress(tokenAddress)}-img`}
+							unoptimized
 							alt={toAddress(tokenAddress)}
 							width={40}
 							height={40}
 							quality={90}
-							src={`https://assets.smold.app/api/token/${safeChainID}/${toAddress(tokenAddress)}/logo-128.png`} />
+							src={tokenList[toAddress(tokenAddress)].logoURI || `https://assets.smold.app/api/token/${safeChainID}/${toAddress(tokenAddress)}/logo-128.png`} />
 					</div>
 					<div>
 						<div className={'flex flex-row items-center space-x-2'}>
@@ -89,7 +92,7 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 								{` - ${balance.name}`}
 							</p>
 						</div>
-						<p className={'md:line-clamp-1 hidden text-ellipsis font-mono text-xs text-neutral-500 md:block'}>
+						<p className={'hidden text-ellipsis font-mono text-xs text-neutral-500 md:line-clamp-1 md:block'}>
 							{balance.name}
 						</p>
 						<Link

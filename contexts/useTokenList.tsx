@@ -36,29 +36,37 @@ export const TokenListContextApp = ({children}: {children: React.ReactElement}):
 	const [tokenList, set_tokenList] = useState<TDict<TTokenInfo>>({});
 
 	const fetchTokensFromLists = useCallback(async (): Promise<void> => {
-		const [fromEtherscan, fromYearn, fromSmol] = await Promise.allSettled([
-			axios.get(`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/etherscan.json`),
-			axios.get(`https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/${safeChainID}/yearn.json`),
-			axios.get(`https://raw.githubusercontent.com/Migratooor/tokenLists/main/lists/${safeChainID}/tokenlistooor.json`)
-		]);
 		const lists: TTokenInfo[] = [];
-		if (fromEtherscan.status === 'fulfilled') {
-			lists.push(...(fromEtherscan.value.data as TTokenList).tokens);
-		}
-		if (fromYearn.status === 'fulfilled') {
-			lists.push(...(fromYearn.value.data as TTokenList).tokens);
-		}
-		if (fromSmol.status === 'fulfilled') {
-			lists.push(...(fromSmol.value.data as TTokenList).tokens);
-		}
-
 		const tokenListTokens: TDict<TTokenInfo> = {};
-		const defaultList = defaultTokenList as TTokenList;
-		for (const eachToken of defaultList.tokens) {
-			if (!tokenListTokens[toAddress(eachToken.address)]) {
-				tokenListTokens[toAddress(eachToken.address)] = eachToken;
+		if (safeChainID === 1) {
+			const defaultList = defaultTokenList as TTokenList;
+			for (const eachToken of defaultList.tokens) {
+				if (!tokenListTokens[toAddress(eachToken.address)]) {
+					tokenListTokens[toAddress(eachToken.address)] = eachToken;
+				}
+			}
+
+			const [fromEtherscan, fromYearn, fromSmol] = await Promise.allSettled([
+				axios.get(`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/etherscan.json`),
+				axios.get(`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/yearn.json`),
+				axios.get(`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/tokenlistooor.json`)
+			]);
+			if (fromEtherscan.status === 'fulfilled') {
+				lists.push(...(fromEtherscan.value.data as TTokenList).tokens);
+			}
+			if (fromYearn.status === 'fulfilled') {
+				lists.push(...(fromYearn.value.data as TTokenList).tokens);
+			}
+			if (fromSmol.status === 'fulfilled') {
+				lists.push(...(fromSmol.value.data as TTokenList).tokens);
+			}
+		} else if (safeChainID === 137) {
+			const [fromBebop] = await Promise.allSettled([axios.get(`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/bebop.json`)]);
+			if (fromBebop.status === 'fulfilled') {
+				lists.push(...(fromBebop.value.data as TTokenList).tokens);
 			}
 		}
+
 
 		for (const eachToken of lists) {
 			if (!tokenListTokens[toAddress(eachToken.address)]) {

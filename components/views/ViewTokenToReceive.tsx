@@ -17,7 +17,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	const {currentStep, destination, set_destination} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const {tokenList} = useTokenList();
-	const [tokenToSend, set_tokenToSend] = useState<string>(ETH_TOKEN_ADDRESS);
+	const [tokenToSend, set_tokenToSend] = useState<string>(ZERO_ADDRESS);
 	const [isValidTokenToReceive, set_isValidTokenToReceive] = useState<boolean | 'undetermined'>(true);
 	const [possibleTokenToReceive, set_possibleTokenToReceive] = useState<TDict<TTokenInfo>>({});
 
@@ -30,7 +30,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	useDeepCompareEffect((): void => {
 		const possibleDestinationsTokens: TDict<TTokenInfo> = {};
 		const {wrappedToken} = getNetwork(safeChainID).contracts;
-		if (wrappedToken) {
+		if (wrappedToken && safeChainID === 1) {
 			possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = {
 				address: ETH_TOKEN_ADDRESS,
 				chainId: safeChainID,
@@ -126,7 +126,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 								variant={'filled'}
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
 								onClick={onProceedToNextStep}
-								isDisabled={!isValidTokenToReceive || destination.chainId === 0}>
+								isDisabled={!isValidTokenToReceive || destination.chainId === 0 || tokenToSend === ZERO_ADDRESS}>
 								{'Next'}
 							</Button>
 						</div>

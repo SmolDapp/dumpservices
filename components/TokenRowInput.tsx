@@ -1,7 +1,7 @@
 import React, {Fragment, memo, useCallback, useState} from 'react';
 import IconRefresh from 'components/icons/IconRefresh';
 import {useSweepooor} from 'contexts/useSweepooor';
-import {isCowswapOrder} from 'hooks/assertSolver';
+import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
 import {handleInputChangeEventValue} from 'utils/handleInputChangeEventValue';
 import {useDebouncedCallback} from '@react-hookz/web';
@@ -12,7 +12,7 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ChangeEvent, ReactElement} from 'react';
-import type {TCowswapOrderQuoteResponse} from 'utils/types';
+import type {TOrderQuote} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
@@ -59,10 +59,17 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			},
 			inputAmount: toBigInt(rawAmount)
 		});
+
 		if (isSuccess) {
 			performBatchedUpdates((): void => {
 				if (isCowswapOrder(quoteResponse)) {
-					set_quotes((quotes): TDict<TCowswapOrderQuoteResponse> => ({
+					set_quotes((quotes): TDict<TOrderQuote> => ({
+						...quotes,
+						[toAddress(tokenAddress)]: quoteResponse
+					}));
+				}
+				if (isBebopOrder(quoteResponse)) {
+					set_quotes((quotes): TDict<TOrderQuote> => ({
 						...quotes,
 						[toAddress(tokenAddress)]: quoteResponse
 					}));
@@ -74,19 +81,27 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
-				set_quotes((prev): TDict<TCowswapOrderQuoteResponse> => {
+				set_quotes((prev): TDict<TOrderQuote> => {
 					const newQuotes = {...prev};
 					delete newQuotes[tokenAddress];
 					return newQuotes;
 				});
-				if (error?.errorType === 'UnsupportedToken') {
-					set_error('This token is currently not supported.');
-					onDisable(true);
-				} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && estimateOut.raw > 0n) {
-					set_error(`Fee is too high for this amount: ${formatAmount(Number(estimateOut.normalized), 4, 4)}`);
-					onDisable(estimateOut.raw >= balance.raw);
-				} else if (error?.errorType === 'NoLiquidity') {
-					set_error('No liquidity for this token.');
+				if (error?.solverType === 'COWSWAP') {
+					if (error?.errorType === 'UnsupportedToken') {
+						set_error('This token is currently not supported.');
+						onDisable(true);
+					} else if (error?.errorType === 'SellAmountDoesNotCoverFee' && estimateOut.raw > 0n) {
+						set_error(`Fee is too high for this amount: ${formatAmount(Number(estimateOut.normalized), 4, 4)}`);
+						onDisable(estimateOut.raw >= balance.raw);
+					} else if (error?.errorType === 'NoLiquidity') {
+						set_error('No liquidity for this token.');
+						onDisable(true);
+					} else {
+						onDisable(true);
+					}
+				}
+
+				if (error?.solverType === 'BEBOP') {
 					onDisable(true);
 				}
 			});
