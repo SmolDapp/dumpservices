@@ -554,7 +554,6 @@ function CowswapStandardFlow({onUpdateApprovalStep, onUpdateSignStep, onUpdateEx
 	);
 }
 
-
 function BebopBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
 	const {provider} = useWeb3();
 	const cowswap = useSolverCowswap();
