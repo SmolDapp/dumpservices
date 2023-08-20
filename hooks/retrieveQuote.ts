@@ -3,55 +3,55 @@ import axios from 'axios';
 import {OrderBookApi, OrderQuoteSide, SigningScheme} from '@cowprotocol/cow-sdk';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
-import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
-import type {TBebopOrderQuoteError, TBebopOrderQuoteResponse, TCowQuoteError, TCowswapOrderQuoteResponse, TOrderQuote, TOrderQuoteError} from 'utils/types';
-import type {TAddress} from '@yearn-finance/web-lib/types';
+import type {TBebopOrderQuoteError, TBebopOrderQuoteResponse, TBebopToken, TCowQuoteError, TCowswapOrderQuoteResponse, TInitSolverArgs, TOrderQuoteError, TSolverQuote, TToken, TTokenAmount} from 'utils/types';
+import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {OrderQuoteRequest} from '@cowprotocol/cow-sdk';
 
 export type TGetQuote = {
-	quoteResponse?: TOrderQuote
+	quoteResponse?: TSolverQuote,
 	feeAmount?: bigint,
 	error?: TOrderQuoteError
 }
 
-type TRetreiveQuote = {
-	sellTokens: TAddress[],
-	buyTokens: TAddress[],
+type TRetreiveCowQuote = {
+	sellToken: TAddress,
+	buyToken: TAddress,
 	from: TAddress,
 	receiver: TAddress,
-	amounts: TNormalizedBN[],
+	amount: TNormalizedBN,
 	isGnosisSafe: boolean,
 	shouldPreventErrorToast?: boolean
 }
-
 export async function retrieveQuoteFromCowswap({
-	sellTokens,
-	buyTokens,
+	request,
+	sellToken,
+	buyToken,
 	from,
 	receiver,
-	amounts,
+	amount,
 	isGnosisSafe,
 	shouldPreventErrorToast = false
-}: TRetreiveQuote): Promise<TGetQuote> {
+}: TRetreiveCowQuote & {request: TInitSolverArgs}): Promise<TGetQuote> {
 	const cowswapOrderBook = new OrderBookApi({chainId: 1});
 	const quote: OrderQuoteRequest = ({
-		sellToken: sellTokens[0], // token to spend
-		buyToken: buyTokens[0], // token to receive
+		sellToken, // token to spend
+		buyToken, // token to receive
 		from,
 		receiver,
 		appData: process.env.COWSWAP_APP_DATA || '',
 		partiallyFillable: false, // always false
 		kind: OrderQuoteSide.kind.SELL,
 		validTo: 0,
-		sellAmountBeforeFee: toBigInt(amounts[0].raw || 0).toString(), // amount to sell, in wei
+		sellAmountBeforeFee: toBigInt(amount.raw || 0).toString(), // amount to sell, in wei
 		signingScheme: isGnosisSafe ? SigningScheme.PRESIGN : SigningScheme.EIP712
 	});
 
 	const canExecuteFetch = (
-		!(isZeroAddress(quote.from) || isZeroAddress(quote.sellToken[0]) || isZeroAddress(quote.buyToken))
-		&& toBigInt(amounts[0].raw || 0) > 0n
+		!(isZeroAddress(quote.from) || isZeroAddress(quote.sellToken) || isZeroAddress(quote.buyToken))
+		&& toBigInt(amount.raw || 0) > 0n
 	);
 
 	if (canExecuteFetch && cowswapOrderBook) {
@@ -60,7 +60,31 @@ export async function retrieveQuoteFromCowswap({
 		);
 		try {
 			const result = await cowswapOrderBook.getQuote(quote) as TCowswapOrderQuoteResponse;
-			return ({quoteResponse: result});
+			const cowRequest: TSolverQuote = {
+				solverType: 'COWSWAP',
+				buyToken: request.outputToken,
+				sellTokens: {
+					[toAddress(request.inputTokens[0].value)]: {
+						value: toAddress(request.inputTokens[0].value),
+						decimals: request.inputTokens[0].decimals,
+						label: request.inputTokens[0].label,
+						symbol: request.inputTokens[0].symbol,
+						amount: toNormalizedBN(
+							toBigInt(result.quote.sellAmount) + toBigInt(result.quote.feeAmount),
+							request.outputToken.decimals
+						)
+					}
+				},
+				quote: {
+					[toAddress(result.quote.sellToken)]: {
+						...result,
+						buyToken: request.outputToken,
+						sellToken: request.inputTokens[0],
+						validTo: quote.validTo
+					}
+				}
+			};
+			return ({quoteResponse: cowRequest});
 		} catch (_error) {
 			console.error(_error);
 			const error = _error as TCowQuoteError;
@@ -77,14 +101,24 @@ export async function retrieveQuoteFromCowswap({
 	return ({feeAmount: 0n});
 }
 
+type TRetreiveBebopQuote = {
+	sellTokens: TAddress[],
+	buyTokens: TAddress[],
+	from: TAddress,
+	receiver: TAddress,
+	amounts: TNormalizedBN[],
+	isGnosisSafe: boolean,
+	shouldPreventErrorToast?: boolean
+}
 export async function retrieveQuoteFromBebop({
+	request,
 	sellTokens,
 	buyTokens,
 	from,
 	receiver,
 	amounts,
 	shouldPreventErrorToast = false
-}: TRetreiveQuote): Promise<TGetQuote> {
+}: TRetreiveBebopQuote & {request: TInitSolverArgs}): Promise<TGetQuote> {
 	const hasZeroAddressSellToken = sellTokens.some((token): boolean => isZeroAddress(token));
 	const hasZeroAmount = amounts.some((amount): boolean => toBigInt(amount.raw || 0) <= 0n);
 	const canExecuteFetch = (
@@ -116,11 +150,45 @@ export async function retrieveQuoteFromBebop({
 
 			const result = data as TBebopOrderQuoteResponse;
 			if (result.status === 'QUOTE_SUCCESS') {
-				result.solverType = 'BEBOP';
-				result.expirationTimestamp = Number(data.expiry);
 				result.id = data.quoteId;
-				result.primaryBuyToken = Object.values(result.buyTokens).find((token): boolean => toAddress(token.contractAddress) === buyTokens[0]) || Object.values(result.buyTokens)[0];
-				return ({quoteResponse: result});
+				result.expirationTimestamp = Number(data.expiry);
+
+				const updatedBuyToken: TDict<TTokenAmount> = {};
+				for (const token of (Object.values(result.buyTokens) as unknown as TBebopToken[])) {
+					updatedBuyToken[toAddress(token.contractAddress)] = {
+						value: toAddress(token.contractAddress),
+						decimals: token.decimals,
+						label: request.inputTokens.find((t): boolean => t.value === toAddress(token.contractAddress))?.label || '',
+						symbol: request.inputTokens.find((t): boolean => t.value === toAddress(token.contractAddress))?.symbol || '',
+						amount: toNormalizedBN(token.amount, token.decimals)
+					};
+				}
+				const updatedSellToken: TDict<TToken & {amount: TNormalizedBN}> = {};
+				for (const token of (Object.values(result.sellTokens) as unknown as TBebopToken[])) {
+					updatedSellToken[toAddress(token.contractAddress)] = {
+						value: toAddress(token.contractAddress),
+						decimals: token.decimals,
+						label: request.inputTokens.find((t): boolean => t.value === toAddress(token.contractAddress))?.label || '',
+						symbol: request.inputTokens.find((t): boolean => t.value === toAddress(token.contractAddress))?.symbol || '',
+						amount: toNormalizedBN(token.amount, token.decimals)
+					};
+				}
+				const updatedQuote: TDict<TBebopOrderQuoteResponse> = {};
+				for (const token of (Object.values(result.sellTokens) as unknown as TBebopToken[])) {
+					updatedQuote[toAddress(token.contractAddress)] = {
+						...result
+					};
+				}
+
+				result.sellTokens = updatedSellToken;
+
+				const bebopRequest: TSolverQuote = {
+					solverType: 'BEBOP',
+					buyToken: request.outputToken,
+					sellTokens: updatedSellToken,
+					quote: updatedQuote
+				};
+				return ({quoteResponse: bebopRequest});
 			}
 		} catch (_error) {
 			console.error(_error);

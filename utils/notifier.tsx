@@ -1,16 +1,23 @@
-import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
-import {type TOrderQuote,TPossibleStatus} from 'utils/types';
+import {TPossibleStatus} from 'utils/types';
 import axios from 'axios';
 import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
+
+import type {TCowswapOrderQuoteResponse, TPossibleSolverQuote} from 'utils/types';
 
 type TSafeTxHistory = {
 	safe: string
 	nonce: number
 }
 
-function notify(orders: TOrderQuote[], origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
+function notify(
+	orders: TPossibleSolverQuote[],
+	solver: 'COWSWAP' | 'BEBOP',
+	origin: string,
+	txHash: string,
+	safeTx?: TSafeTxHistory
+): void {
 	if (!orders.length) {
 		return;
 	}
@@ -19,31 +26,32 @@ function notify(orders: TOrderQuote[], origin: string, txHash: string, safeTx?: 
 	const messages = [] as string[];
 	let from = '';
 	let to = '';
-	for (const order of orders) {
-		if (isCowswapOrder(order)) {
+	for (const orderUnknown of orders) {
+		if (solver === 'COWSWAP') {
+			const order = orderUnknown as TCowswapOrderQuoteResponse;
 			from = toAddress(order.from);
 			to = toAddress(order.quote.receiver);
 			const buyAmount = formatAmount(
 				toNormalizedBN(
-					order?.quote?.buyAmount || '',
-					order?.request?.outputToken?.decimals || 18
+					order.quote.buyAmount || '',
+					order.buyToken.decimals || 18
 				).normalized, 6, 6);
 			const sellAmount = formatAmount(
 				toNormalizedBN(
-					order?.quote?.sellAmount || '',
-					order?.request?.inputToken?.decimals || 18
+					order.quote.sellAmount || '',
+					order.sellToken.decimals || 18
 				).normalized, 6, 6);
 			const feeAmount = formatAmount(
 				toNormalizedBN(
-					order?.quote?.feeAmount || '',
-					order?.request?.inputToken?.decimals || 18
+					order.quote.feeAmount || '',
+					order.sellToken.decimals || 18
 				).normalized, 6, 6);
-			const buyToken = order.request.outputToken.symbol;
-			const sellToken = order.request.inputToken.symbol;
+			const buyToken = order.buyToken.symbol;
+			const sellToken = order.sellToken.symbol;
 
 			if (order?.orderError) {
 				messages.push(
-					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
+					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
 				);
 			} else {
 				let status = `${order.orderStatus === TPossibleStatus.COWSWAP_FULFILLED ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`;
@@ -51,13 +59,9 @@ function notify(orders: TOrderQuote[], origin: string, txHash: string, safeTx?: 
 					status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
 				}
 				messages.push(
-					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.request.outputToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.request.inputToken.value}) | ${status}`
+					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.value}) | ${status}`
 				);
 			}
-		}
-
-		if (isBebopOrder(order)) {
-			console.warn('TODO: Not implemented yet');
 		}
 	}
 

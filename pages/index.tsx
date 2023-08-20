@@ -41,7 +41,7 @@ function Home(): ReactElement {
 							if (currentStep === Step.DESTINATION) {
 								performBatchedUpdates((): void => {
 									set_currentStep(Step.RECEIVER);
-									set_quotes({}); // Reset quotes
+									set_quotes(undefined); // Reset quotes
 								});
 							}
 						});
@@ -55,7 +55,7 @@ function Home(): ReactElement {
 					onProceed={(): void => {
 						performBatchedUpdates((): void => {
 							set_currentStep(Step.SELECTOR);
-							set_quotes({}); // Reset quotes
+							set_quotes(undefined); // Reset quotes
 						});
 					}} />
 			</div>

@@ -7,9 +7,8 @@ import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {Dispatch, SetStateAction} from 'react';
-import type {TOrderQuote} from 'utils/types';
-import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
-import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import type {Maybe, TSolverQuote} from 'utils/types';
+import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {UseStorageValueResult} from '@react-hookz/web/cjs/useStorageValue';
 import type {TTokenInfo} from './useTokenList';
 
@@ -23,14 +22,12 @@ export enum	Step {
 
 export type TSelected = {
 	selected: TAddress[],
-	amounts: TDict<TNormalizedBN>,
-	quotes: TDict<TOrderQuote>,
+	quotes: Maybe<TSolverQuote>,
 	destination: TTokenInfo,
 	currentStep: Step,
 	receiver: TAddress,
 	set_selected: Dispatch<SetStateAction<TAddress[]>>,
-	set_amounts: Dispatch<SetStateAction<TDict<TNormalizedBN>>>,
-	set_quotes: Dispatch<SetStateAction<TDict<TOrderQuote>>>,
+	set_quotes: Dispatch<SetStateAction<Maybe<TSolverQuote>>>,
 	set_currentStep: Dispatch<SetStateAction<Step>>,
 	set_destination: Dispatch<SetStateAction<TTokenInfo>>,
 	set_receiver: Dispatch<SetStateAction<TAddress>>,
@@ -39,8 +36,7 @@ export type TSelected = {
 
 const defaultProps: TSelected = {
 	selected: [],
-	amounts: {},
-	quotes: {},
+	quotes: undefined,
 	destination: {
 		chainId: 1,
 		address: ETH_TOKEN_ADDRESS,
@@ -52,7 +48,6 @@ const defaultProps: TSelected = {
 	currentStep: Step.WALLET,
 	receiver: toAddress(),
 	set_selected: (): void => undefined,
-	set_amounts: (): void => undefined,
 	set_quotes: (): void => undefined,
 	set_currentStep: (): void => undefined,
 	set_destination: (): void => undefined,
@@ -71,10 +66,11 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const [selected, set_selected] = useState<TAddress[]>(defaultProps.selected);
 	const [destination, set_destination] = useState<TTokenInfo>(defaultProps.destination);
 	const [receiver, set_receiver] = useState<TAddress>(toAddress(address));
-	const [quotes, set_quotes] = useState<TDict<TOrderQuote>>(defaultProps.quotes);
-	const [amounts, set_amounts] = useState<TDict<TNormalizedBN>>(defaultProps.amounts);
+	const [quotes, set_quotes] = useState<Maybe<TSolverQuote>>(defaultProps.quotes);
 	const [currentStep, set_currentStep] = useState<Step>(Step.WALLET);
 	const slippage = useLocalStorageValue<number>('dump-services/slippage', {defaultValue: 0.1, initializeWithValue: true});
+
+	console.warn(quotes);
 
 	/**********************************************************************************************
 	** If the user is not active, reset the state to the default values.
@@ -83,7 +79,6 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 		if (!isActive) {
 			performBatchedUpdates((): void => {
 				set_selected(defaultProps.selected);
-				set_amounts(defaultProps.amounts);
 				set_destination(defaultProps.destination);
 			});
 		} else if (isActive) {
@@ -97,7 +92,6 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	useUpdateEffect((): void => {
 		performBatchedUpdates((): void => {
 			set_selected(defaultProps.selected);
-			set_amounts(defaultProps.amounts);
 			set_destination(defaultProps.destination);
 			set_receiver(toAddress(address));
 		});
@@ -185,8 +179,6 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const contextValue = useMemo((): TSelected => ({
 		selected,
 		set_selected,
-		amounts,
-		set_amounts,
 		quotes,
 		set_quotes,
 		currentStep,
@@ -196,7 +188,7 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 		receiver,
 		set_receiver,
 		slippage
-	}), [selected, amounts, quotes, currentStep, destination, receiver, slippage]);
+	}), [selected, quotes, currentStep, destination, receiver, slippage]);
 
 	return (
 		<SweepooorContext.Provider value={contextValue}>

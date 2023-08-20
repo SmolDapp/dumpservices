@@ -1,9 +1,21 @@
-import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
-import type {TBebopOrderQuoteResponse, TCowswapOrderQuoteResponse, TOrderQuote} from 'utils/types';
-import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import type {Maybe, TBebopOrderQuoteResponse, TCowswapOrderQuoteResponse,TSolverQuote} from 'utils/types';
+import type {TDict} from '@yearn-finance/web-lib/types';
 
-export function asCowswapOrder(order: TOrderQuote | undefined): asserts order is TCowswapOrderQuoteResponse {
+export function isQuote(order: Maybe<TSolverQuote>): order is TSolverQuote {
+	if (!order) {
+		return false;
+	}
+	if (typeof order !== 'object') {
+		return false;
+	}
+	if (!('solverType' in order)) {
+		return false;
+	}
+	return true;
+}
+
+export function asCowswapOrder(order: Maybe<TSolverQuote>): asserts order is TSolverQuote & {'quote': TDict<TCowswapOrderQuoteResponse>} {
 	if (!order) {
 		throw new Error('Order is undefined');
 	}
@@ -18,7 +30,7 @@ export function asCowswapOrder(order: TOrderQuote | undefined): asserts order is
 	}
 }
 
-export function isCowswapOrder(order: TOrderQuote | undefined): order is TCowswapOrderQuoteResponse {
+export function isCowswapOrder(order: Maybe<TSolverQuote>): order is TSolverQuote & {'quote': TDict<TCowswapOrderQuoteResponse>} {
 	try {
 		asCowswapOrder(order);
 		return true;
@@ -27,7 +39,7 @@ export function isCowswapOrder(order: TOrderQuote | undefined): order is TCowswa
 	}
 }
 
-export function asBebopOrder(order: TOrderQuote | undefined): asserts order is TBebopOrderQuoteResponse {
+export function asBebopOrder(order: Maybe<TSolverQuote>): asserts order is TSolverQuote & {'quote': TDict<TBebopOrderQuoteResponse>} {
 	if (!order) {
 		throw new Error('Order is undefined');
 	}
@@ -42,7 +54,7 @@ export function asBebopOrder(order: TOrderQuote | undefined): asserts order is T
 	}
 }
 
-export function isBebopOrder(order: TOrderQuote | undefined): order is TBebopOrderQuoteResponse {
+export function isBebopOrder(order: Maybe<TSolverQuote>): order is TSolverQuote & {'quote': TDict<TBebopOrderQuoteResponse>} {
 	try {
 		asBebopOrder(order);
 		return true;
@@ -51,42 +63,7 @@ export function isBebopOrder(order: TOrderQuote | undefined): order is TBebopOrd
 	}
 }
 
-export function getValidTo(order: TOrderQuote): number {
-	if (isCowswapOrder(order)) {
-		return order.quote.validTo;
-	}
-	if (isBebopOrder(order)) {
-		return order.expirationTimestamp;
-	}
-	return 0;
-}
 
-export function shouldRefreshQuote(order: TOrderQuote, isGnosisSafe: boolean): boolean {
-	const expiration = Number(isGnosisSafe ? getValidTo(order) : (order?.expirationTimestamp || 0)) * 1000;
-	if (isCowswapOrder(order)) {
-		return (expiration < new Date().valueOf() && !order?.orderUID);
-	}
-
-	if (isBebopOrder(order)) {
-		return (expiration < new Date().valueOf());
-	}
-
-	return false;
-}
-
-
-export function getBuyAmount(order: TOrderQuote): TNormalizedBN {
-	if (isCowswapOrder(order)) {
-		return toNormalizedBN(
-			order.quote.buyAmount,
-			order.request.outputToken.decimals || 18
-		);
-	}
-	if (isBebopOrder(order)) {
-		return toNormalizedBN(
-			order.primaryBuyToken.amount,
-			order.primaryBuyToken.decimals || 18
-		);
-	}
-	return toNormalizedBN(0);
+export function getTypedCowswapQuote(order: Maybe<TSolverQuote>): TSolverQuote & {'quote': TDict<TCowswapOrderQuoteResponse>} {
+	return order as TSolverQuote & {'quote': TDict<TCowswapOrderQuoteResponse>};
 }

@@ -1,7 +1,7 @@
 import React, {Fragment, memo, useCallback, useState} from 'react';
 import IconRefresh from 'components/icons/IconRefresh';
 import {useSweepooor} from 'contexts/useSweepooor';
-import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
+import {addQuote, deleteQuote} from 'hooks/handleQuote';
 import {useSolverCowswap} from 'hooks/useSolverCowswap';
 import {handleInputChangeEventValue} from 'utils/handleInputChangeEventValue';
 import {useDebouncedCallback} from '@react-hookz/web';
@@ -12,8 +12,8 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ChangeEvent, ReactElement} from 'react';
-import type {TOrderQuote} from 'utils/types';
-import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {Maybe, TSolverQuote} from 'utils/types';
+import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -21,17 +21,18 @@ type TTokenRowInputProps = {
 	balance: TBalanceData,
 	tokenAddress: TAddress,
 	isSelected: boolean,
-	amount: TNormalizedBN,
+	initialAmount: TNormalizedBN,
 	onDisable: (shouldDisable: boolean) => void,
 };
 
-const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSelected, amount, onDisable}: TTokenRowInputProps): ReactElement {
+const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSelected, initialAmount, onDisable}: TTokenRowInputProps): ReactElement {
 	const cowswap = useSolverCowswap();
-	const {set_selected, set_amounts, set_quotes, destination, receiver} = useSweepooor();
-	const {address: fromAddress, isActive} = useWeb3();
+	const {set_selected, set_quotes, destination, receiver} = useSweepooor();
+	const {address, isActive} = useWeb3();
 	const [quote, set_quote] = useState(toNormalizedBN(0));
 	const [isLoadingQuote, set_isLoadingQuote] = useState(false);
 	const [error, set_error] = useState('');
+	const [amount, set_amount] = useState(initialAmount);
 
 	const onHandleQuote = useCallback(async (rawAmount: bigint, force = false): Promise<void> => {
 		if (!isSelected && !force) {
@@ -42,38 +43,29 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			set_isLoadingQuote(true);
 		});
 
-		const {estimateOut, quoteResponse, isSuccess, error} = await cowswap.init({
-			from: toAddress(fromAddress || ''),
+		const {estimateOut, quoteResponse, isSuccess, error} = await cowswap.getQuote({
+			from: toAddress(address),
 			receiver: toAddress(receiver),
-			inputToken: {
-				value: toAddress(tokenAddress),
-				label: balance.symbol,
-				symbol: balance.symbol,
-				decimals: balance.decimals
-			},
+			inputTokens: [
+				{
+					value: tokenAddress,
+					label: balance.symbol,
+					symbol: balance.symbol,
+					decimals: balance.decimals
+				}
+			],
 			outputToken: {
 				value: destination.address,
 				label: destination.name,
 				symbol: destination.symbol,
 				decimals: destination.decimals
 			},
-			inputAmount: toBigInt(rawAmount)
+			inputAmounts: [toBigInt(rawAmount)]
 		});
 
-		if (isSuccess) {
+		if (isSuccess && quoteResponse) {
 			performBatchedUpdates((): void => {
-				if (isCowswapOrder(quoteResponse)) {
-					set_quotes((quotes): TDict<TOrderQuote> => ({
-						...quotes,
-						[toAddress(tokenAddress)]: quoteResponse
-					}));
-				}
-				if (isBebopOrder(quoteResponse)) {
-					set_quotes((quotes): TDict<TOrderQuote> => ({
-						...quotes,
-						[toAddress(tokenAddress)]: quoteResponse
-					}));
-				}
+				set_quotes((q): Maybe<TSolverQuote> => addQuote(q, quoteResponse));
 				set_quote(estimateOut);
 				set_isLoadingQuote(false);
 			});
@@ -81,11 +73,8 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			performBatchedUpdates((): void => {
 				set_selected((s): TAddress[] => s.filter((item: TAddress): boolean => item !== tokenAddress));
 				set_isLoadingQuote(false);
-				set_quotes((prev): TDict<TOrderQuote> => {
-					const newQuotes = {...prev};
-					delete newQuotes[tokenAddress];
-					return newQuotes;
-				});
+				set_quotes((q): Maybe<TSolverQuote> => deleteQuote(q, tokenAddress));
+
 				if (error?.solverType === 'COWSWAP') {
 					if (error?.errorType === 'UnsupportedToken') {
 						set_error('This token is currently not supported.');
@@ -107,7 +96,7 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 			});
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [balance, cowswap.init, fromAddress, tokenAddress, isSelected, destination, receiver, onDisable]);
+	}, [balance, cowswap.getQuote, address, tokenAddress, isSelected, destination, receiver, onDisable]);
 
 	/**********************************************************************************************
 	** onEstimateQuote is a direct retrieval of the quote from the Cowswap API with the rawAmount
@@ -143,19 +132,19 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 		}
 		performBatchedUpdates((): void => {
 			set_error('');
-			set_amounts((amounts): TDict<TNormalizedBN> => ({...amounts, [toAddress(tokenAddress)]: newAmount}));
+			set_amount(newAmount);
 			set_selected((s): TAddress[] => {
-				if (newAmount.raw > 0n && !s.includes(toAddress(tokenAddress))) {
-					return [...s, toAddress(tokenAddress)];
+				if (newAmount.raw > 0n && !s.includes(tokenAddress)) {
+					return [...s, tokenAddress];
 				}
-				if (newAmount.raw === 0n && s.includes(toAddress(tokenAddress))) {
-					return s.filter((item: TAddress): boolean => item !== toAddress(tokenAddress));
+				if (newAmount.raw === 0n && s.includes(tokenAddress)) {
+					return s.filter((item: TAddress): boolean => item !== tokenAddress);
 				}
 				return s;
 			});
 		});
 		onDebouncedEstimateQuote(newAmount.raw);
-	}, [balance, onDebouncedEstimateQuote, set_amounts, set_selected, tokenAddress]);
+	}, [balance, onDebouncedEstimateQuote, set_selected, tokenAddress]);
 
 	/**********************************************************************************************
 	** onMaxClick is triggered when the user clicks on the Max button. It updates the amount in the
@@ -167,16 +156,15 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 	const onMaxClick = useCallback((): void => {
 		performBatchedUpdates((): void => {
 			set_error('');
-			set_amounts((amounts): TDict<TNormalizedBN> => ({...amounts, [toAddress(tokenAddress)]: balance}));
 			set_selected((s): TAddress[] => {
-				if (balance.raw > 0n && !s.includes(toAddress(tokenAddress))) {
-					return [...s, toAddress(tokenAddress)];
+				if (balance.raw > 0n && !s.includes(tokenAddress)) {
+					return [...s, tokenAddress];
 				}
 				return s;
 			});
 		});
 		onEstimateQuote(balance?.raw, true);
-	}, [balance, onEstimateQuote, set_amounts, set_selected, tokenAddress]);
+	}, [balance, onEstimateQuote, set_selected, tokenAddress]);
 
 	/**********************************************************************************************
 	** onRefreshClick is triggered when the user clicks on the Refresh button. It triggers the
@@ -249,13 +237,13 @@ const TokenRowInput = memo(function TokenRowInput({tokenAddress, balance, isSele
 							</div>
 						) : null}
 						<button
-							id={`quote-refresh-${toAddress(tokenAddress)}`}
+							id={`quote-refresh-${tokenAddress}`}
 							onClick={onRefreshClick}
 							className={'cursor-pointer text-neutral-200 transition-colors hover:text-neutral-900'}>
 							<IconRefresh className={'h-3 w-3'} />
 						</button>
 						<button
-							id={`quote-reset-${toAddress(tokenAddress)}`}
+							id={`quote-reset-${tokenAddress}`}
 							onClick={onResetClick}
 							className={'pointer-events-none invisible absolute h-0 w-0'}>
 						</button>

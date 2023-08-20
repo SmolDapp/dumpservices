@@ -3,17 +3,17 @@ import Link from 'next/link';
 import TokenRowInput from 'components/TokenRowInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useTokenList} from 'contexts/useTokenList';
+import {deleteQuote, refreshQuote, resetQuote} from 'hooks/handleQuote';
 import {useMountEffect} from '@react-hookz/web';
 import {ImageWithFallback} from '@yearn-finance/web-lib/components/ImageWithFallback';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import IconLinkOut from '@yearn-finance/web-lib/icons/IconLinkOut';
-import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
-import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {truncateHex} from '@yearn-finance/web-lib/utils/address';
 import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
-import type {TOrderQuote} from 'utils/types';
-import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {Maybe, TSolverQuote} from 'utils/types';
+import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -25,46 +25,33 @@ type TTokenRowProps = {
 };
 const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer}: TTokenRowProps): ReactElement {
 	const {tokenList} = useTokenList();
-	const {set_selected, set_amounts, set_quotes, selected} = useSweepooor();
+	const {set_selected, set_quotes, selected} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const [isDisabled, set_isDisabled] = useState(false);
-	const isSelected = Boolean(selected.includes(toAddress(tokenAddress)) || false);
+	const isSelected = Boolean(selected.includes(tokenAddress) || false);
 
 	const onToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
 		const isNowChecked = event.target.checked;
 		performBatchedUpdates((): void => {
 			set_selected((prev): TAddress[] => isNowChecked ? [...prev, tokenAddress] : prev.filter((item: TAddress): boolean => item !== tokenAddress));
 			if (!isNowChecked) {
-				set_quotes((quotes: TDict<TOrderQuote>): TDict<TOrderQuote> => {
-					const newQuotes = {...quotes};
-					delete newQuotes[toAddress(tokenAddress)];
-					return newQuotes;
-				});
-				setTimeout((): void => document?.getElementById(`quote-reset-${toAddress(tokenAddress)}`)?.click(), 10);
+				set_quotes((q): Maybe<TSolverQuote> => deleteQuote(q, tokenAddress));
+				resetQuote(tokenAddress);
 			} else {
-				setTimeout((): void => document?.getElementById(`quote-refresh-${toAddress(tokenAddress)}`)?.click(), 10);
+				refreshQuote(tokenAddress);
 			}
 		});
 	}, [set_quotes, set_selected, tokenAddress]);
 
 	useMountEffect((): void => {
-		set_amounts((amounts: TDict<TNormalizedBN>): TDict<TNormalizedBN> => {
-			return ({
-				...amounts,
-				[toAddress(tokenAddress)]: amounts[toAddress(tokenAddress)] || toNormalizedBN(balance.raw, balance.decimals)
-			});
-		});
-	});
-
-	useMountEffect((): void => {
 		if (isSelected) {
-			setTimeout((): void => document?.getElementById(`quote-refresh-${toAddress(tokenAddress)}`)?.click(), 10);
+			refreshQuote(tokenAddress);
 		}
 	});
 
 	return (
 		<div
-			id={`${safeChainID}-${toAddress(tokenAddress)}`}
+			id={`${safeChainID}-${tokenAddress}`}
 			className={'group relative grid w-full grid-cols-1 border-0 border-t border-neutral-200 bg-neutral-0 px-4 pb-3 pt-0 text-left transition-colors hover:bg-neutral-100/50 md:grid-cols-9 md:border-none md:px-6 md:py-3'}>
 			<div className={'absolute left-3 top-7 z-10 flex h-full justify-center md:left-6 md:top-0 md:items-center'}>
 				<input
@@ -77,13 +64,13 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 				<div className={'yearn--table-token-section-item h-16 pt-1'}>
 					<div className={'yearn--table-token-section-item-image'}>
 						<ImageWithFallback
-							id={`${safeChainID}-${toAddress(tokenAddress)}-img`}
+							id={`${safeChainID}-${tokenAddress}-img`}
 							unoptimized
-							alt={toAddress(tokenAddress)}
+							alt={tokenAddress}
 							width={40}
 							height={40}
 							quality={90}
-							src={tokenList[toAddress(tokenAddress)].logoURI || `https://assets.smold.app/api/token/${safeChainID}/${toAddress(tokenAddress)}/logo-128.png`} />
+							src={tokenList?.[tokenAddress]?.logoURI || `https://assets.smold.app/api/token/${safeChainID}/${tokenAddress}/logo-128.png`} />
 					</div>
 					<div>
 						<div className={'flex flex-row items-center space-x-2'}>
@@ -108,7 +95,7 @@ const TokenRow = memo(function TokenRow({tokenAddress, balance, amount, explorer
 
 			<div className={`yearn--table-data-section ${isDisabled ? 'pointer-events-none opacity-30' : ''}`}>
 				<TokenRowInput
-					amount={amount}
+					initialAmount={amount}
 					balance={balance}
 					tokenAddress={tokenAddress}
 					isSelected={isSelected}

@@ -1,5 +1,6 @@
 import type {ReactElement} from 'react';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {EcdsaSigningScheme, OrderQuoteResponse} from '@cowprotocol/cow-sdk';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -33,33 +34,34 @@ export type TToken = {
 	value: string;
 	icon?: ReactElement;
 }
+export type TTokenAmount = TToken & {
+	amount: TNormalizedBN,
+	amountWithSlippage?: string,
+}
 
 export type TInitSolverArgs = {
 	from: TAddress,
 	receiver: TAddress,
-	inputToken: TToken
+	inputTokens: TToken[]
 	outputToken: TToken
-	inputAmount: bigint
+	inputAmounts: bigint[]
 }
 
+export type TRequestMetadata = {
+	orderUID: string; // Unique identifier for the order on cowswap system
+	orderStatus: TPossibleStatus;
+	orderError: unknown | undefined;
+	isRefreshing: boolean;
+	expirationTimestamp: number;
+}
 export type TCowswapOrderQuoteResponse = OrderQuoteResponse & {
-	solverType: 'COWSWAP';
-	// quote: OrderParameters;
-	// from?: TAddress;
-	// expiration: string;
-	// id?: number;
+	validTo: number;
 	signature: string;
 	signingScheme: EcdsaSigningScheme;
-	request: TInitSolverArgs;
 	buyAmountWithSlippage?: string;
-
-	// Used for the UI, not part of the quote nor returned by the API
-	orderUID?: string; // Unique identifier for the order on cowswap system
-	orderStatus?: TPossibleStatus;
-	orderError?: unknown;
-	isRefreshing?: boolean;
-	expirationTimestamp?: number;
-}
+	buyToken: TToken;
+	sellToken: TToken;
+} & TRequestMetadata
 
 export type TCowQuoteError = {
 	solverType: 'COWSWAP';
@@ -77,15 +79,14 @@ export type TBebopToken = {
 }
 
 export type TBebopOrderQuoteResponse = {
-	solverType: 'BEBOP';
 	status: string;
 	type: string;
 	id: string; //quoteId -> id
 	chainId: number;
 	receiver: TAddress
 	expirationTimestamp: number; // expirity -> expirationTimestamp
-	buyTokens: TDict<TBebopToken>
-	sellTokens: TDict<TBebopToken>
+	buyTokens: TDict<TTokenAmount>
+	sellTokens: TDict<TTokenAmount>
 	toSign: {
 		expiry: number;
 		taker_address: TAddress;
@@ -96,14 +97,8 @@ export type TBebopOrderQuoteResponse = {
 		taker_amounts: string[][];
 		maker_amounts: string[][];
 		receiver: TAddress;
-	},
-
-	// Used for the UI, not part of the quote nor returned by the API
-	orderStatus?: TPossibleStatus;
-	orderUID?: string; // Match the hash of the TX that created the order
-	primaryBuyToken: TBebopToken;
-}
-
+	}
+} & TRequestMetadata
 
 export type TBebopOrderQuoteError = {
 	solverType: 'BEBOP';
@@ -113,5 +108,13 @@ export type TBebopOrderQuoteError = {
 	}
 }
 
-export type TOrderQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse
+// export type TSolverQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse
+export type TSolverQuote = { //TODO: Renamte TRequest
+	solverType: 'COWSWAP' | 'BEBOP';
+	buyToken: TToken; // token we want to receive
+	sellTokens: TDict<TTokenAmount>; // address -> TTokenAmount
+
+	quote: TDict<TPossibleSolverQuote>;
+}
+export type TPossibleSolverQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse
 export type TOrderQuoteError = TCowQuoteError | TBebopOrderQuoteError
