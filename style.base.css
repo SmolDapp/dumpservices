@@ -96,23 +96,11 @@ label[aria-invalid="true"] {
 ** extra tailwind class
 **************************************************************************/
 .flex-center {@apply flex justify-center items-center;}
-.rounded-default {border-radius: var(--default-rounded);}
-.rounded-b-default {
-	border-bottom-left-radius: var(--default-rounded);
-	border-bottom-right-radius: var(--default-rounded);
-}
-.rounded-t-default {
-	border-top-left-radius: var(--default-rounded);
-	border-top-right-radius: var(--default-rounded);
-}
-.rounded-l-default {
-	border-top-left-radius: var(--default-rounded);
-	border-bottom-left-radius: var(--default-rounded);
-}
-.rounded-r-default {
-	border-top-right-radius: var(--default-rounded);
-	border-bottom-right-radius: var(--default-rounded);
-}
+.rounded-default {@apply rounded-md;}
+.rounded-b-default {@apply rounded-b-md;}
+.rounded-t-default {@apply rounded-t-md;}
+.rounded-l-default {@apply rounded-l-md;}
+.rounded-r-default {@apply rounded-r-md;}
 
 /* -- Button.tsx ------------------------------------------------------- */
 .yearn--button {
@@ -121,26 +109,26 @@ label[aria-invalid="true"] {
 	border-radius: var(--default-rounded);
 
 	&[data-variant="filled"] {
-		@apply text-neutral-0 bg-neutral-900 font-normal border border-transparent;
-		&:disabled {@apply bg-neutral-700 opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-neutral-800;}
+		@apply text-primary-0 bg-primary-900 font-normal border border-transparent;
+		&:disabled {@apply bg-primary-700 opacity-40;}
+		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-800;}
 	}
 	&[data-variant="light"] {
-		@apply text-neutral-900 bg-neutral-100 border border-transparent;
+		@apply text-primary-900 bg-primary-100 border border-transparent;
 		&:disabled {@apply opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-neutral-200;}
+		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-200;}
 	}
 	&[data-variant="outlined"] {
-		@apply text-neutral-900 bg-transparent border border-neutral-900;
+		@apply text-primary-900 bg-transparent border border-primary-900;
 		&:disabled {@apply opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-neutral-900 text-neutral-0;}
+		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-900 text-primary-0;}
 	}
 	&[data-variant="reverted"] {
-		@apply text-neutral-900 bg-neutral-0 font-normal border border-transparent;
-		&:disabled {@apply bg-neutral-200 opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-neutral-200;}
+		@apply text-primary-900 bg-primary-0 font-normal border border-transparent;
+		&:disabled {@apply bg-primary-200 opacity-40;}
+		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-200;}
 		&[aria-busy="true"] svg {
-			@apply text-neutral-900;
+			@apply text-primary-900;
 		}
 	}
 	&[aria-busy="true"] {
@@ -310,7 +298,7 @@ label[aria-invalid="true"] {
 }
 
 .mobile-nav-item {
-	@apply flex flex-col items-start justify-between rounded bg-neutral-100;
+	@apply flex flex-col items-start justify-between rounded-md bg-neutral-100;
 	& > p {
 		@apply p-2 text-base font-bold text-neutral-900;
 	}

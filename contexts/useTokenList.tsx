@@ -5,25 +5,17 @@ import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 
 import type {Dispatch, SetStateAction} from 'react';
-import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {TToken} from 'utils/types';
+import type {TDict} from '@yearn-finance/web-lib/types';
 
-export type TTokenInfo = {
-	extra?: boolean;
-	chainId: number,
-	address: TAddress,
-	name: string,
-	symbol: string,
-	decimals: number,
-	logoURI: string,
-};
 export type TTokenList = {
 	name: string;
-	tokens: TTokenInfo[];
+	tokens: TToken[];
 }
 
 export type TTokenListProps = {
-	tokenList: TDict<TTokenInfo>,
-	set_tokenList: Dispatch<SetStateAction<TDict<TTokenInfo>>>,
+	tokenList: TDict<TToken>,
+	set_tokenList: Dispatch<SetStateAction<TDict<TToken>>>,
 }
 const defaultProps: TTokenListProps = {
 	tokenList: {},
@@ -33,11 +25,11 @@ const defaultProps: TTokenListProps = {
 const TokenList = createContext<TTokenListProps>(defaultProps);
 export const TokenListContextApp = ({children}: {children: React.ReactElement}): React.ReactElement => {
 	const {safeChainID} = useChainID();
-	const [tokenList, set_tokenList] = useState<TDict<TTokenInfo>>({});
+	const [tokenList, set_tokenList] = useState<TDict<TToken>>({});
 
 	const fetchTokensFromLists = useCallback(async (): Promise<void> => {
-		const lists: TTokenInfo[] = [];
-		const tokenListTokens: TDict<TTokenInfo> = {};
+		const lists: TToken[] = [];
+		const tokenListTokens: TDict<TToken> = {};
 		if (safeChainID === 1) {
 			const defaultList = defaultTokenList as TTokenList;
 			for (const eachToken of defaultList.tokens) {

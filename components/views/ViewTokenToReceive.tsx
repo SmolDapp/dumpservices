@@ -1,16 +1,17 @@
 import React, {useCallback, useState} from 'react';
 import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
-import {type TTokenInfo, useTokenList} from 'contexts/useTokenList';
+import {useTokenList} from 'contexts/useTokenList';
 import {useDeepCompareEffect, useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS, ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
 import type {ReactElement} from 'react';
+import type {TToken} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
@@ -19,7 +20,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	const {tokenList} = useTokenList();
 	const [tokenToSend, set_tokenToSend] = useState<string>(ZERO_ADDRESS);
 	const [isValidTokenToReceive, set_isValidTokenToReceive] = useState<boolean | 'undetermined'>(true);
-	const [possibleTokenToReceive, set_possibleTokenToReceive] = useState<TDict<TTokenInfo>>({});
+	const [possibleTokenToReceive, set_possibleTokenToReceive] = useState<TDict<TToken>>({});
 
 
 	/* 🔵 - Smoldapp *******************************************************************************
@@ -28,7 +29,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	** Only the tokens in that list will be displayed as possible destinations.
 	**********************************************************************************************/
 	useDeepCompareEffect((): void => {
-		const possibleDestinationsTokens: TDict<TTokenInfo> = {};
+		const possibleDestinationsTokens: TDict<TToken> = {};
 		const {wrappedToken} = getNetwork(safeChainID).contracts;
 		if (wrappedToken && safeChainID === 1) {
 			possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = {

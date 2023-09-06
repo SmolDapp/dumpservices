@@ -14,4 +14,4 @@ function IconRefresh(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default IconRefresh;
+export {IconRefresh};

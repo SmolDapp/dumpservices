@@ -1,18 +1,18 @@
 import React, {useState} from 'react';
-import IconCheck from 'components/icons/IconCheck';
-import IconChevronBoth from 'components/icons/IconChevronBoth';
-import IconCircleCross from 'components/icons/IconCircleCross';
-import IconSpinner from 'components/icons/IconSpinner';
+import {IconCheck} from 'components/icons/IconCheck';
+import {IconChevronBoth} from 'components/icons/IconChevronBoth';
+import {IconCircleCross} from 'components/icons/IconCircleCross';
+import {IconSpinner} from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {getTypedCowswapQuote, isBebopOrder, isCowswapOrder, isQuote} from 'hooks/assertSolver';
 import {refreshQuote} from 'hooks/handleQuote';
-import {getBuyAmount, getSellAmount, getValidTo, shouldRefreshQuote} from 'hooks/helperWithSolver';
+import {getBuyAmount, getValidTo, shouldRefreshQuote} from 'hooks/helperWithSolver';
 import {getSpender} from 'hooks/useSolverCowswap';
 import {TPossibleFlowStep,TPossibleStatus} from 'utils/types';
 import {erc20ABI, useContractRead} from 'wagmi';
 import {useIntervalEffect, useUpdateEffect} from '@react-hookz/web';
-import useWeb3 from '@yearn-finance/web-lib/contexts/useWeb3';
+import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
@@ -20,46 +20,37 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
+import type {TApprovalWizardItem} from 'components/ApprovalWizardItem';
 import type {ReactElement} from 'react';
-import type {TSolverQuote} from 'utils/types';
-import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
+import type {TBebopQuoteAPIResp, TRequest} from 'utils/types';
+import type {TAddress} from '@yearn-finance/web-lib/types';
 
-type TApprovalWizardItem = {
+function SumaryExpiration({quotes, token}: {
+	quotes: TRequest,
 	token: TAddress,
-	index: number,
-	isGnosisSafe: boolean,
-	hasSignature: boolean,
-	approvalStep: TDict<TPossibleFlowStep>,
-	signStep: TDict<TPossibleFlowStep>,
-	executeStep: TDict<TPossibleFlowStep>,
-}
-
-function SumaryExpiration({quotes, token, isGnosisSafe}: {
-	quotes: TSolverQuote,
-	token: TAddress,
-	isGnosisSafe: boolean
 }): ReactElement {
+	const {isWalletSafe} = useWeb3();
 	const [expireIn, set_expireIn] = useState(0);
 	const currentQuote = quotes.quote[token];
 	const hasQuote = Boolean(currentQuote);
-	const quoteExpiration = getValidTo(quotes, token, isGnosisSafe) * 1000;
+	const quoteExpiration = getValidTo(quotes, token, isWalletSafe) * 1000;
 
 	useIntervalEffect((): void => {
 		set_expireIn(quoteExpiration - new Date().valueOf());
-		if (shouldRefreshQuote(quotes, token, isGnosisSafe)) {
+		if (shouldRefreshQuote(quotes, token, isWalletSafe)) {
 			refreshQuote(token);
 		}
 	}, (!hasQuote ? undefined : 1000));
 
 	useUpdateEffect((): void => {
 		set_expireIn(quoteExpiration - new Date().valueOf());
-		if (shouldRefreshQuote(quotes, token, isGnosisSafe)) {
+		if (shouldRefreshQuote(quotes, token, isWalletSafe)) {
 			refreshQuote(token);
 		}
 	}, [quoteExpiration]);
 
 	function renderExpiration(): ReactElement {
-		if (currentQuote?.orderUID) {
+		if (currentQuote.orderUID) {
 			return (
 				<small className={'text-xs tabular-nums text-neutral-500'}>
 					&nbsp;
@@ -67,7 +58,7 @@ function SumaryExpiration({quotes, token, isGnosisSafe}: {
 			);
 		}
 
-		if (Math.floor(expireIn / 1000) <= 0) {
+		if (Math.floor(expireIn) <= 0) {
 			return (
 				<div className={'tooltip'}>
 					<small className={'text-xs tabular-nums text-[#f97316]'}>
@@ -76,11 +67,11 @@ function SumaryExpiration({quotes, token, isGnosisSafe}: {
 				</div>
 			);
 		}
-		if (Math.floor(expireIn / 1000) < 60) {
+		if (Math.floor(expireIn) < 60) {
 			return (
 				<div className={'tooltip'}>
 					<small className={'text-xs tabular-nums text-neutral-500'}>
-						{`The quote will be updated in ${Math.floor(expireIn / 1000)}s`}
+						{`The quote will be updated in ${Math.floor(expireIn)}s`}
 					</small>
 					<span className={'tooltiptext z-[100000] text-xs'}>
 						<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
@@ -109,10 +100,10 @@ function SumaryExpiration({quotes, token, isGnosisSafe}: {
 	);
 }
 
-function SummaryIndicator({token, isGnosisSafe, hasSignature, approvalStep, signStep, executeStep}: TApprovalWizardItem): ReactElement {
+function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, signStep, executeStep}: TApprovalWizardItem): ReactElement {
 	const {address} = useWeb3();
 	const {quotes, destination} = useSweepooor();
-	const [step, set_step] = useState<'Approve' | 'Sign' | 'Execute'>(isGnosisSafe ? 'Sign' : 'Approve');
+	const [step, set_step] = useState<'Approve' | 'Sign' | 'Execute'>(isWalletSafe ? 'Sign' : 'Approve');
 	const {safeChainID} = useChainID();
 
 	const {data: allowance} = useContractRead({
@@ -217,7 +208,7 @@ function SummaryIndicator({token, isGnosisSafe, hasSignature, approvalStep, sign
 		}
 
 		const currentQuote = quotes.quote[token];
-		if (!currentQuote?.orderStatus) {
+		if (!currentQuote.orderStatus) {
 			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
 		}
 		if (currentQuote.orderStatus === TPossibleStatus.COWSWAP_FULFILLED) {
@@ -238,7 +229,7 @@ function SummaryIndicator({token, isGnosisSafe, hasSignature, approvalStep, sign
 		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
 	}
 
-	if (isGnosisSafe) {
+	if (isWalletSafe) {
 		return (
 			<div className={'flex flex-row items-center space-x-2 pt-2 md:space-x-4'}>
 				<div className={'flex flex-row items-center justify-center space-x-2'}>
@@ -286,12 +277,16 @@ function SummaryIndicator({token, isGnosisSafe, hasSignature, approvalStep, sign
 }
 
 function CowswapTXDetails({quotes, token}: {
-	quotes: TSolverQuote,
+	quotes: TRequest,
 	token: TAddress
 }): ReactElement {
 	const {balances} = useWallet();
 	const currentQuote = getTypedCowswapQuote(quotes).quote[token];
 	const currentSellToken = getTypedCowswapQuote(quotes).sellTokens[token];
+
+	if (!currentQuote.quote) {
+		return (<div />);
+	}
 
 	return (
 		<div className={'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'}>
@@ -316,7 +311,7 @@ function CowswapTXDetails({quotes, token}: {
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'BuyToken'}</b>
 				<p className={'font-number'}>
-					{`${balances?.[toAddress(currentQuote?.quote?.buyToken)]?.symbol || ''} (${toAddress(currentQuote?.quote?.buyToken || '')})`}
+					{`${balances?.[toAddress(currentQuote.quote.buyToken)]?.symbol || ''} (${toAddress(currentQuote.quote.buyToken || '')})`}
 				</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
@@ -331,13 +326,13 @@ function CowswapTXDetails({quotes, token}: {
 					{`${toNormalizedBN(
 						currentQuote.quote.feeAmount || '',
 						currentSellToken.decimals
-					).normalized} (${currentQuote?.quote?.feeAmount || ''})`}
+					).normalized} (${currentQuote.quote.feeAmount || ''})`}
 				</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'SellToken'}</b>
 				<p className={'font-number'}>
-					{`${balances?.[token]?.symbol || ''} (${toAddress(currentQuote?.quote?.sellToken || '')})`}
+					{`${balances?.[token]?.symbol || ''} (${toAddress(currentQuote.quote.sellToken || '')})`}
 				</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
@@ -350,47 +345,60 @@ function CowswapTXDetails({quotes, token}: {
 	);
 }
 
-function ApprovalWizardItem(props: TApprovalWizardItem): ReactElement {
+function ApprovalWizardItemBebop({quote}: {
+	isWalletSafe: boolean,
+	quote: TBebopQuoteAPIResp
+}): ReactElement {
 	const {quotes, destination} = useSweepooor();
 	const {balances} = useWallet();
-	const currentQuote = quotes?.quote?.[props.token];
 
-	if (!currentQuote) {
-		return <></>;
+	function findTokenSymbol(address: TAddress): string {
+		return balances?.[toAddress(address)]?.symbol || 'Tokens';
+	}
+
+	function findTokenDecimals(address: TAddress): number {
+		return balances?.[toAddress(address)]?.decimals || 18;
+	}
+
+	console.warn(quote);
+	if (!quote) {
+		return <div />;
 	}
 
 	return (
-		<details
-			key={props.index}
-			className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-0 transition-colors hover:bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
-			<summary className={'flex flex-col items-start py-2'}>
-				<div className={'flex w-full flex-col items-start justify-between md:flex-row md:items-center'}>
-					<div className={'text-left text-sm'}>
-						{'Swapping '}
+		<>
+			{Object.values(quote?.sellTokens || {}).map((item): ReactElement => (
+				<details
+					key={item.contractAddress}
+					className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-0 transition-colors hover:bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
+					<summary
+						className={'flex flex-col items-start py-2'}>
+						<div className={'flex w-full flex-col items-start justify-between md:flex-row md:items-center'}>
+							<div className={'text-left text-sm'}>
+								{'Swapping '}
 
-						<span className={'font-number font-bold'}>
-							{formatAmount(getSellAmount(quotes, props.token).normalized, 6, 6)}
-						</span>
+								<span className={'font-number font-bold'}>
+									{formatAmount(toNormalizedBN(item.amount, findTokenDecimals(item.contractAddress)).normalized, 6, 6)}
+								</span>
 
-						{` ${balances?.[props.token]?.symbol || 'Tokens'} for at least `}
+								{` ${findTokenSymbol(item.contractAddress)} for ~`}
 
-						<span className={'font-number font-bold'}>
-							{formatAmount(getBuyAmount(quotes, props.token).normalized, 6, 6)}
-						</span>
+								<span className={'font-number font-bold'}>
+									{formatAmount(
+										Number(toNormalizedBN(item.amount, findTokenDecimals(item.contractAddress)).normalized)
+									*
+									item.rate
+										, 6, 6)}
+								</span>
 
-						{` ${destination.symbol}`}
-					</div>
-					{quotes && <SumaryExpiration
-						quotes={quotes}
-						token={props.token}
-						isGnosisSafe={props.isGnosisSafe} />}
-				</div>
-				<SummaryIndicator {...props} />
-			</summary>
-
-			{isCowswapOrder(quotes) && <CowswapTXDetails quotes={quotes} token={props.token} />}
-		</details>
+								{` ${destination.symbol}`}
+							</div>
+						</div>
+					</summary>
+				</details>
+			))}
+		</>
 	);
 }
 
-export default ApprovalWizardItem;
+export default ApprovalWizardItemBebop;

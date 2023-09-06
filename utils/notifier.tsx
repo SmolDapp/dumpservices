@@ -51,7 +51,7 @@ function notify(
 
 			if (order?.orderError) {
 				messages.push(
-					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.value}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
+					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.address}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.address}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
 				);
 			} else {
 				let status = `${order.orderStatus === TPossibleStatus.COWSWAP_FULFILLED ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${order.orderUID})`;
@@ -59,7 +59,7 @@ function notify(
 					status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
 				}
 				messages.push(
-					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.value}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.value}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.value}) | ${status}`
+					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.address}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.address}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.address}) | ${status}`
 				);
 			}
 		}

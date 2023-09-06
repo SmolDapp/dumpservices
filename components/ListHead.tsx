@@ -1,5 +1,5 @@
 import React, {useCallback} from 'react';
-import IconChevronPlain from 'components/icons/IconChevronPlain';
+import {IconChevronPlain} from 'components/icons/IconChevronPlain';
 
 import type {ReactElement} from 'react';
 

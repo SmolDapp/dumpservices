@@ -2,7 +2,7 @@ import React, {Fragment, useEffect, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {Popover, Transition} from '@headlessui/react';
 import {Button} from '@yearn-finance/web-lib/components/Button';
-import IconSettings from '@yearn-finance/web-lib/icons/IconSettings';
+import {IconSettings} from '@yearn-finance/web-lib/icons/IconSettings';
 
 import type {ReactElement} from 'react';
 

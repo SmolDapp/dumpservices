@@ -1,6 +1,6 @@
 import React, {useCallback, useState} from 'react';
-import ApprovalWizardItem from 'components/ApprovalWizardItem';
-import IconSpinner from 'components/icons/IconSpinner';
+import ApprovalWizardItemCowswap from 'components/ApprovalWizardItem.cowswap';
+import {IconSpinner} from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedCowswapQuote, isCowswapOrder} from 'hooks/assertSolver';
 import {addQuote, setRefreshingQuote} from 'hooks/handleQuote';
@@ -20,7 +20,7 @@ import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {MAX_UINT_256} from '@yearn-finance/web-lib/utils/constants';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
-import type {Maybe, TCowswapOrderQuoteResponse,TSolverQuote} from 'utils/types';
+import type {Maybe, TCowswapOrderQuoteResponse,TRequest} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
@@ -37,7 +37,7 @@ type TSafeTxHistory = {
 function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
 	const {provider} = useWeb3();
 	const cowswap = useSolverCowswap();
-	const {selected, quotes, set_quotes} = useSweepooor();
+	const {quotes, set_quotes} = useSweepooor();
 	const [isApproving, set_isApproving] = useState(false);
 	const [isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
 	const [existingTransactions, set_existingTransactions] = useState<TDict<TExistingTx>>({});
@@ -55,16 +55,17 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 				if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
 					return; //skip already sent
 				}
-				set_quotes((prev): Maybe<TSolverQuote> => setRefreshingQuote(prev, toAddress(key)));
+				set_quotes((prev): Maybe<TRequest> => setRefreshingQuote(prev, toAddress(key)));
 				const {quoteResponse} = await cowswap.getQuote({
 					from: toAddress(currentQuote.from),
 					receiver: toAddress(currentQuote.quote.receiver),
 					inputTokens: [currentQuote.sellToken],
 					outputToken: currentQuote.buyToken,
-					inputAmounts: [getSellAmount(quotes, toAddress(key)).raw]
+					inputAmounts: [getSellAmount(quotes, toAddress(key)).raw],
+					inputBalances: [0n] // Non relevant here
 				});
 				if (quoteResponse) {
-					set_quotes((prev): Maybe<TSolverQuote> => addQuote(prev, quoteResponse));
+					set_quotes((prev): Maybe<TRequest> => addQuote(prev, quoteResponse));
 				}
 			}
 		}
@@ -80,7 +81,6 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 	** - A orderUID will be returned
 	**********************************************************************************************/
 	const onExecuteFromGnosis = useCallback(async (): Promise<void> => {
-		const allSelected = [...selected];
 		const preparedTransactions: BaseTransaction[] = [];
 		const newlyExistingTransactions: TDict<TExistingTx> = {};
 		const executedQuotes = [];
@@ -90,7 +90,9 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 		}
 
 		// Check approvals and add them to the batch if needed
-		for (const tokenAddress of allSelected) {
+		const allQuotes = getTypedCowswapQuote(quotes);
+		for (const token of Object.keys(allQuotes.quote)) {
+			const tokenAddress = toAddress(token);
 			const quoteOrder = quotes.quote[tokenAddress] as TCowswapOrderQuoteResponse;
 			const isApproved = await isApprovedERC20({
 				connector: provider,
@@ -180,7 +182,7 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 			console.error(error);
 			set_isApproving(false);
 		}
-	}, [selected, quotes, provider, safeChainID, existingTransactions, onUpdateSignStep, cowswap, sdk.txs]);
+	}, [quotes, provider, safeChainID, existingTransactions, onUpdateSignStep, cowswap, sdk.txs]);
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
@@ -196,7 +198,7 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 				id={'TRIGGER_SWEEPOOOR'}
 				className={'yearn--button !w-fit !px-6 !text-sm'}
 				isBusy={isApproving}
-				isDisabled={selected.length === 0}
+				isDisabled={(Object.values(quotes?.quote || {}).length === 0)}
 				onClick={async (): Promise<void> => {
 					set_isApproving(true);
 					await onExecuteFromGnosis();
@@ -208,24 +210,19 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 }
 
 function Wrapper(): ReactElement {
-	const {walletType} = useWeb3();
-	const {selected, quotes} = useSweepooor();
+	const {quotes} = useSweepooor();
 	const [approvalStep] = useState<TDict<TPossibleFlowStep>>({});
 	const [signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
 	const [executeStep] = useState<TDict<TPossibleFlowStep>>({});
-	const isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
 
 	return (
 		<>
-			{selected.map((token, index): JSX.Element => {
-				const currentQuote = getTypedCowswapQuote(quotes).quote[token];
-
+			{Object.entries(getTypedCowswapQuote(quotes).quote).map(([token, currentQuote], index): JSX.Element => {
 				return (
-					<ApprovalWizardItem
+					<ApprovalWizardItemCowswap
 						key={`${token}_${currentQuote?.quote?.buyAmount}_${currentQuote?.quote?.receiver}_${index}`}
-						token={token}
+						token={toAddress(token)}
 						index={index}
-						isGnosisSafe={isGnosisSafe}
 						hasSignature={((currentQuote as TCowswapOrderQuoteResponse)?.signature || '') !== ''}
 						approvalStep={approvalStep}
 						signStep={signStep}

@@ -14,4 +14,4 @@ function Logo(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default Logo;
+export {Logo};

@@ -14,4 +14,4 @@ function IconCheck(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default IconCheck;
+export {IconCheck};

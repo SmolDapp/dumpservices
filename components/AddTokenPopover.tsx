@@ -8,7 +8,7 @@ import {useAsync} from '@react-hookz/web';
 import {multicall} from '@wagmi/core';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
-import IconCross from '@yearn-finance/web-lib/icons/IconCross';
+import {IconCross} from '@yearn-finance/web-lib/icons/IconCross';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
 import {toBigInt, toNormalizedValue} from '@yearn-finance/web-lib/utils/format.bigNumber';

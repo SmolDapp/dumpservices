@@ -1,9 +1,9 @@
 import React, {useCallback, useMemo, useState} from 'react';
-import ApprovalWizardItem from 'components/ApprovalWizardItem';
-import IconSpinner from 'components/icons/IconSpinner';
+import ApprovalWizardItemCowswap from 'components/ApprovalWizardItem.cowswap';
+import {IconSpinner} from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
-import {getTypedCowswapQuote, isCowswapOrder} from 'hooks/assertSolver';
+import {getTypedCowswapQuote} from 'hooks/assertSolver';
 import {addQuote, assignSignature, setInvalidQuote, setPendingQuote, setRefreshingQuote, setStatusQuote} from 'hooks/handleQuote';
 import {getSellAmount} from 'hooks/helperWithSolver';
 import {getSpender, useSolverCowswap} from 'hooks/useSolverCowswap';
@@ -16,11 +16,10 @@ import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
-import {defaultTxStatus} from '@yearn-finance/web-lib/utils/web3/transaction';
+import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
-import type {Maybe, TCowswapOrderQuoteResponse, TPossibleSolverQuote, TSolverQuote} from 'utils/types';
+import type {Maybe, TCowswapOrderQuoteResponse, TPossibleSolverQuote, TRequest} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 function CowswapStandardFlow({
@@ -37,11 +36,10 @@ function CowswapStandardFlow({
 	const {provider} = useWeb3();
 	const {refresh} = useWallet();
 	const {safeChainID} = useChainID();
-	const {selected, quotes, set_quotes} = useSweepooor();
+	const {quotes, set_quotes} = useSweepooor();
 	const [isApproving, set_isApproving] = useState(false);
 	const [isSigning, set_isSigning] = useState(false);
 	const [isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
-	const [, set_txStatus] = useState(defaultTxStatus);
 	const cowswap = useSolverCowswap();
 
 	/* 🔵 - Yearn Finance **************************************************************************
@@ -50,11 +48,11 @@ function CowswapStandardFlow({
 	** If so, the onSendOrders function will be called.
 	**********************************************************************************************/
 	const areAllApproved = useMemo((): boolean => {
-		if (selected.length === 0) {
+		if (Object.values(quotes?.quote || {}).length === 0) {
 			return false;
 		}
 		const isOk = true;
-		for (const token of selected) {
+		for (const token of Object.keys(quotes?.quote || {})) {
 			if (
 				!approvals[toAddress(token)]
 				|| approvals[toAddress(token)] === TPossibleFlowStep.UNDETERMINED
@@ -65,36 +63,31 @@ function CowswapStandardFlow({
 			}
 		}
 		return isOk;
-	}, [approvals, selected]);
+	}, [approvals, quotes]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Every time the selected tokens change (either a new token is added or the amount is changed),
 	** we will check if the allowance is enough for the amount to be swept.
 	**********************************************************************************************/
 	useUpdateEffect((): void => {
-		const allSelected = [...selected];
-		for (const token of allSelected) {
+		const allQuotes = getTypedCowswapQuote(quotes);
+		for (const token of Object.keys(allQuotes.quote)) {
+			const tokenAddress = toAddress(token);
 			isApprovedERC20({
 				connector: provider,
-				contractAddress: token,
+				contractAddress: tokenAddress,
 				spenderAddress: getSpender({chainID: safeChainID}),
-				amount: getSellAmount(quotes, token).raw
+				amount: getSellAmount(quotes, tokenAddress).raw
 			}).then((isApproved): void => {
-				console.log(isApproved);
 				onUpdateApprovalStep((prev): TDict<TPossibleFlowStep> => ({
 					...prev,
 					[token]: isApproved ? TPossibleFlowStep.VALID : TPossibleFlowStep.UNDETERMINED
 				}));
-
-				// set_approveStatus((prev): TDict<boolean> => ({
-				// 	...prev,
-				// 	[token]: isApproved
-				// }));
 			}).catch((error): void => {
 				console.error(error);
 			});
 		}
-	}, [selected, provider, safeChainID]);
+	}, [quotes, provider, safeChainID]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** onApproveERC20 will loop through all the selected tokens and approve them if needed.
@@ -111,10 +104,9 @@ function CowswapStandardFlow({
 			set_isApproving(true);
 		});
 
-		const allSelected = [...selected];
-		for (const token of allSelected) {
+		const allQuotes = getTypedCowswapQuote(quotes);
+		for (const [token, quote] of Object.entries(allQuotes.quote)) {
 			const tokenAddress = toAddress(token);
-			const quote = quotes.quote[tokenAddress];
 			const quoteID = quote?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${tokenAddress}`);
@@ -138,8 +130,7 @@ function CowswapStandardFlow({
 						connector: provider,
 						contractAddress: tokenAddress,
 						spenderAddress: getSpender({chainID: safeChainID}),
-						amount: getSellAmount(quotes, tokenAddress).raw,
-						statusHandler: set_txStatus
+						amount: getSellAmount(quotes, tokenAddress).raw
 					});
 					if (result.isSuccessful) {
 						performBatchedUpdates((): void => {
@@ -169,7 +160,7 @@ function CowswapStandardFlow({
 			}
 		}
 		set_isApproving(false);
-	}, [onUpdateApprovalStep, provider, quotes, safeChainID, selected]);
+	}, [onUpdateApprovalStep, provider, quotes, safeChainID]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** onSendOrders send the orders to the cowswap API, skipping the ones that are already sent (
@@ -187,11 +178,10 @@ function CowswapStandardFlow({
 			return;
 		}
 		set_isSigning(true);
-		const allSelected = [...selected];
 		const executedQuotes: TPossibleSolverQuote[] = [];
-		for (const token of allSelected) {
+		const allQuotes = getTypedCowswapQuote(quotes);
+		for (const [token, quote] of Object.entries(allQuotes.quote)) {
 			const tokenAddress = toAddress(token);
-			const quote = quotes.quote[tokenAddress] as TCowswapOrderQuoteResponse;
 			const quoteID = quote?.id;
 			if (!quoteID) {
 				console.warn(`No quote for ${token}`); //should not happen
@@ -217,7 +207,7 @@ function CowswapStandardFlow({
 						...prev,
 						[tokenAddress]: TPossibleFlowStep.VALID
 					}));
-					set_quotes((prev): Maybe<TSolverQuote> => (
+					set_quotes((prev): Maybe<TRequest> => (
 						assignSignature(prev, tokenAddress, signature, signingScheme)
 					));
 				});
@@ -242,7 +232,7 @@ function CowswapStandardFlow({
 					tokenAddress,
 					Boolean(process.env.SHOULD_USE_PRESIGN),
 					(orderUID): void => {
-						set_quotes((prev): Maybe<TSolverQuote> => setPendingQuote(prev, tokenAddress, orderUID));
+						set_quotes((prev): Maybe<TRequest> => setPendingQuote(prev, tokenAddress, orderUID));
 					}
 				).then(async ({status, orderUID, error}): Promise<void> => {
 					if (error?.message) {
@@ -260,7 +250,7 @@ function CowswapStandardFlow({
 									...prev,
 									[tokenAddress]: TPossibleFlowStep.UNDETERMINED
 								}));
-								set_quotes((prev): Maybe<TSolverQuote> => (
+								set_quotes((prev): Maybe<TRequest> => (
 									setInvalidQuote(prev, tokenAddress, orderUID)
 								));
 							});
@@ -270,7 +260,7 @@ function CowswapStandardFlow({
 									...prev,
 									[tokenAddress]: TPossibleFlowStep.INVALID
 								}));
-								set_quotes((prev): Maybe<TSolverQuote> => (
+								set_quotes((prev): Maybe<TRequest> => (
 									setInvalidQuote(prev, tokenAddress, orderUID)
 								));
 							});
@@ -285,19 +275,19 @@ function CowswapStandardFlow({
 							...prev,
 							[tokenAddress]: TPossibleFlowStep.VALID
 						}));
-						set_quotes((prev): Maybe<TSolverQuote> => (
+						set_quotes((prev): Maybe<TRequest> => (
 							setStatusQuote(prev, tokenAddress, status, orderUID)
 						));
 						refresh([
 							{
 								token: toAddress(quote.quote.buyToken),
 								decimals: quote.buyToken.decimals,
-								name: quote.buyToken.label,
+								name: quote.buyToken.name,
 								symbol: quote.buyToken.symbol
 							}, {
 								token: toAddress(quote.quote.sellToken),
 								decimals: quote.sellToken.decimals,
-								name: quote.sellToken.label,
+								name: quote.sellToken.name,
 								symbol: quote.sellToken.symbol
 							}
 						]);
@@ -309,7 +299,7 @@ function CowswapStandardFlow({
 						...prev,
 						[tokenAddress]: TPossibleFlowStep.INVALID
 					}));
-					set_quotes((prev): Maybe<TSolverQuote> => (
+					set_quotes((prev): Maybe<TRequest> => (
 						setInvalidQuote(prev, tokenAddress, '')
 					));
 				});
@@ -318,31 +308,34 @@ function CowswapStandardFlow({
 
 		notify(executedQuotes, 'COWSWAP', 'EOA', '');
 		set_isSigning(false);
-	}, [areAllApproved, selected, quotes, onUpdateSignStep, cowswap, set_quotes, onUpdateExecuteStep, onUpdateApprovalStep, refresh]);
+	}, [areAllApproved, quotes, onUpdateSignStep, cowswap, set_quotes, onUpdateExecuteStep, onUpdateApprovalStep, refresh]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
 	** time. This function will refresh all the quotes, and update the UI accordingly.
 	**********************************************************************************************/
 	const onRefreshAllQuotes = useCallback(async (): Promise<void> => {
+		if (!quotes) {
+			return;
+		}
+
 		set_isRefreshingQuotes(true);
-		if (isCowswapOrder(quotes)) {
-			for (const [key, currentQuote] of Object.entries(quotes.quote)) {
-				if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
-					return; //skip already sent
-				}
-				set_quotes((prev): Maybe<TSolverQuote> => setRefreshingQuote(prev, toAddress(key)));
-				const {quoteResponse} = await cowswap.getQuote({
-					from: toAddress(currentQuote.from),
-					receiver: toAddress(currentQuote.quote.receiver),
-					inputTokens: [currentQuote.sellToken],
-					outputToken: currentQuote.buyToken,
-					inputAmounts: [getSellAmount(quotes, toAddress(key)).raw]
-				});
-				if (quoteResponse) {
-				//We need to update quote
-					set_quotes((prev): Maybe<TSolverQuote> => addQuote(prev, quoteResponse));
-				}
+		for (const [key, currentQuote] of Object.entries(getTypedCowswapQuote(quotes).quote)) {
+			if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
+				return;
+			}
+
+			set_quotes((prev): Maybe<TRequest> => setRefreshingQuote(prev, toAddress(key)));
+			const {quoteResponse} = await cowswap.getQuote({
+				from: toAddress(currentQuote.from),
+				receiver: toAddress(currentQuote.quote.receiver),
+				inputTokens: [currentQuote.sellToken],
+				outputToken: currentQuote.buyToken,
+				inputAmounts: [getSellAmount(quotes, toAddress(key)).raw],
+				inputBalances: [0n] //Non relevant here
+			});
+			if (quoteResponse) {
+				set_quotes((prev): Maybe<TRequest> => addQuote(prev, quoteResponse));
 			}
 		}
 		set_isRefreshingQuotes(false);
@@ -363,14 +356,14 @@ function CowswapStandardFlow({
 				id={'TRIGGER_SWEEPOOOR'}
 				className={'yearn--button !w-fit !px-6 !text-sm'}
 				isBusy={isApproving}
-				isDisabled={(selected.length === 0) || areAllApproved}
+				isDisabled={(Object.values(quotes?.quote || {}).length === 0) || areAllApproved}
 				onClick={onApproveERC20}>
 				{'Approve'}
 			</Button>
 			<Button
 				className={'yearn--button !w-fit !px-6 !text-sm'}
 				isBusy={isSigning}
-				isDisabled={(selected.length === 0) || !areAllApproved}
+				isDisabled={(Object.values(quotes?.quote || {}).length === 0) || !areAllApproved}
 				onClick={onSendOrders}>
 				{'Sign'}
 			</Button>
@@ -379,25 +372,20 @@ function CowswapStandardFlow({
 }
 
 function Wrapper(): ReactElement {
-	const {walletType} = useWeb3();
-	const {selected, quotes} = useSweepooor();
+	const {quotes} = useSweepooor();
 	const [approvalStep, set_approvalStep] = useState<TDict<TPossibleFlowStep>>({});
 	const [signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
 	const [executeStep, set_executeStep] = useState<TDict<TPossibleFlowStep>>({});
-	const isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
 
 	return (
 		<>
-			{selected.map((token, index): JSX.Element => {
-				const currentQuote = getTypedCowswapQuote(quotes).quote[token];
-
+			{Object.entries(getTypedCowswapQuote(quotes).quote).map(([token, currentQuote], index): JSX.Element => {
 				return (
-					<ApprovalWizardItem
+					<ApprovalWizardItemCowswap
 						key={`${token}_${currentQuote?.quote?.buyAmount}_${currentQuote?.quote?.receiver}_${index}`}
-						token={token}
+						token={toAddress(token)}
 						index={index}
-						isGnosisSafe={isGnosisSafe}
-						hasSignature={((currentQuote as TCowswapOrderQuoteResponse)?.signature || '') !== ''}
+						hasSignature={(currentQuote?.signature || '') !== ''}
 						approvalStep={approvalStep}
 						signStep={signStep}
 						executeStep={executeStep} />

@@ -15,7 +15,7 @@ import {getValidTo} from './helperWithSolver';
 import {retrieveQuoteFromBebop, retrieveQuoteFromCowswap} from './retrieveQuote';
 import {signQuoteFromCowswap} from './signQuote';
 
-import type {Maybe, TInitSolverArgs, TOrderQuoteError,TSolverQuote} from 'utils/types';
+import type {Maybe, TOrderQuoteError,TRequest,TRequestArgs} from 'utils/types';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {OrderCreation, SigningResult} from '@cowprotocol/cow-sdk';
@@ -23,7 +23,7 @@ import type {TGetQuote} from './retrieveQuote';
 
 type TInit = {
 	estimateOut: TNormalizedBN,
-	quoteResponse?: TSolverQuote
+	quoteResponse?: TRequest
 	isSuccess: boolean,
 	error?: TOrderQuoteError
 }
@@ -35,13 +35,13 @@ type TCheckOrder = {
 type TExecuteResp = {
 	status: TPossibleStatus,
 	orderUID: string,
-	quote: TSolverQuote,
+	quote: TRequest,
 	error?: {message: string}
 }
 type TSolverContext = {
-	getQuote: (args: TInitSolverArgs) => Promise<TInit>;
-	signOrder: (quote: TSolverQuote, key: TAddress) => Promise<SigningResult>;
-	execute: (quoteOrder: TSolverQuote, key: TAddress, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TExecuteResp>;
+	getQuote: (args: TRequestArgs) => Promise<TInit>;
+	signOrder: (quote: TRequest, key: TAddress) => Promise<SigningResult>;
+	execute: (quoteOrder: TRequest, key: TAddress, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TExecuteResp>;
 }
 
 export function getSpender({chainID}: {chainID: number}): TAddress {
@@ -57,11 +57,10 @@ export function getSpender({chainID}: {chainID: number}): TAddress {
 
 export function useSolverCowswap(): TSolverContext {
 	const {slippage} = useSweepooor();
-	const {walletType} = useWeb3();
+	const {isWalletSafe} = useWeb3();
 	const {safeChainID} = useChainID();
 	const [cowswapOrderBook, set_cowswapOrderBook] = useState<Maybe<OrderBookApi>>();
 	const maxIterations = 1000; // 1000 * up to 3 seconds = 3000 seconds = 50 minutes
-	const isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
 
 	/* 🔵 - SmolDapp *******************************************************************************
 	** Depending on the solver to use, we may need to initialize a bunch of elements.
@@ -74,8 +73,7 @@ export function useSolverCowswap(): TSolverContext {
 	});
 
 	const _getQuote = useCallback(async (
-		request: TInitSolverArgs,
-		shouldPreventErrorToast = false
+		request: TRequestArgs
 	): Promise<TGetQuote> => {
 		if (request.inputAmounts.length === 0 || request.inputTokens.length === 0) {
 			return ({quoteResponse: undefined, feeAmount: 0n, error: undefined});
@@ -88,33 +86,31 @@ export function useSolverCowswap(): TSolverContext {
 				if (request.inputAmounts.length === 1 && request.inputTokens.length === 1) {
 					return await retrieveQuoteFromCowswap({
 						request,
-						sellToken: toAddress(request.inputTokens[0].value),
-						buyToken: toAddress(request.outputToken.value),
+						sellToken: toAddress(request.inputTokens[0].address),
+						buyToken: toAddress(request.outputToken.address),
 						from: toAddress(request.from),
 						receiver: toAddress(request.receiver),
 						amount: toNormalizedBN(request.inputAmounts[0], request.inputTokens[0].decimals),
-						isGnosisSafe,
-						shouldPreventErrorToast
+						isWalletSafe
 					});
 				}
 				return ({quoteResponse: undefined, feeAmount: 0n, error: undefined});
 			case 137:
 				return await retrieveQuoteFromBebop({
 					request,
-					sellTokens: request.inputTokens.map(({value}): TAddress => toAddress(value)),
-					buyTokens: [toAddress(request.outputToken.value)],
+					sellTokens: request.inputTokens.map(({address}): TAddress => toAddress(address)),
+					buyTokens: [toAddress(request.outputToken.address)],
 					from: toAddress(request.from),
 					receiver: toAddress(request.receiver),
 					amounts: request.inputAmounts.map((value, index): TNormalizedBN => (
 						toNormalizedBN(value, request.inputTokens[index].decimals)
 					)),
-					isGnosisSafe,
-					shouldPreventErrorToast
+					isWalletSafe
 				});
 			default:
 				return ({quoteResponse: undefined, feeAmount: 0n, error: undefined});
 		}
-	}, [isGnosisSafe, safeChainID]);
+	}, [isWalletSafe, safeChainID]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	** A slippage of 1% per default is set to avoid the transaction to fail due to price
@@ -132,9 +128,9 @@ export function useSolverCowswap(): TSolverContext {
 	** It will set the request to the provided value, as it's required to get the quote, and will
 	** call _getQuote to get the current quote for the provided request.current.
 	**********************************************************************************************/
-	const getQuote = useCallback(async (_request: TInitSolverArgs): Promise<TInit> => {
+	const getQuote = useCallback(async (_request: TRequestArgs): Promise<TInit> => {
 		const decimals = _request?.outputToken?.decimals || 18;
-		const sellTokenAddress = toAddress(_request?.inputTokens[0]?.value);
+		const sellTokenAddress = toAddress(_request?.inputTokens[0]?.address);
 		if (safeChainID !== 1 && safeChainID !== 137) {
 			return {isSuccess: false, estimateOut: toNormalizedBN(0)};
 		}
@@ -161,7 +157,7 @@ export function useSolverCowswap(): TSolverContext {
 		}
 
 		if (isBebopOrder(quoteResponse)) {
-			const estimateOut = toNormalizedBN(quoteResponse.sellTokens[sellTokenAddress].amount.raw, decimals);
+			const estimateOut = quoteResponse.quote[sellTokenAddress].buyToken.amount;
 			return {isSuccess: true, quoteResponse, estimateOut};
 		}
 
@@ -176,7 +172,7 @@ export function useSolverCowswap(): TSolverContext {
 	** skipped. This should only be used for debugging purposes.
 	**********************************************************************************************/
 	const signOrder = useCallback(async (
-		quoteOrder: TSolverQuote,
+		quoteOrder: TRequest,
 		key: TAddress
 	): Promise<SigningResult> => {
 		if (isCowswapOrder(quoteOrder)) {
@@ -228,7 +224,7 @@ export function useSolverCowswap(): TSolverContext {
 	** not.
 	**********************************************************************************************/
 	const execute = useCallback(async (
-		quoteOrder: TSolverQuote,
+		quoteOrder: TRequest,
 		key: TAddress,
 		shouldUsePresign: boolean,
 		onSubmitted: (orderUID: string) => void
@@ -296,7 +292,7 @@ export function useSolverCowswap(): TSolverContext {
 		}
 
 		return {status: TPossibleStatus.INVALID, orderUID: '', quote: quoteOrder};
-	}, [checkOrderStatus, cowswapOrderBook]);
+	}, [checkOrderStatus, cowswapOrderBook, getBuyAmountWithSlippage]);
 
 	return useMemo((): TSolverContext => ({
 		getQuote,

@@ -10,9 +10,8 @@ import GnosisBatchedFlow from './ViewApprovalWizard.gnosisXCowswap';
 import type {ReactElement} from 'react';
 
 function ViewApprovalWizard(): ReactElement {
-	const {walletType} = useWeb3();
+	const {isWalletSafe} = useWeb3();
 	const {quotes} = useSweepooor();
-	const isGnosisSafe = (walletType === 'EMBED_GNOSIS_SAFE');
 
 	return (
 		<section>
@@ -20,11 +19,11 @@ function ViewApprovalWizard(): ReactElement {
 				<div className={'mb-0 w-full p-4 md:mb-6 md:p-0'}>
 					<b>{'Dump!'}</b>
 					<p className={'w-full text-sm text-neutral-500 md:w-3/4'} suppressHydrationWarning>
-						{isGnosisSafe ? 'All the step will be batched in one single transaction! Just execute it and sign your safe transaction! Easiest way to dump!' : 'This is a two step process. You first need to approve the tokens you want to dump, and then we will ask you to sign a message to send your order to dump!'}
+						{isWalletSafe ? 'All the step will be batched in one single transaction! Just execute it and sign your safe transaction! Easiest way to dump!' : 'This is a two step process. You first need to approve the tokens you want to dump, and then we will ask you to sign a message to send your order to dump!'}
 					</p>
 				</div>
 
-				{isGnosisSafe && <GnosisBatchedFlow />}
+				{isWalletSafe && <GnosisBatchedFlow />}
 				{isBebopOrder(quotes) && <BebopBatchedFlow />}
 				{isCowswapOrder(quotes) && <CowswapStandardFlow />}
 			</div>

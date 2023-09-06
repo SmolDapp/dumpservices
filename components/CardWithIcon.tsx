@@ -1,6 +1,6 @@
 
 import {cloneElement} from 'react';
-import IconCheck from 'components/icons/IconCheck';
+import {IconCheck} from 'components/icons/IconCheck';
 
 import type {ReactElement} from 'react';
 

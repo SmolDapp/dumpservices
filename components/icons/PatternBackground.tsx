@@ -36,4 +36,4 @@ function PatternBackground(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default PatternBackground;
+export {PatternBackground};

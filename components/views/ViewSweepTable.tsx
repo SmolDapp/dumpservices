@@ -1,43 +1,243 @@
-import React, {useMemo, useState} from 'react';
-import FlipMove from 'react-flip-move';
+import React, {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import AddTokenPopover from 'components/AddTokenPopover';
-import IconSpinner from 'components/icons/IconSpinner';
-import ListHead from 'components/ListHead';
+import TokenInput from 'components/common/TokenInput';
+import {IconChevronPlain} from 'components/icons/IconChevronPlain';
+import {IconRefresh} from 'components/icons/IconRefresh';
+import {IconSpinner} from 'components/icons/IconSpinner';
 import SettingsPopover from 'components/SettingsPopover';
-import TokenRow from 'components/TokenRow';
 import {useSweepooor} from 'contexts/useSweepooor';
+import {useTokenList} from 'contexts/useTokenList';
 import {useWallet} from 'contexts/useWallet';
+import {hasQuote} from 'hooks/assertSolver';
+import {addQuote, deleteQuote, initQuote, refreshQuote, resetQuote} from 'hooks/handleQuote';
+import {getBuyAmount} from 'hooks/helperWithSolver';
+import {useSolverCowswap} from 'hooks/useSolverCowswap';
+import {DENYLIST_COWSWAP} from 'utils/denyList.cowswap';
+import {useDebouncedEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
+import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import {cl} from '@yearn-finance/web-lib/utils/cl';
 import {ETH_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
-import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
+import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
+import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
+import type {Maybe, TRequest, TRequestArgs} from 'utils/types';
+import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
+import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+
+function TableLine({tokenAddress, balance, index}: {
+	tokenAddress: TAddress,
+	balance: TBalanceData,
+	index: number
+}): ReactElement {
+	const cowswap = useSolverCowswap();
+	const {address} = useWeb3();
+	const {quotes, set_quotes, destination, receiver} = useSweepooor();
+	const {safeChainID} = useChainID();
+	const {tokenList} = useTokenList();
+	const inputRef = useRef<HTMLInputElement>(null);
+	const [amount, set_amount] = useState<TNormalizedBN>(toNormalizedBN(0n, balance.decimals));
+	const isSelected = Boolean(hasQuote(quotes, tokenAddress) || false);
+	const quoteFetchNonce = useRef<number>(0);
+
+	const onDisable = useCallback((force = false): void => {
+		if (!inputRef.current) {
+			return;
+		}
+		if (force) {
+			inputRef.current.ariaBusy = 'false';
+			inputRef.current.ariaInvalid = 'true';
+		} else {
+			inputRef.current.ariaBusy = 'false';
+			inputRef.current.indeterminate = true;
+		}
+	}, []);
+
+	const onHandleQuote = useCallback(async (
+		rawAmount: bigint,
+		nonce: number
+	): Promise<void> => {
+		if (rawAmount === 0n) {
+			set_amount(toNormalizedBN(balance.raw, balance.decimals));
+			return onHandleQuote(balance.raw, ++quoteFetchNonce.current);
+		}
+		if (inputRef.current) {
+			inputRef.current.ariaBusy = 'true';
+			inputRef.current.ariaInvalid = 'false';
+			inputRef.current.indeterminate = false;
+		}
+		const request: TRequestArgs = {
+			from: toAddress(address),
+			receiver: toAddress(receiver),
+			inputTokens: [
+				{
+					address: tokenAddress,
+					name: balance.name,
+					symbol: balance.symbol,
+					decimals: balance.decimals,
+					chainId: safeChainID
+				}
+			],
+			outputToken: {
+				address: destination.address,
+				name: destination.name,
+				symbol: destination.symbol,
+				decimals: destination.decimals,
+				chainId: safeChainID
+			},
+			inputAmounts: [toBigInt(rawAmount)],
+			inputBalances: [toBigInt(balance.raw)]
+		};
+
+		performBatchedUpdates((): void => {
+			set_quotes((q): Maybe<TRequest> => initQuote(
+				q,
+				tokenAddress,
+				request,
+				safeChainID === 1 ? 'COWSWAP' : 'BEBOP'
+			));
+		});
+
+		const {quoteResponse, isSuccess, error} = await cowswap.getQuote(request);
+		if (nonce !== quoteFetchNonce.current) {
+			return;
+		}
+		if (isSuccess && quoteResponse) {
+			set_quotes((q): Maybe<TRequest> => addQuote(q, quoteResponse));
+			if (inputRef.current) {
+				inputRef.current.ariaBusy = 'false';
+				inputRef.current.ariaInvalid = 'false';
+				inputRef.current.indeterminate = false;
+			}
+		} else {
+			performBatchedUpdates((): void => {
+				set_quotes((q): Maybe<TRequest> => deleteQuote(q, tokenAddress));
+				if (error) {
+					toast({type: 'error', content: error.message});
+					onDisable(error.shouldDisable);
+				}
+			});
+		}
+	}, [address, receiver, tokenAddress, balance.name, balance.symbol, balance.decimals, balance.raw, safeChainID, destination.address, destination.name, destination.symbol, destination.decimals, cowswap, set_quotes, onDisable]);
+
+	useEffect((): void => {
+		set_amount(toNormalizedBN(balance.raw, balance.decimals));
+	}, [balance]);
+
+	useDebouncedEffect((): void => {
+		if (isSelected) {
+			onHandleQuote(amount?.raw, ++quoteFetchNonce.current);
+		}
+	}, [amount, isSelected, onHandleQuote], 500);
+
+
+	return (
+		<Fragment>
+			<div className={'col-span-8 ml-1 flex w-full flex-row items-center gap-3'}>
+				<input
+					ref={inputRef}
+					type={'checkbox'}
+					className={'checkbox cursor-pointer'}
+					tabIndex={-1}
+					checked={isSelected}
+					onChange={(event: React.ChangeEvent<HTMLInputElement>): void => {
+						if (!event.target.checked || inputRef?.current?.ariaInvalid === 'true') {
+							if (inputRef.current) {
+								inputRef.current.ariaBusy = 'false';
+								inputRef.current.ariaInvalid = 'false';
+								inputRef.current.indeterminate = false;
+							}
+							set_quotes((q): Maybe<TRequest> => deleteQuote(q, toAddress(tokenAddress)));
+							resetQuote(toAddress(tokenAddress));
+						} else {
+							refreshQuote(toAddress(tokenAddress));
+						}
+					}} />
+				<TokenInput
+					index={index}
+					allowance={-1}
+					token={tokenList[toAddress(tokenAddress)]}
+					shouldCheckAllowance={isSelected}
+					value={amount}
+					onChange={(v): void => {
+						if (v.raw > 0n && !isSelected) {
+							refreshQuote(toAddress(tokenAddress));
+						} else if (v.raw === 0n) {
+							if (inputRef.current) {
+								inputRef.current.ariaBusy = 'false';
+								inputRef.current.ariaInvalid = 'false';
+								inputRef.current.indeterminate = false;
+								set_quotes((q): Maybe<TRequest> => deleteQuote(q, toAddress(tokenAddress)));
+								resetQuote(toAddress(tokenAddress));
+							}
+						}
+						set_amount(v);
+					}} />
+			</div>
+			<div className={'col-span-4 flex flex-row items-center space-x-4'}>
+				<div>
+					<IconChevronPlain className={'h-4 w-4 -rotate-90 text-neutral-900/30'} />
+				</div>
+				<div className={cl('grow-1 col-span-7 flex h-10 w-full items-center justify-between rounded-md p-2 border font-mono text-sm border-neutral-200', 'bg-neutral-0')}>
+					{hasQuote(quotes, tokenAddress) && !quotes?.quote[tokenAddress].isFetching ? (
+						<div>
+							{`${formatAmount(getBuyAmount(quotes, tokenAddress).normalized, 4, 4)} ${quotes?.buyToken.symbol}`}
+						</div>
+					) : (
+						<div className={'text-neutral-300'}>
+							{`${formatAmount(0, 4, 4)}`}
+						</div>
+					)}
+					<div>
+						<button
+							id={`quote-refresh-${tokenAddress}`}
+							tabIndex={-1}
+							className={'cursor-pointer text-neutral-200 transition-colors hover:text-neutral-900'}
+							onClick={(): void => {
+								onHandleQuote(amount?.raw, ++quoteFetchNonce.current);
+							}}>
+							<IconRefresh
+								className={cl('h-3 w-3', quotes?.quote?.[tokenAddress]?.isFetching ? 'text-neutral-900 animate-spin' : 'text-neutral-200')} />
+						</button>
+						<button
+							id={`quote-reset-${tokenAddress}`}
+							// onClick={onResetClick}
+							className={'pointer-events-none invisible absolute h-0 w-0'}>
+						</button>
+					</div>
+				</div>
+			</div>
+		</Fragment>
+	);
+}
 
 function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const {isActive, address, chainID} = useWeb3();
-	const {selected, quotes, destination, receiver} = useSweepooor();
+	const {quotes, destination, receiver} = useSweepooor();
 	const {balances, balancesNonce, isLoading} = useWallet();
-	const {safeChainID} = useChainID();
-	const [sortBy, set_sortBy] = useState<string>('');
-	const [sortDirection, set_sortDirection] = useState<'asc' | 'desc'>('desc');
 	const [search, set_search] = useState<string>('');
-	const currentChain = getNetwork(safeChainID);
 
 	const hasQuoteForEverySelectedToken = useMemo((): boolean => {
-		return (selected.length > 0 && selected.every((tokenAddress: string): boolean => (
-			quotes?.quote?.[toAddress(tokenAddress)] !== undefined
-		)));
-	}, [selected, quotes]);
+		if (!quotes) {
+			return false;
+		}
+		const allQuotes = Object.values(quotes.quote);
+		return (allQuotes.length > 0);
+	}, [quotes]);
 
-	const balancesToDisplay = useMemo((): ReactElement[] => {
+	const balancesToDisplay = useMemo((): [string, TBalanceData][] => {
 		balancesNonce;
 		return (
 			Object.entries(balances || [])
+				.filter(([tokenAddress]: [string, TBalanceData]): boolean => {
+					return (!DENYLIST_COWSWAP.includes(toAddress(tokenAddress)));
+				})
 				.filter(([tokenAddress, tokenData]: [string, TBalanceData]): boolean => {
 					if (search) {
 						const searchArray = search.split(/[\s,]+/);
@@ -45,7 +245,11 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 							if (searchTerm === '') {
 								return false;
 							}
-							return (`${tokenData.symbol}_${tokenData.name}_${tokenAddress}`.toLowerCase().includes(searchTerm.toLowerCase()));
+							return (
+								tokenData.symbol.toLowerCase().startsWith(searchTerm.toLowerCase())
+								|| tokenData.name.toLowerCase().startsWith(searchTerm.toLowerCase())
+								|| tokenAddress.toLowerCase().startsWith(searchTerm.toLowerCase())
+							);
 						});
 					}
 					return true;
@@ -59,47 +263,8 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				.filter(([tokenAddress]: [string, TBalanceData]): boolean => (
 					destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true
 				))
-				.sort((a: [string, TBalanceData], b: [string, TBalanceData]): number => {
-					const [aTokenAddress, aBalance] = a;
-					const [bTokenAddress, bBalance] = b;
-
-					if (sortBy === 'name') {
-						return sortDirection === 'asc'
-							? aBalance.symbol.localeCompare(bBalance.symbol)
-							: bBalance.symbol.localeCompare(aBalance.symbol);
-					}
-					if (sortBy === 'balance') {
-						return sortDirection === 'asc'
-							? aBalance.raw > bBalance.raw ? 1 : -1
-							: bBalance.raw > aBalance.raw ? -1 : 1;
-					}
-					//else sort by selected
-					const isASelected = selected.includes(toAddress(aTokenAddress));
-					const isBSelected = selected.includes(toAddress(bTokenAddress));
-					if (isASelected && !isBSelected) {
-						return sortDirection === 'desc' ? -1 : 1;
-					} if (!isASelected && isBSelected) {
-						return sortDirection === 'desc' ? 1 : -1;
-					}
-
-
-					return 0;
-				})
-				.map(([tokenAddress, balance]: [string, TBalanceData]): ReactElement => {
-					return (
-						<div
-							key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}`}>
-							<TokenRow
-								key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
-								amount={balance}
-								explorer={currentChain?.defaultBlockExplorer}
-								balance={balance}
-								tokenAddress={toAddress(tokenAddress)} />
-						</div>
-					);
-				})
 		);
-	}, [balancesNonce, balances, destination.address, sortBy, sortDirection, chainID, address, currentChain?.defaultBlockExplorer, search, receiver, selected]);
+	}, [balancesNonce, balances, search, destination.address]);
 
 	return (
 		<section>
@@ -107,7 +272,7 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				<div className={'absolute right-4 top-4'}>
 					<SettingsPopover />
 				</div>
-				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
+				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-2'}>
 					<div className={'w-full md:w-3/4'}>
 						<b>{'Which tokens do you want to dump?'}</b>
 						<p className={'text-sm text-neutral-500'}>
@@ -139,31 +304,20 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						<p className={'mt-6 text-sm text-neutral-500'}>{'Oh no, you have nothing to dump!'}</p>
 					</div>
 				) : (
-					<div className={'col-span-12 border-t border-neutral-200'}>
-						<ListHead
-							sortBy={sortBy}
-							sortDirection={sortDirection}
-							onSort={(newSortBy, newSortDirection): void => {
-								performBatchedUpdates((): void => {
-									set_sortBy(newSortBy);
-									set_sortDirection(newSortDirection as 'asc' | 'desc');
-								});
-							}}
-							items={[
-								{label: 'Token', value: 'name', sortable: true},
-								{label: 'Amount', value: 'balance', sortable: false, className: 'col-span-6 md:pl-5', datatype: 'text'},
-								{label: `Output (${destination.symbol})`, value: '', sortable: false, className: 'col-span-6 md:pl-7', datatype: 'text'}
-							]} />
-						<div>
-							<FlipMove
-								duration={300}
-								maintainContainerHeight
-								easing={'ease-in-out'}
-								enterAnimation={'fade'}
-								leaveAnimation={'fade'}>
-								{balancesToDisplay}
-							</FlipMove>
-						</div>
+					<div className={'col-span-12 px-6 pb-6'}>
+						{balancesToDisplay
+							.map(([tokenAddress, balance]: [string, TBalanceData], index): ReactElement => {
+								return (
+									<div
+										key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
+										className={'col-span-12 grid w-full grid-cols-12 gap-4 py-2'}>
+										<TableLine
+											index={10_000 - index}
+											tokenAddress={toAddress(tokenAddress)}
+											balance={balance} />
+									</div>
+								);
+							})}
 					</div>
 				)}
 
@@ -175,7 +329,7 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						<Button
 							className={'yearn--button !w-fit !px-6 !text-sm'}
 							variant={'reverted'}
-							isDisabled={!isActive || ((selected.length === 0)) || !hasQuoteForEverySelectedToken}
+							isDisabled={!isActive || ((Object.values(quotes?.quote || {}).length === 0)) || !hasQuoteForEverySelectedToken}
 							onClick={onProceed}>
 							{'Confirm'}
 						</Button>

@@ -1,13 +1,13 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
-import IconCheck from 'components/icons/IconCheck';
-import IconCircleCross from 'components/icons/IconCircleCross';
+import {IconCheck} from 'components/icons/IconCheck';
+import {IconCircleCross} from 'components/icons/IconCircleCross';
 import {checkENSValidity} from 'utils/tools.ens';
 import {checkLensValidity} from 'utils/tools.lens';
-import IconLoader from '@yearn-finance/web-lib/icons/IconLoader';
+import {IconLoader} from '@yearn-finance/web-lib/icons/IconLoader';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {cl} from '@yearn-finance/web-lib/utils/cl';
 import {ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';

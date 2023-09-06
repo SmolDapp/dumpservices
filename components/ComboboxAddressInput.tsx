@@ -1,7 +1,7 @@
 import React, {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
-import IconCheck from 'components/icons/IconCheck';
-import IconChevronBoth from 'components/icons/IconChevronBoth';
-import IconSpinner from 'components/icons/IconSpinner';
+import {IconCheck} from 'components/icons/IconCheck';
+import {IconChevronBoth} from 'components/icons/IconChevronBoth';
+import {IconSpinner} from 'components/icons/IconSpinner';
 import {useWallet} from 'contexts/useWallet';
 import {isAddress} from 'viem';
 import {erc20ABI} from 'wagmi';
@@ -13,17 +13,17 @@ import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
 import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
-import performBatchedUpdates from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
 
-import type {TTokenInfo} from 'contexts/useTokenList';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
+import type {TToken} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 
 type TComboboxAddressInput = {
 	value: string;
-	possibleValues: TDict<TTokenInfo>;
+	possibleValues: TDict<TToken>;
 	onChangeValue: Dispatch<SetStateAction<string>>,
-	onAddValue: Dispatch<SetStateAction<TDict<TTokenInfo>>>,
+	onAddValue: Dispatch<SetStateAction<TDict<TToken>>>,
 	shouldSort?: boolean
 }
 
@@ -55,7 +55,7 @@ function Element(props: TElement): ReactElement {
 	);
 }
 
-function ComboboxOption({option}: {option: TTokenInfo}): ReactElement {
+function ComboboxOption({option}: {option: TToken}): ReactElement {
 	const {balances} = useWallet();
 
 	return (
@@ -65,7 +65,7 @@ function ComboboxOption({option}: {option: TTokenInfo}): ReactElement {
 			{({selected: isSelected}): ReactElement => (
 				<>
 					<Element
-						logoURI={option.logoURI}
+						logoURI={option.logoURI || ''}
 						symbol={option.symbol}
 						address={option.address}
 						decimals={option.decimals}
@@ -135,7 +135,7 @@ function ComboboxAddressInput({
 		}
 
 		performBatchedUpdates((): void => {
-			onAddValue((prev: TDict<TTokenInfo>): TDict<TTokenInfo> => {
+			onAddValue((prev: TDict<TToken>): TDict<TToken> => {
 				if (prev[_selected]) {
 					return (prev);
 				}
@@ -169,7 +169,7 @@ function ComboboxAddressInput({
 				.includes(query.toLowerCase().replace(/\s+/g, ''))
 		);
 
-	const filteredBalances = useMemo((): [TTokenInfo[], TTokenInfo[]] => {
+	const filteredBalances = useMemo((): [TToken[], TToken[]] => {
 		if (!shouldSort) {
 			return ([filteredValues, []]);
 		}

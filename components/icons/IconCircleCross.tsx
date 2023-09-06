@@ -14,4 +14,4 @@ function IconCircleCross(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default IconCircleCross;
+export {IconCircleCross};

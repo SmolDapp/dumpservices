@@ -1,8 +1,10 @@
 
-import {type Maybe, type TPossibleSolverQuote, TPossibleStatus, type TSolverQuote, type TTokenAmount} from 'utils/types';
+import {TPossibleStatus} from 'utils/types';
+import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 import {isCowswapOrder} from './assertSolver';
 
+import type {Maybe, TPossibleSolverQuote, TRequest, TRequestArgs,TTokenWithAmount} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 
@@ -29,13 +31,92 @@ export function resetQuote(key: TAddress): void {
 }
 
 /* 🥟 - Dump Services **********************************************************
+** initQuote will add a quote to the current state of quotes, but this quote
+** will be empty, except from a status of 'pending'.
+******************************************************************************/
+export function initQuote(
+	prev: Maybe<TRequest>,
+	key: TAddress,
+	args: TRequestArgs,
+	solver: 'COWSWAP' | 'BEBOP'
+): Maybe<TRequest> {
+	if (!prev) {
+		return {
+			solverType: solver,
+			sellTokens: {
+				[args.inputTokens[0].address]: {
+					address: args.inputTokens[0].address,
+					decimals: args.inputTokens[0].decimals,
+					symbol: args.inputTokens[0].symbol,
+					name: args.inputTokens[0].name,
+					chainId: args.inputTokens[0].chainId,
+					amount: toNormalizedBN(0)
+				}
+			},
+			buyToken: {
+				address: args.outputToken.address,
+				decimals: args.outputToken.decimals,
+				symbol: args.outputToken.symbol,
+				name: args.outputToken.name,
+				chainId: args.outputToken.chainId
+			},
+			quote: {
+				// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+				[key]: {
+					isFetching: true,
+					sellToken: {
+						address: args.inputTokens[0].address,
+						decimals: args.inputTokens[0].decimals,
+						symbol: args.inputTokens[0].symbol,
+						name: args.inputTokens[0].name,
+						amount: toNormalizedBN(0)
+					},
+					buyToken: {
+						address: args.outputToken.address,
+						decimals: args.outputToken.decimals,
+						symbol: args.outputToken.symbol,
+						name: args.outputToken.name,
+						amount: toNormalizedBN(0)
+					}
+				} as TPossibleSolverQuote
+			}
+		};
+	}
+	return ({
+		...prev,
+		// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+		quote: {
+			...prev.quote,
+			[key]: {
+				...prev.quote[key],
+				sellToken: prev?.quote?.[key]?.sellToken || {
+					address: args.inputTokens[0].address,
+					decimals: args.inputTokens[0].decimals,
+					symbol: args.inputTokens[0].symbol,
+					name: args.inputTokens[0].name,
+					amount: toNormalizedBN(0)
+				},
+				buyToken: prev?.quote?.[key]?.buyToken || {
+					address: args.outputToken.address,
+					decimals: args.outputToken.decimals,
+					symbol: args.outputToken.symbol,
+					name: args.outputToken.name,
+					amount: toNormalizedBN(0)
+				},
+				isFetching: true
+			}
+		} as never
+	});
+}
+
+/* 🥟 - Dump Services **********************************************************
 ** addQuote will add a quote to the current state of quotes, by updating the
 ** quote and sellTokens objects with the one provided.
 ******************************************************************************/
 export function addQuote(
-	prev: Maybe<TSolverQuote>,
-	quote: TSolverQuote
-): Maybe<TSolverQuote> {
+	prev: Maybe<TRequest>,
+	quote: TRequest
+): Maybe<TRequest> {
 	if (!prev) {
 		return quote;
 	}
@@ -45,8 +126,8 @@ export function addQuote(
 	for (const [key, item] of Object.entries(newQuote)) {
 		updatedQuote[key] = item;
 	}
-	const updatedSellTokens: TDict<TTokenAmount> = prev.sellTokens;
-	const newSellTokens: TDict<TTokenAmount> = quote.sellTokens;
+	const updatedSellTokens: TDict<TTokenWithAmount> = prev.sellTokens;
+	const newSellTokens: TDict<TTokenWithAmount> = quote.sellTokens;
 	for (const [key, item] of Object.entries(newSellTokens)) {
 		updatedSellTokens[key] = item;
 	}
@@ -63,9 +144,9 @@ export function addQuote(
 ** them from the quote and sellTokens objects.
 ******************************************************************************/
 export function deleteQuote(
-	quotes: Maybe<TSolverQuote>,
+	quotes: Maybe<TRequest>,
 	key: TAddress
-): Maybe<TSolverQuote> {
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}
@@ -85,11 +166,11 @@ export function deleteQuote(
 ** assignSignature will add a signature to the current state of a given quote.
 ******************************************************************************/
 export function assignSignature(
-	quotes: Maybe<TSolverQuote>,
+	quotes: Maybe<TRequest>,
 	key: TAddress,
 	signature: string,
 	signingScheme: EcdsaSigningScheme
-): Maybe<TSolverQuote> {
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}
@@ -111,10 +192,10 @@ export function assignSignature(
 ** and the orderUID.
 ******************************************************************************/
 export function setPendingQuote(
-	quotes: Maybe<TSolverQuote>,
+	quotes: Maybe<TRequest>,
 	key: TAddress,
 	orderUID: string
-): Maybe<TSolverQuote> {
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}
@@ -135,9 +216,9 @@ export function setPendingQuote(
 ** setRefreshingQuote will set a quote as refreshing, by updating isRefreshing
 ******************************************************************************/
 export function setRefreshingQuote(
-	quotes: Maybe<TSolverQuote>,
+	quotes: Maybe<TRequest>,
 	key: TAddress
-): Maybe<TSolverQuote> {
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}
@@ -158,10 +239,10 @@ export function setRefreshingQuote(
 ** and the orderUID.
 ******************************************************************************/
 export function setInvalidQuote(
-	quotes: Maybe<TSolverQuote>,
+	quotes: Maybe<TRequest>,
 	key: TAddress,
 	orderUID: string
-): Maybe<TSolverQuote> {
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}
@@ -185,11 +266,11 @@ export function setInvalidQuote(
 ** and the orderUID.
 ******************************************************************************/
 export function setStatusQuote(
-	quotes: Maybe<TSolverQuote>,
+	quotes: Maybe<TRequest>,
 	key: TAddress,
 	status: TPossibleStatus,
 	orderUID: string
-): Maybe<TSolverQuote> {
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}

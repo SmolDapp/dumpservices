@@ -14,4 +14,4 @@ function IconWarning(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default IconWarning;
+export {IconWarning};

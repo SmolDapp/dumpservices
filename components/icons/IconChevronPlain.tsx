@@ -16,4 +16,4 @@ function IconChevronPlain(props: React.SVGProps<SVGSVGElement>): ReactElement {
 	);
 }
 
-export default IconChevronPlain;
+export {IconChevronPlain};
