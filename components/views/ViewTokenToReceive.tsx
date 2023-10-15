@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {useTokenList} from 'contexts/useTokenList';
 import {type TToken} from 'utils/types';
@@ -10,6 +9,7 @@ import {IconSettings} from '@yearn-finance/web-lib/icons/IconSettings';
 import {isZeroAddress, toAddress, zeroAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
+import ComboboxAddressInput from '@common/ComboboxAddressInput';
 
 import type {ReactElement} from 'react';
 import type {TDict} from '@yearn-finance/web-lib/types';
@@ -120,7 +120,9 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 					<form
 						suppressHydrationWarning
 						onSubmit={async (e): Promise<void> => e.preventDefault()}
-						className={'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'}>
+						className={
+							'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'
+						}>
 						<div className={'grow-1 col-span-12 flex h-10 w-full items-center md:col-span-9'}>
 							<ComboboxAddressInput
 								shouldSort={false}
@@ -135,7 +137,11 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 								variant={'filled'}
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
 								onClick={onProceedToNextStep}
-								isDisabled={!isValidTokenToReceive || destination.chainId === 0 || tokenToSend?.address === zeroAddress}>
+								isDisabled={
+									!isValidTokenToReceive ||
+									destination.chainId === 0 ||
+									tokenToSend?.address === zeroAddress
+								}>
 								{'Next'}
 							</Button>
 						</div>
