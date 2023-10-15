@@ -6,11 +6,7 @@ import type {Maybe, TRequest} from 'utils/types';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
-export function getValidTo(
-	order: TRequest,
-	key: TAddress,
-	isWalletSafe: boolean = false
-): number {
+export function getValidTo(order: TRequest, key: TAddress, isWalletSafe: boolean = false): number {
 	if (isWalletSafe && isCowswapOrder(order)) {
 		return order.quote[key].validTo;
 	}
@@ -23,11 +19,7 @@ export function getValidTo(
 	return 0;
 }
 
-export function shouldRefreshQuote(
-	order: TRequest,
-	key: TAddress,
-	isWalletSafe: boolean
-): boolean {
+export function shouldRefreshQuote(order: TRequest, key: TAddress, isWalletSafe: boolean): boolean {
 	let expiration = 0;
 	if (isWalletSafe) {
 		expiration = getValidTo(order, key);
@@ -38,16 +30,15 @@ export function shouldRefreshQuote(
 	}
 
 	if (isCowswapOrder(order)) {
-		return (expiration <= new Date().valueOf() && !order.quote[key]?.orderUID && !order.quote[key]?.isFetching);
+		return expiration <= new Date().valueOf() && !order.quote[key]?.orderUID && !order.quote[key]?.isFetching;
 	}
 
 	if (isBebopOrder(order)) {
-		return (expiration > new Date().valueOf());
+		return expiration > new Date().valueOf();
 	}
 
 	return false;
 }
-
 
 //TODO: GET BETTER NAME, THIS SHITTY
 export function getSellAmount(order: Maybe<TRequest>, tokenAddress: TAddress): TNormalizedBN {
@@ -58,27 +49,18 @@ export function getSellAmount(order: Maybe<TRequest>, tokenAddress: TAddress): T
 		);
 	}
 	if (isBebopOrder(order) && order.quote[tokenAddress]) {
-		return toNormalizedBN(
-			toBigInt(order.quote[tokenAddress]?.sellToken?.amount?.raw),
-			order.quote[tokenAddress]?.sellToken?.decimals || 18
-		);
+		return toNormalizedBN(toBigInt(order.quote[tokenAddress]?.sellToken?.amount?.raw), order.quote[tokenAddress]?.sellToken?.decimals || 18);
 	}
 	return toNormalizedBN(0);
 }
 
 export function getBuyAmount(order: Maybe<TRequest>, tokenAddress: TAddress): TNormalizedBN {
 	if (isCowswapOrder(order) && order.quote[tokenAddress]) {
-		return toNormalizedBN(
-			order.quote[tokenAddress]?.quote?.buyAmount,
-			order.quote[tokenAddress].buyToken.decimals
-		);
+		return toNormalizedBN(order.quote[tokenAddress]?.quote?.buyAmount, order.quote[tokenAddress].buyToken.decimals);
 	}
 
 	if (isBebopOrder(order) && order.quote[tokenAddress]) {
-		return toNormalizedBN(
-			toBigInt(order.quote[tokenAddress]?.buyToken?.amount?.raw),
-			order.quote[tokenAddress]?.buyToken?.decimals || 18
-		);
+		return toNormalizedBN(toBigInt(order.quote[tokenAddress]?.buyToken?.amount?.raw), order.quote[tokenAddress]?.buyToken?.decimals || 18);
 	}
 	return toNormalizedBN(0);
 }

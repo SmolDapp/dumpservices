@@ -1,13 +1,12 @@
 import React, {useEffect, useState} from 'react';
-import AddressInput, {defaultInputAddressLike} from 'components/AddressInput';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import AddressInput, {defaultInputAddressLike} from '@common/AddressInput';
 
-import type {TInputAddressLike} from 'components/AddressInput';
 import type {ReactElement} from 'react';
+import type {TInputAddressLike} from '@common/AddressInput';
 
 function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const {address} = useWeb3();
@@ -27,9 +26,7 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
 					<div className={'w-full md:w-3/4'}>
 						<b>{'Recipient'}</b>
-						<p className={'text-sm text-neutral-500'}>
-							{'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'}
-						</p>
+						<p className={'text-sm text-neutral-500'}>{'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'}</p>
 					</div>
 					<form
 						onSubmit={async (e): Promise<void> => e.preventDefault()}
@@ -37,18 +34,17 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						<div className={'col-span-12 md:col-span-9'}>
 							<AddressInput
 								value={tokenReceiver}
-								onChangeValue={(e): void => set_tokenReceiver(e)} />
+								onChangeValue={(e): void => set_tokenReceiver(e)}
+							/>
 						</div>
 
 						<div className={'col-span-12 md:col-span-3'}>
 							<Button
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
 								onClick={(): void => {
-									performBatchedUpdates((): void => {
-										set_receiver(toAddress(tokenReceiver.address));
-										set_hasBeenConfirmed(true);
-										onProceed();
-									});
+									set_receiver(toAddress(tokenReceiver.address));
+									set_hasBeenConfirmed(true);
+									onProceed();
 								}}
 								isDisabled={hasBeenConfirmed && toAddress(tokenReceiver.address) === receiver}>
 								{'Next'}
@@ -59,29 +55,27 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 			</div>
 		</section>
 
-	// <section>
-	// 	<div className={'box-0 grid w-full grid-cols-12 overflow-hidden'}>
-	// 		<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
-	// 			<div className={'w-full md:w-3/4'}>
-	// 				<b>{'Recipient'}</b>
-	// 				<p className={'text-sm text-neutral-500'}>
-	// 					{'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'}
-	// 				</p>
-	// 			</div>
-	// 			<AddressInput
-	// 				value={tokenReceiver}
-	// 				shouldBeDisabled={hasBeenConfirmed && toAddress(tokenReceiver.address) === receiver}
-	// onChangeValue={(e): void => {
-	// 	performBatchedUpdates((): void => {
-	// 		set_tokenReceiver(e);
-	// 		set_receiver(toAddress(e.address));
-	// 		set_hasBeenConfirmed(true);
-	// 		onProceed();
-	// 	});
-	// }} />
-	// 		</div>
-	// 	</div>
-	// </section>
+		// <section>
+		// 	<div className={'box-0 grid w-full grid-cols-12 overflow-hidden'}>
+		// 		<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
+		// 			<div className={'w-full md:w-3/4'}>
+		// 				<b>{'Recipient'}</b>
+		// 				<p className={'text-sm text-neutral-500'}>
+		// 					{'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'}
+		// 				</p>
+		// 			</div>
+		// 			<AddressInput
+		// 				value={tokenReceiver}
+		// 				shouldBeDisabled={hasBeenConfirmed && toAddress(tokenReceiver.address) === receiver}
+		// onChangeValue={(e): void => {
+		// 		set_tokenReceiver(e);
+		// 		set_receiver(toAddress(e.address));
+		// 		set_hasBeenConfirmed(true);
+		// 		onProceed();
+		// }} />
+		// 		</div>
+		// 	</div>
+		// </section>
 	);
 }
 

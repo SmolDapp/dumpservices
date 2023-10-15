@@ -1,34 +1,34 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import ComboboxAddressInput from 'components/ComboboxAddressInput';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {useTokenList} from 'contexts/useTokenList';
-import {useDeepCompareEffect, useUpdateEffect} from '@react-hookz/web';
+import {type TToken} from 'utils/types';
+import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
-import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
-import {ETH_TOKEN_ADDRESS, ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import {performBatchedUpdates} from '@yearn-finance/web-lib/utils/performBatchedUpdates';
+import {IconSettings} from '@yearn-finance/web-lib/icons/IconSettings';
+import {isZeroAddress, toAddress, zeroAddress} from '@yearn-finance/web-lib/utils/address';
+import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
 import type {ReactElement} from 'react';
-import type {TToken} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const {currentStep, destination, set_destination} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const {tokenList} = useTokenList();
-	const [tokenToSend, set_tokenToSend] = useState<string>(ZERO_ADDRESS);
+	const [tokenToSend, set_tokenToSend] = useState<TToken | null>(null);
 	const [isValidTokenToReceive, set_isValidTokenToReceive] = useState<boolean | 'undetermined'>(true);
 	const [possibleTokenToReceive, set_possibleTokenToReceive] = useState<TDict<TToken>>({});
-
+	const {openTokenListModal} = useTokenList();
 
 	/* 🔵 - Smoldapp *******************************************************************************
-	** On mount, fetch the token list from the tokenlistooor repo for the cowswap token list, which
-	** will be used to populate the tokenToDisperse token combobox.
-	** Only the tokens in that list will be displayed as possible destinations.
-	**********************************************************************************************/
-	useDeepCompareEffect((): void => {
+	 ** On mount, fetch the token list from the tokenlistooor repo for the cowswap token list, which
+	 ** will be used to populate the tokenToDisperse token combobox.
+	 ** Only the tokens in that list will be displayed as possible destinations.
+	 **********************************************************************************************/
+	useEffect((): void => {
 		const possibleDestinationsTokens: TDict<TToken> = {};
 		const {wrappedToken} = getNetwork(safeChainID).contracts;
 		if (wrappedToken && safeChainID === 1) {
@@ -49,52 +49,52 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 		set_possibleTokenToReceive(possibleDestinationsTokens);
 	}, [tokenList, safeChainID]);
 
-
 	/* 🔵 - Smoldapp *******************************************************************************
-	** When the tokenToDisperse token changes, check if it is a valid tokenToDisperse token. The
-	** check is trivial as we only check if the address is valid.
-	**********************************************************************************************/
+	 ** When the tokenToDisperse token changes, check if it is a valid tokenToDisperse token. The
+	 ** check is trivial as we only check if the address is valid.
+	 **********************************************************************************************/
 	useUpdateEffect((): void => {
 		set_isValidTokenToReceive('undetermined');
-		if (!isZeroAddress(toAddress(tokenToSend))) {
+		if (!isZeroAddress(tokenToSend?.address)) {
 			set_isValidTokenToReceive(true);
 		}
 	}, [tokenToSend]);
 
 	/* 🔵 - Smoldapp *******************************************************************************
-	** On selecting a new tokenToDisperse token, update the destination object with the new token
-	**********************************************************************************************/
-	const onUpdateToken = useCallback((newToken: string): void => {
-		if ([Step.SELECTOR].includes(currentStep)) {
-			performBatchedUpdates((): void => {
+	 ** On selecting a new tokenToDisperse token, update the destination object with the new token
+	 **********************************************************************************************/
+	const onUpdateToken = useCallback(
+		(newToken: TToken): void => {
+			if ([Step.SELECTOR].includes(currentStep)) {
 				set_tokenToSend(newToken);
 				set_destination({
-					address: toAddress(newToken),
+					address: newToken.address,
 					chainId: safeChainID,
-					name: possibleTokenToReceive[toAddress(newToken)]?.name || '',
-					symbol: possibleTokenToReceive[toAddress(newToken)]?.symbol || '',
-					decimals: possibleTokenToReceive[toAddress(newToken)]?.decimals || 0,
-					logoURI: possibleTokenToReceive[toAddress(newToken)]?.logoURI || ''
+					name: newToken.name,
+					symbol: newToken.symbol,
+					decimals: newToken.decimals,
+					logoURI: newToken.logoURI
 				});
-			});
-		} else {
-			set_tokenToSend(newToken);
-		}
-	}, [currentStep, possibleTokenToReceive, safeChainID, set_destination]);
+			} else {
+				set_tokenToSend(newToken);
+			}
+		},
+		[currentStep, possibleTokenToReceive, safeChainID, set_destination]
+	);
 
 	/* 🔵 - Smoldapp *******************************************************************************
-	** When the user clicks the "Next" button, check if the tokenToDisperse token is valid. If it is
-	** then proceed to the next step.
-	**********************************************************************************************/
+	 ** When the user clicks the "Next" button, check if the tokenToDisperse token is valid. If it is
+	 ** then proceed to the next step.
+	 **********************************************************************************************/
 	const onProceedToNextStep = useCallback((): void => {
-		if (toAddress(tokenToSend) !== ZERO_ADDRESS) {
+		if (tokenToSend) {
 			set_destination({
-				address: toAddress(tokenToSend),
+				address: tokenToSend.address,
 				chainId: safeChainID,
-				name: possibleTokenToReceive[tokenToSend]?.name || '',
-				symbol: possibleTokenToReceive[tokenToSend]?.symbol || '',
-				decimals: possibleTokenToReceive[tokenToSend]?.decimals || 0,
-				logoURI: possibleTokenToReceive[tokenToSend]?.logoURI || ''
+				name: tokenToSend.name,
+				symbol: tokenToSend.symbol,
+				decimals: tokenToSend.decimals,
+				logoURI: tokenToSend.logoURI
 			});
 		}
 		onProceed();
@@ -103,11 +103,18 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	return (
 		<section>
 			<div className={'box-0 grid w-full grid-cols-12'}>
-				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
+				<div className={'relative col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
+					<div
+						className={'absolute right-4 top-4 cursor-pointer'}
+						onClick={openTokenListModal}>
+						<IconSettings className={'transition-color h-4 w-4 text-neutral-400 hover:text-neutral-900'} />
+					</div>
 					<div className={'w-full md:w-3/4'}>
 						<b>{'Select token to receive'}</b>
 						<p className={'text-sm text-neutral-500'}>
-							{'Choose the token you’d like to receive in exchange for the tokens you’re about to dump. If it’s not listed, you can enter the token address manually.'}
+							{
+								'Choose the token you’d like to receive in exchange for the tokens you’re about to dump. If it’s not listed, you can enter the token address manually.'
+							}
 						</p>
 					</div>
 					<form
@@ -120,14 +127,15 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 								value={tokenToSend}
 								possibleValues={possibleTokenToReceive}
 								onAddValue={set_possibleTokenToReceive}
-								onChangeValue={(newToken): void => onUpdateToken(newToken as string)} />
+								onChangeValue={(newToken): void => onUpdateToken(newToken)}
+							/>
 						</div>
 						<div className={'col-span-12 md:col-span-3'}>
 							<Button
 								variant={'filled'}
 								className={'yearn--button !w-[160px] rounded-md !text-sm'}
 								onClick={onProceedToNextStep}
-								isDisabled={!isValidTokenToReceive || destination.chainId === 0 || tokenToSend === ZERO_ADDRESS}>
+								isDisabled={!isValidTokenToReceive || destination.chainId === 0 || tokenToSend?.address === zeroAddress}>
 								{'Next'}
 							</Button>
 						</div>

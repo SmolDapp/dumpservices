@@ -1,16 +1,16 @@
 import React, {useState} from 'react';
-import {IconCheck} from 'components/icons/IconCheck';
-import {IconChevronBoth} from 'components/icons/IconChevronBoth';
-import {IconCircleCross} from 'components/icons/IconCircleCross';
-import {IconSpinner} from 'components/icons/IconSpinner';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {getTypedCowswapQuote, isBebopOrder, isCowswapOrder, isQuote} from 'hooks/assertSolver';
 import {refreshQuote} from 'hooks/handleQuote';
 import {getBuyAmount, getSellAmount, getValidTo, shouldRefreshQuote} from 'hooks/helperWithSolver';
 import {getSpender} from 'hooks/useSolverCowswap';
-import {TPossibleFlowStep,TPossibleStatus} from 'utils/types';
+import {TPossibleFlowStep, TPossibleStatus} from 'utils/types';
 import {erc20ABI, useContractRead} from 'wagmi';
+import {IconCheck} from '@icons/IconCheck';
+import {IconChevronBoth} from '@icons/IconChevronBoth';
+import {IconCircleCross} from '@icons/IconCircleCross';
+import {IconSpinner} from '@icons/IconSpinner';
 import {useIntervalEffect, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
@@ -20,27 +20,26 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDate, formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
-import type {TApprovalWizardItem} from 'components/ApprovalWizardItem';
 import type {ReactElement} from 'react';
 import type {TRequest} from 'utils/types';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 
-function SumaryExpiration({quotes, token}: {
-	quotes: TRequest,
-	token: TAddress,
-}): ReactElement {
+function SumaryExpiration({quotes, token}: {quotes: TRequest; token: TAddress}): ReactElement {
 	const {isWalletSafe} = useWeb3();
 	const [expireIn, set_expireIn] = useState(0);
 	const currentQuote = quotes.quote[token];
 	const hasQuote = Boolean(currentQuote);
 	const quoteExpiration = getValidTo(quotes, token, isWalletSafe);
 
-	useIntervalEffect((): void => {
-		set_expireIn(quoteExpiration - new Date().valueOf());
-		if (shouldRefreshQuote(quotes, token, isWalletSafe)) {
-			refreshQuote(token);
-		}
-	}, (!hasQuote ? undefined : 1000));
+	useIntervalEffect(
+		(): void => {
+			set_expireIn(quoteExpiration - new Date().valueOf());
+			if (shouldRefreshQuote(quotes, token, isWalletSafe)) {
+				refreshQuote(token);
+			}
+		},
+		!hasQuote ? undefined : 1000
+	);
 
 	useUpdateEffect((): void => {
 		set_expireIn(quoteExpiration - new Date().valueOf());
@@ -51,28 +50,20 @@ function SumaryExpiration({quotes, token}: {
 
 	function renderExpiration(): ReactElement {
 		if (currentQuote.orderUID) {
-			return (
-				<small className={'text-xs tabular-nums text-neutral-500'}>
-					&nbsp;
-				</small>
-			);
+			return <small className={'text-xs tabular-nums text-neutral-500'}>&nbsp;</small>;
 		}
 
 		if (Math.floor(expireIn) <= 0) {
 			return (
 				<div className={'tooltip'}>
-					<small className={'text-xs tabular-nums text-[#f97316]'}>
-						{'Updating quote...'}
-					</small>
+					<small className={'text-xs tabular-nums text-[#f97316]'}>{'Updating quote...'}</small>
 				</div>
 			);
 		}
 		if (Math.floor(expireIn) < 60_000) {
 			return (
 				<div className={'tooltip'}>
-					<small className={'text-xs tabular-nums text-neutral-500'}>
-						{`The quote will be updated in ${Math.floor(expireIn / 1000)}s`}
-					</small>
+					<small className={'text-xs tabular-nums text-neutral-500'}>{`The quote will be updated in ${Math.floor(expireIn / 1000)}s`}</small>
 					<span className={'tooltiptext z-[100000] text-xs'}>
 						<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
 					</span>
@@ -81,15 +72,12 @@ function SumaryExpiration({quotes, token}: {
 		}
 		return (
 			<div className={'tooltip'}>
-				<small className={'text-xs tabular-nums text-neutral-500'}>
-					{`The quote will be updated in ${formatDuration(expireIn)}`}
-				</small>
+				<small className={'text-xs tabular-nums text-neutral-500'}>{`The quote will be updated in ${formatDuration(expireIn)}`}</small>
 				<span className={'tooltiptext z-[100000] text-xs'}>
 					<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
 				</span>
 			</div>
 		);
-
 	}
 
 	return (
@@ -155,70 +143,70 @@ function SummaryIndicator({token, hasSignature, approvalStep, signStep, executeS
 
 	function renderApprovalIndication(): ReactElement {
 		if (!isQuote(quotes)) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 
 		if (hasAllowance || approvalStep[token] === TPossibleFlowStep.VALID) {
-			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
+			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (!token) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (!approvalStep[token]) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (approvalStep[token] === TPossibleFlowStep.UNDETERMINED) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (approvalStep[token] === TPossibleFlowStep.PENDING) {
 			return <IconSpinner />;
 		}
-		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
+		return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
 	}
 
 	function renderSignatureIndication(): ReactElement {
 		if (!isQuote(quotes)) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 
 		if (!token) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (step !== 'Sign' ) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+		if (step !== 'Sign') {
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (!signStep[token]) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (signStep[token] === TPossibleFlowStep.UNDETERMINED) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (hasSignature) {
-			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
+			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (signStep[token] === TPossibleFlowStep.PENDING) {
 			return <IconSpinner />;
 		}
-		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
+		return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
 	}
 
 	function renderExecuteIndication(): ReactElement {
 		if (!isQuote(quotes)) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 
 		const currentQuote = quotes.quote[token];
 		if (!currentQuote.orderStatus) {
-			return (<div className={'h-4 w-4 rounded-full bg-neutral-300'} />);
+			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (currentQuote.orderStatus === TPossibleStatus.COWSWAP_FULFILLED) {
-			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
+			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (currentQuote.orderStatus === TPossibleStatus.BEBOP_CONFIRMED) {
-			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
+			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (executeStep[token] === TPossibleFlowStep.VALID) {
-			return (<IconCheck className={'h-4 w-4 text-[#16a34a]'} />);
+			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (currentQuote.orderStatus === TPossibleStatus.PENDING) {
 			return <IconSpinner />;
@@ -226,7 +214,7 @@ function SummaryIndicator({token, hasSignature, approvalStep, signStep, executeS
 		if (executeStep[token] === TPossibleFlowStep.PENDING) {
 			return <IconSpinner />;
 		}
-		return (<IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />);
+		return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
 	}
 
 	if (isWalletSafe) {
@@ -236,7 +224,11 @@ function SummaryIndicator({token, hasSignature, approvalStep, signStep, executeS
 					{renderSignatureIndication()}
 					<small>{'Signed'}</small>
 				</div>
-				<div className={'text-neutral-600'} style={{paddingBottom: 1}}>&rarr;</div>
+				<div
+					className={'text-neutral-600'}
+					style={{paddingBottom: 1}}>
+					&rarr;
+				</div>
 				<div className={'flex flex-row items-center space-x-2'}>
 					{renderExecuteIndication()}
 					<small>
@@ -253,18 +245,24 @@ function SummaryIndicator({token, hasSignature, approvalStep, signStep, executeS
 				{renderApprovalIndication()}
 				<small>{'Approved'}</small>
 			</div>
-			<div className={'text-neutral-600'} style={{paddingBottom: 1}}>&rarr;</div>
+			<div
+				className={'text-neutral-600'}
+				style={{paddingBottom: 1}}>
+				&rarr;
+			</div>
 			<div className={'flex flex-row items-center space-x-2'}>
 				{renderSignatureIndication()}
 				<small>
 					{'Signed for '}
-					<span className={'font-bold tabular-nums'}>
-						{formatAmount(getBuyAmount(quotes, token).normalized, 6, 6)}
-					</span>
+					<span className={'font-bold tabular-nums'}>{formatAmount(getBuyAmount(quotes, token).normalized, 6, 6)}</span>
 					{` ${destination.symbol}`}
 				</small>
 			</div>
-			<div className={'text-neutral-600'} style={{paddingBottom: 1}}>&rarr;</div>
+			<div
+				className={'text-neutral-600'}
+				style={{paddingBottom: 1}}>
+				&rarr;
+			</div>
 			<div className={'flex flex-row items-center space-x-2'}>
 				{renderExecuteIndication()}
 				<small>
@@ -276,16 +274,13 @@ function SummaryIndicator({token, hasSignature, approvalStep, signStep, executeS
 	);
 }
 
-function CowswapTXDetails({quotes, token}: {
-	quotes: TRequest,
-	token: TAddress
-}): ReactElement {
+function CowswapTXDetails({quotes, token}: {quotes: TRequest; token: TAddress}): ReactElement {
 	const {balances} = useWallet();
 	const currentQuote = getTypedCowswapQuote(quotes).quote[token];
 	const currentSellToken = getTypedCowswapQuote(quotes).sellTokens[token];
 
 	if (!currentQuote.quote) {
-		return (<div />);
+		return <div />;
 	}
 
 	return (
@@ -304,42 +299,29 @@ function CowswapTXDetails({quotes, token}: {
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'BuyAmount'}</b>
-				<p className={'font-number'}>
-					{`${getBuyAmount(quotes, token).normalized} (${getBuyAmount(quotes, token).raw || ''})`}
-				</p>
+				<p className={'font-number'}>{`${getBuyAmount(quotes, token).normalized} (${getBuyAmount(quotes, token).raw || ''})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'BuyToken'}</b>
-				<p className={'font-number'}>
-					{`${balances?.[toAddress(currentQuote.quote.buyToken)]?.symbol || ''} (${toAddress(currentQuote.quote.buyToken || '')})`}
-				</p>
+				<p className={'font-number'}>{`${balances?.[toAddress(currentQuote.quote.buyToken)]?.symbol || ''} (${toAddress(currentQuote.quote.buyToken || '')})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'SellAmount'}</b>
-				<p className={'font-number'}>
-					{`${currentSellToken.amount.normalized} (${currentSellToken.amount.raw || ''})`}
-				</p>
+				<p className={'font-number'}>{`${currentSellToken.amount.normalized} (${currentSellToken.amount.raw || ''})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'FeeAmount'}</b>
 				<p className={'font-number'}>
-					{`${toNormalizedBN(
-						currentQuote.quote.feeAmount || '',
-						currentSellToken.decimals
-					).normalized} (${currentQuote.quote.feeAmount || ''})`}
+					{`${toNormalizedBN(currentQuote.quote.feeAmount || '', currentSellToken.decimals).normalized} (${currentQuote.quote.feeAmount || ''})`}
 				</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'SellToken'}</b>
-				<p className={'font-number'}>
-					{`${balances?.[token]?.symbol || ''} (${toAddress(currentQuote.quote.sellToken || '')})`}
-				</p>
+				<p className={'font-number'}>{`${balances?.[token]?.symbol || ''} (${toAddress(currentQuote.quote.sellToken || '')})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'ValidTo'}</b>
-				<p className={'font-number'}>
-					{formatDate(getValidTo(quotes, token))}
-				</p>
+				<p className={'font-number'}>{formatDate(getValidTo(quotes, token))}</p>
 			</span>
 		</div>
 	);
@@ -357,30 +339,36 @@ function ApprovalWizardItemCowswap(props: TApprovalWizardItem): ReactElement {
 	return (
 		<details
 			key={props.index}
-			className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-0 transition-colors hover:bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
+			className={
+				'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-0 transition-colors hover:bg-neutral-100 md:mb-2 md:rounded-md md:border-x'
+			}>
 			<summary className={'flex flex-col items-start py-2'}>
 				<div className={'flex w-full flex-col items-start justify-between md:flex-row md:items-center'}>
 					<div className={'text-left text-sm'}>
 						{'Swapping '}
 
-						<span className={'font-number font-bold'}>
-							{formatAmount(getSellAmount(quotes, props.token).normalized, 6, 6)}
-						</span>
+						<span className={'font-number font-bold'}>{formatAmount(getSellAmount(quotes, props.token).normalized, 6, 6)}</span>
 
 						{` ${balances?.[props.token]?.symbol || 'Tokens'} for at least `}
 
-						<span className={'font-number font-bold'}>
-							{formatAmount(getBuyAmount(quotes, props.token).normalized, 6, 6)}
-						</span>
+						<span className={'font-number font-bold'}>{formatAmount(getBuyAmount(quotes, props.token).normalized, 6, 6)}</span>
 
 						{` ${destination.symbol}`}
 					</div>
-					{quotes && <SumaryExpiration quotes={quotes} token={props.token} />}
+					{quotes && (
+						<SumaryExpiration
+							quotes={quotes}
+							token={props.token}
+						/>
+					)}
 				</div>
 				<SummaryIndicator {...props} />
 			</summary>
 
-			<CowswapTXDetails quotes={quotes} token={props.token} />
+			<CowswapTXDetails
+				quotes={quotes}
+				token={props.token}
+			/>
 		</details>
 	);
 }

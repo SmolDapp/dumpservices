@@ -1,7 +1,17 @@
 import {VALID_TO_MN, VALID_TO_MN_SAFE} from 'utils/constants';
-import {type TBebopOrderQuoteError, type TBebopOrderQuoteResponse, type TBebopQuoteAPIResp, type TCowQuoteError, type TCowswapOrderQuoteResponse, type TOrderQuoteError, type TRequest, type TRequestArgs, type TToken} from 'utils/types';
+import {
+	type TBebopOrderQuoteError,
+	type TBebopOrderQuoteResponse,
+	type TBebopQuoteAPIResp,
+	type TCowQuoteError,
+	type TCowswapOrderQuoteResponse,
+	type TOrderQuoteError,
+	type TRequest,
+	type TRequestArgs,
+	type TToken
+} from 'utils/types';
 import axios from 'axios';
-import {OrderBookApi, OrderQuoteSide, SigningScheme} from '@cowprotocol/cow-sdk';
+import {OrderBookApi, OrderQuoteSideKindSell, SigningScheme} from '@cowprotocol/cow-sdk';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
@@ -10,19 +20,19 @@ import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber'
 import type {OrderQuoteRequest} from '@cowprotocol/cow-sdk';
 
 export type TGetQuote = {
-	quoteResponse?: TRequest,
-	feeAmount?: bigint,
-	error?: TOrderQuoteError
-}
+	quoteResponse?: TRequest;
+	feeAmount?: bigint;
+	error?: TOrderQuoteError;
+};
 
 type TRetreiveCowQuote = {
-	sellToken: TAddress,
-	buyToken: TAddress,
-	from: TAddress,
-	receiver: TAddress,
-	amount: TNormalizedBN,
-	isWalletSafe: boolean,
-}
+	sellToken: TAddress;
+	buyToken: TAddress;
+	from: TAddress;
+	receiver: TAddress;
+	amount: TNormalizedBN;
+	isWalletSafe: boolean;
+};
 export async function retrieveQuoteFromCowswap({
 	request,
 	sellToken,
@@ -33,29 +43,24 @@ export async function retrieveQuoteFromCowswap({
 	isWalletSafe
 }: TRetreiveCowQuote & {request: TRequestArgs}): Promise<TGetQuote> {
 	const cowswapOrderBook = new OrderBookApi({chainId: 1});
-	const quote: OrderQuoteRequest = ({
+	const quote: OrderQuoteRequest = {
 		sellToken, // token to spend
 		buyToken, // token to receive
 		from,
 		receiver,
 		appData: process.env.COWSWAP_APP_DATA || '',
 		partiallyFillable: false, // always false
-		kind: OrderQuoteSide.kind.SELL,
+		kind: OrderQuoteSideKindSell.SELL,
 		validTo: 0,
 		sellAmountBeforeFee: toBigInt(amount.raw || 0).toString(), // amount to sell, in wei
 		signingScheme: isWalletSafe ? SigningScheme.PRESIGN : SigningScheme.EIP712
-	});
-	const canExecuteFetch = (
-		!(isZeroAddress(quote.from) || isZeroAddress(quote.sellToken) || isZeroAddress(quote.buyToken))
-		&& toBigInt(amount.raw || 0) > 0n
-	);
+	};
+	const canExecuteFetch = !(isZeroAddress(quote.from) || isZeroAddress(quote.sellToken) || isZeroAddress(quote.buyToken)) && toBigInt(amount.raw || 0) > 0n;
 
 	if (canExecuteFetch && cowswapOrderBook) {
-		quote.validTo = Math.round((new Date().setMinutes(
-			new Date().getMinutes() + (isWalletSafe ? VALID_TO_MN_SAFE : VALID_TO_MN)) / 1000)
-		);
+		quote.validTo = Math.round(new Date().setMinutes(new Date().getMinutes() + (isWalletSafe ? VALID_TO_MN_SAFE : VALID_TO_MN)) / 1000);
 		try {
-			const result = await cowswapOrderBook.getQuote(quote) as TCowswapOrderQuoteResponse;
+			const result = (await cowswapOrderBook.getQuote(quote)) as TCowswapOrderQuoteResponse;
 			const cowRequest: TRequest = {
 				solverType: 'COWSWAP',
 				buyToken: request.outputToken,
@@ -66,10 +71,7 @@ export async function retrieveQuoteFromCowswap({
 						symbol: request.inputTokens[0].symbol,
 						decimals: request.inputTokens[0].decimals,
 						chainId: request.inputTokens[0].chainId,
-						amount: toNormalizedBN(
-							toBigInt(result.quote.sellAmount) + toBigInt(result.quote.feeAmount),
-							request.outputToken.decimals
-						)
+						amount: toNormalizedBN(toBigInt(result.quote.sellAmount) + toBigInt(result.quote.feeAmount), request.outputToken.decimals)
 					}
 				},
 				quote: {
@@ -81,7 +83,7 @@ export async function retrieveQuoteFromCowswap({
 					}
 				}
 			};
-			return ({quoteResponse: cowRequest});
+			return {quoteResponse: cowRequest};
 		} catch (_error) {
 			const error = _error as TCowQuoteError;
 			error.solverType = 'COWSWAP';
@@ -102,34 +104,24 @@ export async function retrieveQuoteFromCowswap({
 					error.message = 'The sell amount does not cover the fee';
 				}
 			}
-			return ({feeAmount: toBigInt(error?.body?.data?.fee_amount), error});
+			return {feeAmount: toBigInt(error?.body?.data?.fee_amount), error};
 		}
 	}
-	return ({feeAmount: 0n});
+	return {feeAmount: 0n};
 }
 
 type TRetreiveBebopQuote = {
-	sellTokens: TAddress[],
-	buyTokens: TAddress[],
-	from: TAddress,
-	receiver: TAddress,
-	amounts: TNormalizedBN[],
-	isWalletSafe: boolean,
-}
-export async function retrieveQuoteFromBebop({
-	request,
-	sellTokens,
-	buyTokens,
-	from,
-	receiver,
-	amounts
-}: TRetreiveBebopQuote & {request: TRequestArgs}): Promise<TGetQuote> {
+	sellTokens: TAddress[];
+	buyTokens: TAddress[];
+	from: TAddress;
+	receiver: TAddress;
+	amounts: TNormalizedBN[];
+	isWalletSafe: boolean;
+};
+export async function retrieveQuoteFromBebop({request, sellTokens, buyTokens, from, receiver, amounts}: TRetreiveBebopQuote & {request: TRequestArgs}): Promise<TGetQuote> {
 	const hasZeroAddressSellToken = sellTokens.some((token): boolean => isZeroAddress(token));
 	const hasZeroAmount = amounts.some((amount): boolean => toBigInt(amount.raw || 0) <= 0n);
-	const canExecuteFetch = (
-		!(isZeroAddress(from) || hasZeroAddressSellToken || isZeroAddress(buyTokens[0]))
-		&& !hasZeroAmount
-	);
+	const canExecuteFetch = !(isZeroAddress(from) || hasZeroAddressSellToken || isZeroAddress(buyTokens[0])) && !hasZeroAmount;
 
 	if (canExecuteFetch) {
 		try {
@@ -148,9 +140,8 @@ export async function retrieveQuoteFromBebop({
 				error.solverType = 'BEBOP';
 				error.message = 'Impossible to dump that token';
 				console.error(error);
-				return ({feeAmount: 0n, error});
+				return {feeAmount: 0n, error};
 			}
-
 
 			if (data.status === 'QUOTE_SUCCESS') {
 				const apiResponse = data as TBebopQuoteAPIResp;
@@ -211,15 +202,15 @@ export async function retrieveQuoteFromBebop({
 					quote: updatedQuote,
 					bebopAggregatedQuote: apiResponse
 				};
-				return ({quoteResponse: bebopRequest});
+				return {quoteResponse: bebopRequest};
 			}
 		} catch (_error) {
 			const error = _error as TBebopOrderQuoteError;
 			error.solverType = 'BEBOP';
 			error.message = 'Impossible to dump that token';
 			console.error(error);
-			return ({feeAmount: 0n, error});
+			return {feeAmount: 0n, error};
 		}
 	}
-	return ({feeAmount: 0n});
+	return {feeAmount: 0n};
 }

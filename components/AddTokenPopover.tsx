@@ -1,5 +1,4 @@
 import React, {Fragment, useCallback, useState} from 'react';
-import AddressInput, {defaultInputAddressLike} from 'components/AddressInput';
 import {useWallet} from 'contexts/useWallet';
 import {isAddress} from 'ethers/lib/utils';
 import {erc20ABI} from 'wagmi';
@@ -12,10 +11,11 @@ import {IconCross} from '@yearn-finance/web-lib/icons/IconCross';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '@yearn-finance/web-lib/utils/decoder';
 import {toBigInt, toNormalizedValue} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import AddressInput, {defaultInputAddressLike} from '@common/AddressInput';
 
-import type {TInputAddressLike} from 'components/AddressInput';
 import type {ReactElement} from 'react';
 import type {TAddress} from '@yearn-finance/web-lib/types';
+import type {TInputAddressLike} from '@common/AddressInput';
 
 function AddTokenPopover(): ReactElement {
 	const {refresh} = useWallet();
@@ -24,29 +24,29 @@ function AddTokenPopover(): ReactElement {
 	const [isOpen, set_isOpen] = useState(false);
 	const [token, set_token] = useState<TInputAddressLike>(defaultInputAddressLike);
 
-	const fetchToken = useCallback(async (
-		_safeChainID: number,
-		_query: TAddress
-	): Promise<{name: string, symbol: string, decimals: number, balanceOf: bigint} | undefined> => {
-		if (!isAddress(_query)) {
-			return (undefined);
-		}
-		const results = await multicall({
-			contracts: [
-				{address: _query, abi: erc20ABI, functionName: 'name'},
-				{address: _query, abi: erc20ABI, functionName: 'symbol'},
-				{address: _query, abi: erc20ABI, functionName: 'decimals'},
-				{address: _query, abi: erc20ABI, functionName: 'balanceOf', args: [toAddress(address)]}
-			],
-			chainId: _safeChainID
-		});
-		const name = decodeAsString(results[0]);
-		const symbol = decodeAsString(results[1]);
-		const decimals = decodeAsNumber(results[2]);
-		const balanceOf = decodeAsBigInt(results[3]);
-		await refresh([{decimals, name, symbol, token: _query}]);
-		return ({name, symbol, decimals, balanceOf});
-	}, [address, refresh]);
+	const fetchToken = useCallback(
+		async (_safeChainID: number, _query: TAddress): Promise<{name: string; symbol: string; decimals: number; balanceOf: bigint} | undefined> => {
+			if (!isAddress(_query)) {
+				return undefined;
+			}
+			const results = await multicall({
+				contracts: [
+					{address: _query, abi: erc20ABI, functionName: 'name'},
+					{address: _query, abi: erc20ABI, functionName: 'symbol'},
+					{address: _query, abi: erc20ABI, functionName: 'decimals'},
+					{address: _query, abi: erc20ABI, functionName: 'balanceOf', args: [toAddress(address)]}
+				],
+				chainId: _safeChainID
+			});
+			const name = decodeAsString(results[0]);
+			const symbol = decodeAsString(results[1]);
+			const decimals = decodeAsNumber(results[2]);
+			const balanceOf = decodeAsBigInt(results[3]);
+			await refresh([{decimals, name, symbol, token: _query}]);
+			return {name, symbol, decimals, balanceOf};
+		},
+		[address, refresh]
+	);
 	const [{result: tokenData}, fetchTokenData] = useAsync(fetchToken);
 
 	return (
@@ -100,38 +100,32 @@ function AddTokenPopover(): ReactElement {
 											</div>
 											<div className={'flex w-full flex-col space-y-2'}>
 												<AddressInput
-													className={'!w-full'}
 													value={token}
 													onChangeValue={(e): void => {
 														set_token(e);
 														fetchTokenData.execute(safeChainID, toAddress(e.address || ''));
-													}} />
+													}}
+												/>
 												<div
-													className={'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-100 md:mb-2 md:rounded-md md:border-x'}>
+													className={
+														'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-100 md:mb-2 md:rounded-md md:border-x'
+													}>
 													<div className={'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'}>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Address'}</b>
-															<p className={'font-number overflow-hidden text-ellipsis'}>
-																{toAddress(token?.address || '')}
-															</p>
+															<p className={'font-number overflow-hidden text-ellipsis'}>{toAddress(token?.address || '')}</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Name'}</b>
-															<p className={'font-number'}>
-																{tokenData?.name || '-'}
-															</p>
+															<p className={'font-number'}>{tokenData?.name || '-'}</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Symbol'}</b>
-															<p className={'font-number'}>
-																{tokenData?.symbol || '-'}
-															</p>
+															<p className={'font-number'}>{tokenData?.symbol || '-'}</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Balance'}</b>
-															<p className={'font-number'}>
-																{toNormalizedValue(toBigInt(tokenData?.balanceOf), tokenData?.decimals)}
-															</p>
+															<p className={'font-number'}>{toNormalizedValue(toBigInt(tokenData?.balanceOf), tokenData?.decimals)}</p>
 														</span>
 													</div>
 												</div>

@@ -12,10 +12,10 @@ import {localhost} from '@yearn-finance/web-lib/utils/wagmi/networks';
 import type {AppProps} from 'next/app';
 import type {ReactElement} from 'react';
 
-import	'../style.css';
+import '../style.css';
 
 const inter = Inter({
-	weight: ['400', '700'],
+	weight: ['400', '500', '600', '700'],
 	subsets: ['latin'],
 	display: 'swap',
 	variable: '--inter-font'
@@ -24,7 +24,13 @@ const inter = Inter({
 function MyApp(props: AppProps): ReactElement {
 	return (
 		<>
-			<style jsx global>{`html {font-family: ${inter.style.fontFamily};}`}</style>
+			<style
+				jsx
+				global>{`
+				html {
+					font-family: ${inter.style.fontFamily};
+				}
+			`}</style>
 			<WithYearn supportedChains={[mainnet, polygon, localhost]}>
 				<TokenListContextApp>
 					<WalletContextApp>

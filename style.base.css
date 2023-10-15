@@ -40,18 +40,31 @@
 	--color-neutral-0: 229 34% 13%;
 }
 
-
-body {@apply text-neutral-900;}
-h1 {@apply text-xl font-bold text-neutral-900;}
-h4 {@apply text-lg font-bold text-neutral-700;}
-#__next {@apply w-full h-full}
+body {
+	@apply text-neutral-900;
+}
+h1 {
+	@apply text-xl font-bold text-neutral-900;
+}
+h4 {
+	@apply text-lg font-bold text-neutral-700;
+}
+#__next {
+	@apply w-full h-full;
+}
 
 /* 🔵 - Yearn Finance ******************************************************
 ** Overwritting the defaults to match our needs
 **************************************************************************/
-* {@apply scroll-smooth font-sans}
-input::placeholder {@apply text-neutral-400 not-italic}
-textarea::placeholder {@apply text-neutral-400 not-italic}
+* {
+	@apply scroll-smooth font-sans;
+}
+input::placeholder {
+	@apply text-neutral-400 not-italic;
+}
+textarea::placeholder {
+	@apply text-neutral-400 not-italic;
+}
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -69,10 +82,10 @@ input::-webkit-inner-spin-button {
 	-webkit-appearance: none;
 	margin: 0;
 }
-input[type=number] {
+input[type='number'] {
 	-moz-appearance: textfield;
 }
-label[aria-invalid="true"] {
+label[aria-invalid='true'] {
 	@apply text-neutral-500 transition-colors;
 	& > form > div {
 		@apply border-[#FE0000] focus-within:border-[#FE0000] text-[#FE0000] focus-within:text-[#FE0000];
@@ -83,10 +96,10 @@ label[aria-invalid="true"] {
 }
 
 :focus {
-    outline-width: 0px;
-    outline-offset: 0px;
+	outline-width: 0px;
+	outline-offset: 0px;
 	outline: none;
-    outline-color: transparent;
+	outline-color: transparent;
 }
 
 /* 🔵 - Yearn Finance ******************************************************
@@ -95,12 +108,24 @@ label[aria-invalid="true"] {
 ** correctly. Aka theses class should be possible to overwrite by adding an
 ** extra tailwind class
 **************************************************************************/
-.flex-center {@apply flex justify-center items-center;}
-.rounded-default {@apply rounded-md;}
-.rounded-b-default {@apply rounded-b-md;}
-.rounded-t-default {@apply rounded-t-md;}
-.rounded-l-default {@apply rounded-l-md;}
-.rounded-r-default {@apply rounded-r-md;}
+.flex-center {
+	@apply flex justify-center items-center;
+}
+.rounded-default {
+	@apply rounded-md;
+}
+.rounded-b-default {
+	@apply rounded-b-md;
+}
+.rounded-t-default {
+	@apply rounded-t-md;
+}
+.rounded-l-default {
+	@apply rounded-l-md;
+}
+.rounded-r-default {
+	@apply rounded-r-md;
+}
 
 /* -- Button.tsx ------------------------------------------------------- */
 .yearn--button {
@@ -108,34 +133,52 @@ label[aria-invalid="true"] {
 
 	border-radius: var(--default-rounded);
 
-	&[data-variant="filled"] {
+	&[data-variant='filled'] {
 		@apply text-primary-0 bg-primary-900 font-normal border border-transparent;
-		&:disabled {@apply bg-primary-700 opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-800;}
+		&:disabled {
+			@apply bg-primary-700 opacity-40;
+		}
+		&:not(:disabled):not([aria-busy='true']):hover {
+			@apply bg-primary-800;
+		}
 	}
-	&[data-variant="light"] {
+	&[data-variant='light'] {
 		@apply text-primary-900 bg-primary-100 border border-transparent;
-		&:disabled {@apply opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-200;}
+		&:disabled {
+			@apply opacity-40;
+		}
+		&:not(:disabled):not([aria-busy='true']):hover {
+			@apply bg-primary-200;
+		}
 	}
-	&[data-variant="outlined"] {
+	&[data-variant='outlined'] {
 		@apply text-primary-900 bg-transparent border border-primary-900;
-		&:disabled {@apply opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-900 text-primary-0;}
+		&:disabled {
+			@apply opacity-40;
+		}
+		&:not(:disabled):not([aria-busy='true']):hover {
+			@apply bg-primary-900 text-primary-0;
+		}
 	}
-	&[data-variant="reverted"] {
+	&[data-variant='reverted'] {
 		@apply text-primary-900 bg-primary-0 font-normal border border-transparent;
-		&:disabled {@apply bg-primary-200 opacity-40;}
-		&:not(:disabled):not([aria-busy="true"]):hover {@apply bg-primary-200;}
-		&[aria-busy="true"] svg {
+		&:disabled {
+			@apply bg-primary-200 opacity-40;
+		}
+		&:not(:disabled):not([aria-busy='true']):hover {
+			@apply bg-primary-200;
+		}
+		&[aria-busy='true'] svg {
 			@apply text-primary-900;
 		}
 	}
-	&[aria-busy="true"] {
+	&[aria-busy='true'] {
 		@apply cursor-wait;
 		color: transparent !important;
 	}
-	&:disabled {@apply cursor-not-allowed;}
+	&:disabled {
+		@apply cursor-not-allowed;
+	}
 }
 
 /* 🔵 - Yearn Finance ******************************************************
@@ -148,31 +191,57 @@ label[aria-invalid="true"] {
 /* 🔵 - Yearn Finance ******************************************************
 ** Shorthand for some group of style used across the application
 ***************************************************************************/
-.flex-row-center {@apply flex flex-row items-center;}
-.flex-row-start {@apply flex flex-row items-start;}
-.flex-col-start {@apply flex flex-col items-start;}
-.flex-col-full {@apply flex flex-col w-full h-full;}
-.max-w-6xl {@apply max-w-[1232px] px-4;}
+.flex-row-center {
+	@apply flex flex-row items-center;
+}
+.flex-row-start {
+	@apply flex flex-row items-start;
+}
+.flex-col-start {
+	@apply flex flex-col items-start;
+}
+.flex-col-full {
+	@apply flex flex-col w-full h-full;
+}
+.max-w-6xl {
+	@apply max-w-[1232px] px-4;
+}
 
 /* 🔵 - Yearn Finance ******************************************************
 ** NsProgress is used to display the loading indicator. All of theses
 ** styles are required to make it visible
 **************************************************************************/
-.nprogress-custom-parent {@apply overflow-hidden relative}
-.nprogress-custom-parent #nprogress .spinner {@apply absolute}
-.nprogress-custom-parent #nprogress .bar {@apply absolute}
-#nprogress {@apply pointer-events-none}
-#nprogress .bar {@apply bg-neutral-900 fixed top-0 left-0 w-full h-1 z-[1031]}
-#nprogress .spinner {@apply block fixed z-[1031] top-4 right-4}
-#nprogress .spinner-icon {@apply hidden}
+.nprogress-custom-parent {
+	@apply overflow-hidden relative;
+}
+.nprogress-custom-parent #nprogress .spinner {
+	@apply absolute;
+}
+.nprogress-custom-parent #nprogress .bar {
+	@apply absolute;
+}
+#nprogress {
+	@apply pointer-events-none;
+}
+#nprogress .bar {
+	@apply bg-neutral-900 fixed top-0 left-0 w-full h-1 z-[1031];
+}
+#nprogress .spinner {
+	@apply block fixed z-[1031] top-4 right-4;
+}
+#nprogress .spinner-icon {
+	@apply hidden;
+}
 
 /* 🔵 - Yearn Finance ******************************************************
 ** Some accessibilities fixes
 **************************************************************************/
-.scrollbar-none::-webkit-scrollbar {display: none;}
+.scrollbar-none::-webkit-scrollbar {
+	display: none;
+}
 .scrollbar-none {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
 }
 .yearn--select-reset {
 	@apply bg-transparent p-0 border-none;
@@ -187,7 +256,7 @@ label[aria-invalid="true"] {
 	background-image: none;
 }
 .yearn--select-no-arrow::-ms-expand {
-    display: none;
+	display: none;
 }
 
 /* 🔵 - Yearn Finance ******************************************************
@@ -265,9 +334,15 @@ label[aria-invalid="true"] {
 	@apply flex flex-col justify-center items-center p-6 text-center transition-colors cursor-pointer bg-neutral-0 hover:bg-neutral-100;
 
 	border-radius: var(--default-rounded);
-	& > div > svg {@apply w-12 h-12;}
-	& > b {@apply mt-2 text-lg text-neutral-700;}
-	& > p {@apply text-neutral-500;}
+	& > div > svg {
+		@apply w-12 h-12;
+	}
+	& > b {
+		@apply mt-2 text-lg text-neutral-700;
+	}
+	& > p {
+		@apply text-neutral-500;
+	}
 }
 .yearn--modalLogin {
 	@apply grid grid-cols-2;
@@ -322,7 +397,6 @@ label[aria-invalid="true"] {
 	visibility: hidden;
 }
 
-
 .yearn--toast-options {
 	@apply !w-screen text-sm text-neutral-700 !px-4 !rounded-none !shadow-none !py-2 !max-w-full;
 }
@@ -330,7 +404,6 @@ label[aria-invalid="true"] {
 .yearn--toast-button {
 	@apply text-xs px-3 py-1 text-[#0657F9] bg-white;
 }
-
 
 .yearn--shadow {
 	box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.16);
