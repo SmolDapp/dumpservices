@@ -1,5 +1,10 @@
 module.exports = {
-	extends: ['./node_modules/@yearn-finance/web-lib/.eslintrc.cjs', 'plugin:@next/next/recommended', 'prettier'],
+	extends: [
+		'./node_modules/@yearn-finance/web-lib/.eslintrc.cjs',
+		'plugin:@next/next/recommended',
+		'prettier',
+		'plugin:react-hooks/recommended'
+	],
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		ecmaFeatures: {
@@ -13,6 +18,13 @@ module.exports = {
 	rules: {
 		'@typescript-eslint/prefer-optional-chain': 'error',
 		indent: 'off',
+		'@typescript-eslint/explicit-function-return-type': [
+			'error',
+			{
+				allowExpressions: true,
+				allowTypedFunctionExpressions: true
+			}
+		],
 		'no-multi-spaces': ['error', {ignoreEOLComments: false}],
 		'@typescript-eslint/indent': 0,
 		'no-mixed-spaces-and-tabs': ['warn', 'smart-tabs'],
@@ -23,6 +35,12 @@ module.exports = {
 				ObjectPattern: {multiline: true, consistent: true},
 				ImportDeclaration: {multiline: true, consistent: true},
 				ExportDeclaration: {multiline: true, minProperties: 3}
+			}
+		],
+		'react-hooks/exhaustive-deps': [
+			'warn',
+			{
+				additionalHooks: '(^useAsyncTrigger$|^useDeepCompareMemo$)'
 			}
 		]
 	}

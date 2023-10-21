@@ -1,5 +1,4 @@
 import React, {useCallback, useState} from 'react';
-import ApprovalWizardItemCowswap from 'components/ApprovalWizardItem.cowswap';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedCowswapQuote, isCowswapOrder} from 'hooks/assertSolver';
 import {addQuote, setRefreshingQuote} from 'hooks/handleQuote';
@@ -8,7 +7,7 @@ import {getSpender, useSolverCowswap} from 'hooks/useSolverCowswap';
 import {isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
-import {TPossibleFlowStep} from 'utils/types';
+import {TStatus} from 'utils/types';
 import axios from 'axios';
 import {SigningScheme} from '@cowprotocol/cow-sdk';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
@@ -18,6 +17,8 @@ import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {MAX_UINT_256} from '@yearn-finance/web-lib/utils/constants';
+
+import {CowswapApprovalWizard} from './cowswap/ApprovalWizard';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {Maybe, TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
@@ -34,7 +35,11 @@ type TSafeTxHistory = {
 	nonce: number;
 };
 
-function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>}): ReactElement {
+function GnosisXCowswapBatchedFlow({
+	onUpdateSignStep
+}: {
+	onUpdateSignStep: Dispatch<SetStateAction<TDict<TStatus>>>;
+}): ReactElement {
 	const {provider} = useWeb3();
 	const cowswap = useSolverCowswap();
 	const {quotes, set_quotes} = useSweepooor();
@@ -102,7 +107,11 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 				amount: MAX_UINT_256
 			});
 			if (!isApproved) {
-				const newApprovalForBatch = getApproveTransaction(MAX_UINT_256.toString(), tokenAddress, getSpender({chainID: safeChainID}));
+				const newApprovalForBatch = getApproveTransaction(
+					MAX_UINT_256.toString(),
+					tokenAddress,
+					getSpender({chainID: safeChainID})
+				);
 				preparedTransactions.push(newApprovalForBatch);
 			}
 
@@ -121,23 +130,27 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 				preparedTransactions.push(existingTx.tx);
 				executedQuotes.push({...quoteOrder, orderUID: existingTx.orderUID});
 				onUpdateSignStep(
-					(prev): TDict<TPossibleFlowStep> => ({
+					(prev): TDict<TStatus> => ({
 						...prev,
-						[tokenAddress]: TPossibleFlowStep.VALID
+						[tokenAddress]: TStatus.VALID
 					})
 				);
 				continue;
 			}
 
 			onUpdateSignStep(
-				(prev): TDict<TPossibleFlowStep> => ({
+				(prev): TDict<TStatus> => ({
 					...prev,
-					[tokenAddress]: TPossibleFlowStep.PENDING
+					[tokenAddress]: TStatus.PENDING
 				})
 			);
 			try {
 				await cowswap.execute(quotes, tokenAddress, true, (orderUID): void => {
-					const newPreSignatureForBatch = getSetPreSignatureTransaction(toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS), orderUID, true);
+					const newPreSignatureForBatch = getSetPreSignatureTransaction(
+						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
+						orderUID,
+						true
+					);
 					newlyExistingTransactions[String(quoteOrder.id)] = {
 						tx: newPreSignatureForBatch,
 						orderUID
@@ -145,17 +158,17 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 					preparedTransactions.push(newPreSignatureForBatch);
 					executedQuotes.push({...quoteOrder, orderUID});
 					onUpdateSignStep(
-						(prev): TDict<TPossibleFlowStep> => ({
+						(prev): TDict<TStatus> => ({
 							...prev,
-							[tokenAddress]: TPossibleFlowStep.VALID
+							[tokenAddress]: TStatus.VALID
 						})
 					);
 				});
 			} catch (error) {
 				onUpdateSignStep(
-					(prev): TDict<TPossibleFlowStep> => ({
+					(prev): TDict<TStatus> => ({
 						...prev,
-						[tokenAddress]: TPossibleFlowStep.INVALID
+						[tokenAddress]: TStatus.INVALID
 					})
 				);
 			}
@@ -170,7 +183,9 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 		try {
 			const {safeTxHash} = await sdk.txs.send({txs: Object.values(preparedTransactions)});
 			try {
-				const tx = (await axios.get(`https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${safeTxHash}`)) as TSafeTxHistory;
+				const tx = (await axios.get(
+					`https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${safeTxHash}`
+				)) as TSafeTxHistory;
 				notify(executedQuotes, 'COWSWAP', 'Safe', safeTxHash, tx);
 			} catch (error) {
 				notify(executedQuotes, 'COWSWAP', 'Safe', safeTxHash);
@@ -188,8 +203,13 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 			<button
 				onClick={onRefreshAllQuotes}
 				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
-				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>{'Refresh all quotes'}</p>
-				<span className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${isRefreshingQuotes ? 'opacity-100' : 'opacity-0'}`}>
+				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>
+					{'Refresh all quotes'}
+				</p>
+				<span
+					className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${
+						isRefreshingQuotes ? 'opacity-100' : 'opacity-0'
+					}`}>
 					<IconSpinner />
 				</span>
 			</button>
@@ -210,15 +230,15 @@ function GnosisXCowswapBatchedFlow({onUpdateSignStep}: {onUpdateSignStep: Dispat
 
 function Wrapper(): ReactElement {
 	const {quotes} = useSweepooor();
-	const [approvalStep] = useState<TDict<TPossibleFlowStep>>({});
-	const [signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
-	const [executeStep] = useState<TDict<TPossibleFlowStep>>({});
+	const [approvalStep] = useState<TDict<TStatus>>({});
+	const [signStep, set_signStep] = useState<TDict<TStatus>>({});
+	const [executeStep] = useState<TDict<TStatus>>({});
 
 	return (
 		<>
 			{Object.entries(getTypedCowswapQuote(quotes).quote).map(([token, currentQuote], index): JSX.Element => {
 				return (
-					<ApprovalWizardItemCowswap
+					<CowswapApprovalWizard
 						key={`${token}_${currentQuote?.quote?.buyAmount}_${currentQuote?.quote?.receiver}_${index}`}
 						token={toAddress(token)}
 						index={index}

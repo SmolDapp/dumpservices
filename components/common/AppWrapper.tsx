@@ -1,7 +1,5 @@
 import React from 'react';
 import Meta from 'components/common/Meta';
-import thumbnailVariants from 'utils/animations';
-import {AnimatePresence, motion} from 'framer-motion';
 import {Logo} from '@icons/logo';
 
 import {NetworkSelector, WalletSelector} from './HeaderElements';
@@ -16,7 +14,7 @@ function Header(): ReactElement {
 			className={'fixed inset-x-0 top-0 z-50 w-full border-b border-primary-100'}>
 			<div
 				id={'head'}
-				className={'bg-primary-50/95 pl-52 pr-10'}>
+				className={'bg-primary-50/95 px-10'}>
 				<div className={'mx-auto flex flex-row justify-between p-4'}>
 					<div className={'flex items-center justify-start'}>
 						<div className={'flex items-center justify-center rounded-full bg-white p-2'}>
@@ -43,20 +41,11 @@ function AppWrapper(props: AppProps): ReactElement {
 			<div
 				id={'app'}
 				className={'relative mx-auto mb-0 flex min-h-screen w-full flex-col pt-14'}>
-				<AnimatePresence mode={'wait'}>
-					<motion.div
-						key={router.pathname}
-						initial={'initial'}
-						animate={'enter'}
-						exit={'exit'}
-						variants={thumbnailVariants}>
-						<Component
-							key={router.route}
-							router={props.router}
-							{...pageProps}
-						/>
-					</motion.div>
-				</AnimatePresence>
+				<Component
+					key={router.route}
+					router={props.router}
+					{...pageProps}
+				/>
 			</div>
 		</React.Fragment>
 	);

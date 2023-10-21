@@ -5,7 +5,7 @@ import {getTypedCowswapQuote, isBebopOrder, isCowswapOrder, isQuote} from 'hooks
 import {refreshQuote} from 'hooks/handleQuote';
 import {getBuyAmount, getValidTo, shouldRefreshQuote} from 'hooks/helperWithSolver';
 import {getSpender} from 'hooks/useSolverCowswap';
-import {TPossibleFlowStep, TPossibleStatus} from 'utils/types';
+import {TPossibleStatus, TStatus} from 'utils/types';
 import {erc20ABI, useContractRead} from 'wagmi';
 import {IconCheck} from '@icons/IconCheck';
 import {IconChevronBoth} from '@icons/IconChevronBoth';
@@ -64,18 +64,28 @@ function SumaryExpiration({quotes, token}: {quotes: TRequest; token: TAddress}):
 		if (Math.floor(expireIn) < 60) {
 			return (
 				<div className={'tooltip'}>
-					<small className={'text-xs tabular-nums text-neutral-500'}>{`The quote will be updated in ${Math.floor(expireIn)}s`}</small>
+					<small
+						className={'text-xs tabular-nums text-neutral-500'}>{`The quote will be updated in ${Math.floor(
+						expireIn
+					)}s`}</small>
 					<span className={'tooltiptext z-[100000] text-xs'}>
-						<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
+						<p suppressHydrationWarning>
+							{'After 60 seconds, an automated request for a new quote will be made.'}
+						</p>
 					</span>
 				</div>
 			);
 		}
 		return (
 			<div className={'tooltip'}>
-				<small className={'text-xs tabular-nums text-neutral-500'}>{`The quote will be updated in ${formatDuration(expireIn)}`}</small>
+				<small
+					className={'text-xs tabular-nums text-neutral-500'}>{`The quote will be updated in ${formatDuration(
+					expireIn
+				)}`}</small>
 				<span className={'tooltiptext z-[100000] text-xs'}>
-					<p suppressHydrationWarning>{'After 60 seconds, an automated request for a new quote will be made.'}</p>
+					<p suppressHydrationWarning>
+						{'After 60 seconds, an automated request for a new quote will be made.'}
+					</p>
 				</span>
 			</div>
 		);
@@ -84,12 +94,21 @@ function SumaryExpiration({quotes, token}: {quotes: TRequest; token: TAddress}):
 	return (
 		<div className={'flex flex-row items-center space-x-2'}>
 			{renderExpiration()}
-			<IconChevronBoth className={'mt-0.5 h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
+			<IconChevronBoth
+				className={'mt-0.5 h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'}
+			/>
 		</div>
 	);
 }
 
-function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, signStep, executeStep}: TApprovalWizardItem): ReactElement {
+function SummaryIndicator({
+	token,
+	isWalletSafe,
+	hasSignature,
+	approvalStep,
+	signStep,
+	executeStep
+}: TApprovalWizardItem): ReactElement {
 	const {address} = useWeb3();
 	const {quotes, destination} = useSweepooor();
 	const [step, set_step] = useState<'Approve' | 'Sign' | 'Execute'>(isWalletSafe ? 'Sign' : 'Approve');
@@ -147,7 +166,7 @@ function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, sign
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 
-		if (hasAllowance || approvalStep[token] === TPossibleFlowStep.VALID) {
+		if (hasAllowance || approvalStep[token] === TStatus.VALID) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (!token) {
@@ -156,10 +175,10 @@ function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, sign
 		if (!approvalStep[token]) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (approvalStep[token] === TPossibleFlowStep.UNDETERMINED) {
+		if (approvalStep[token] === TStatus.UNDETERMINED) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (approvalStep[token] === TPossibleFlowStep.PENDING) {
+		if (approvalStep[token] === TStatus.PENDING) {
 			return <IconSpinner />;
 		}
 		return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
@@ -179,13 +198,13 @@ function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, sign
 		if (!signStep[token]) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (signStep[token] === TPossibleFlowStep.UNDETERMINED) {
+		if (signStep[token] === TStatus.UNDETERMINED) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 		if (hasSignature) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
-		if (signStep[token] === TPossibleFlowStep.PENDING) {
+		if (signStep[token] === TStatus.PENDING) {
 			return <IconSpinner />;
 		}
 		return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
@@ -206,13 +225,13 @@ function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, sign
 		if (currentQuote.orderStatus === TPossibleStatus.BEBOP_CONFIRMED) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
-		if (executeStep[token] === TPossibleFlowStep.VALID) {
+		if (executeStep[token] === TStatus.VALID) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (currentQuote.orderStatus === TPossibleStatus.PENDING) {
 			return <IconSpinner />;
 		}
-		if (executeStep[token] === TPossibleFlowStep.PENDING) {
+		if (executeStep[token] === TStatus.PENDING) {
 			return <IconSpinner />;
 		}
 		return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
@@ -255,7 +274,9 @@ function SummaryIndicator({token, isWalletSafe, hasSignature, approvalStep, sign
 				{renderSignatureIndication()}
 				<small>
 					{'Signed for '}
-					<span className={'font-bold tabular-nums'}>{formatAmount(getBuyAmount(quotes, token).normalized, 6, 6)}</span>
+					<span className={'font-bold tabular-nums'}>
+						{formatAmount(getBuyAmount(quotes, token).normalized, 6, 6)}
+					</span>
 					{` ${destination.symbol}`}
 				</small>
 			</div>
@@ -300,25 +321,35 @@ function CowswapTXDetails({quotes, token}: {quotes: TRequest; token: TAddress}):
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'BuyAmount'}</b>
-				<p className={'font-number'}>{`${getBuyAmount(quotes, token).normalized} (${getBuyAmount(quotes, token).raw || ''})`}</p>
+				<p className={'font-number'}>{`${getBuyAmount(quotes, token).normalized} (${
+					getBuyAmount(quotes, token).raw || ''
+				})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'BuyToken'}</b>
-				<p className={'font-number'}>{`${balances?.[toAddress(currentQuote.quote.buyToken)]?.symbol || ''} (${toAddress(currentQuote.quote.buyToken || '')})`}</p>
+				<p className={'font-number'}>{`${
+					balances?.[toAddress(currentQuote.quote.buyToken)]?.symbol || ''
+				} (${toAddress(currentQuote.quote.buyToken || '')})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'SellAmount'}</b>
-				<p className={'font-number'}>{`${currentSellToken.amount.normalized} (${currentSellToken.amount.raw || ''})`}</p>
+				<p className={'font-number'}>{`${currentSellToken.amount.normalized} (${
+					currentSellToken.amount.raw || ''
+				})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'FeeAmount'}</b>
 				<p className={'font-number'}>
-					{`${toNormalizedBN(currentQuote.quote.feeAmount || '', currentSellToken.decimals).normalized} (${currentQuote.quote.feeAmount || ''})`}
+					{`${toNormalizedBN(currentQuote.quote.feeAmount || '', currentSellToken.decimals).normalized} (${
+						currentQuote.quote.feeAmount || ''
+					})`}
 				</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'SellToken'}</b>
-				<p className={'font-number'}>{`${balances?.[token]?.symbol || ''} (${toAddress(currentQuote.quote.sellToken || '')})`}</p>
+				<p className={'font-number'}>{`${balances?.[token]?.symbol || ''} (${toAddress(
+					currentQuote.quote.sellToken || ''
+				)})`}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'ValidTo'}</b>
@@ -355,18 +386,33 @@ function ApprovalWizardItemBebop({quote}: {isWalletSafe: boolean; quote: TBebopQ
 							'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-0 transition-colors hover:bg-neutral-100 md:mb-2 md:rounded-md md:border-x'
 						}>
 						<summary className={'flex flex-col items-start py-2'}>
-							<div className={'flex w-full flex-col items-start justify-between md:flex-row md:items-center'}>
+							<div
+								className={
+									'flex w-full flex-col items-start justify-between md:flex-row md:items-center'
+								}>
 								<div className={'text-left text-sm'}>
 									{'Swapping '}
 
 									<span className={'font-number font-bold'}>
-										{formatAmount(toNormalizedBN(item.amount, findTokenDecimals(item.contractAddress)).normalized, 6, 6)}
+										{formatAmount(
+											toNormalizedBN(item.amount, findTokenDecimals(item.contractAddress))
+												.normalized,
+											6,
+											6
+										)}
 									</span>
 
 									{` ${findTokenSymbol(item.contractAddress)} for ~`}
 
 									<span className={'font-number font-bold'}>
-										{formatAmount(Number(toNormalizedBN(item.amount, findTokenDecimals(item.contractAddress)).normalized) * item.rate, 6, 6)}
+										{formatAmount(
+											Number(
+												toNormalizedBN(item.amount, findTokenDecimals(item.contractAddress))
+													.normalized
+											) * item.rate,
+											6,
+											6
+										)}
 									</span>
 
 									{` ${destination.symbol}`}

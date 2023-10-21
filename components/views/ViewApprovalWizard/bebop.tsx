@@ -5,7 +5,7 @@ import {getTypedBebopQuote} from 'hooks/assertSolver';
 import {getSellAmount} from 'hooks/helperWithSolver';
 import {getSpender, useSolverCowswap} from 'hooks/useSolverCowswap';
 import {approveERC20, isApprovedERC20} from 'utils/actions';
-import {TPossibleFlowStep} from 'utils/types';
+import {TStatus} from 'utils/types';
 import {IconSpinner} from '@icons/IconSpinner';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
@@ -24,10 +24,10 @@ function BebopBatchedFlow({
 	onUpdateSignStep,
 	onUpdateExecuteStep
 }: {
-	approvals: TDict<TPossibleFlowStep>;
-	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>;
-	onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>;
-	onUpdateExecuteStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>;
+	approvals: TDict<TStatus>;
+	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TStatus>>>;
+	onUpdateSignStep: Dispatch<SetStateAction<TDict<TStatus>>>;
+	onUpdateExecuteStep: Dispatch<SetStateAction<TDict<TStatus>>>;
 }): ReactElement {
 	const cowswap = useSolverCowswap();
 	const {provider} = useWeb3();
@@ -49,9 +49,9 @@ function BebopBatchedFlow({
 		for (const token of Object.keys(quotes?.quote || {})) {
 			if (
 				!approvals[toAddress(token)] ||
-				approvals[toAddress(token)] === TPossibleFlowStep.UNDETERMINED ||
-				approvals[toAddress(token)] === TPossibleFlowStep.INVALID ||
-				approvals[toAddress(token)] === TPossibleFlowStep.PENDING
+				approvals[toAddress(token)] === TStatus.UNDETERMINED ||
+				approvals[toAddress(token)] === TStatus.INVALID ||
+				approvals[toAddress(token)] === TStatus.PENDING
 			) {
 				return false;
 			}
@@ -76,9 +76,9 @@ function BebopBatchedFlow({
 			})
 				.then((isApproved): void => {
 					onUpdateApprovalStep(
-						(prev): TDict<TPossibleFlowStep> => ({
+						(prev): TDict<TStatus> => ({
 							...prev,
-							[token]: isApproved ? TPossibleFlowStep.VALID : TPossibleFlowStep.UNDETERMINED
+							[token]: isApproved ? TStatus.VALID : TStatus.UNDETERMINED
 						})
 					);
 				})
@@ -120,9 +120,9 @@ function BebopBatchedFlow({
 
 				if (!isApproved) {
 					onUpdateApprovalStep(
-						(prev): TDict<TPossibleFlowStep> => ({
+						(prev): TDict<TStatus> => ({
 							...prev,
-							[tokenAddress]: TPossibleFlowStep.PENDING
+							[tokenAddress]: TStatus.PENDING
 						})
 					);
 
@@ -135,33 +135,33 @@ function BebopBatchedFlow({
 					});
 					if (result.isSuccessful) {
 						onUpdateApprovalStep(
-							(prev): TDict<TPossibleFlowStep> => ({
+							(prev): TDict<TStatus> => ({
 								...prev,
-								[tokenAddress]: TPossibleFlowStep.VALID
+								[tokenAddress]: TStatus.VALID
 							})
 						);
 					} else {
 						onUpdateApprovalStep(
-							(prev): TDict<TPossibleFlowStep> => ({
+							(prev): TDict<TStatus> => ({
 								...prev,
-								[tokenAddress]: TPossibleFlowStep.INVALID
+								[tokenAddress]: TStatus.INVALID
 							})
 						);
 					}
 				} else {
 					onUpdateApprovalStep(
-						(prev): TDict<TPossibleFlowStep> => ({
+						(prev): TDict<TStatus> => ({
 							...prev,
-							[tokenAddress]: TPossibleFlowStep.VALID
+							[tokenAddress]: TStatus.VALID
 						})
 					);
 				}
 			} catch (error) {
 				console.error(error);
 				onUpdateApprovalStep(
-					(prev): TDict<TPossibleFlowStep> => ({
+					(prev): TDict<TStatus> => ({
 						...prev,
-						[tokenAddress]: TPossibleFlowStep.UNDETERMINED
+						[tokenAddress]: TStatus.UNDETERMINED
 					})
 				);
 			}
@@ -194,8 +194,13 @@ function BebopBatchedFlow({
 			<button
 				onClick={onRefreshAllQuotes}
 				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
-				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>{'Refresh all quotes'}</p>
-				<span className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${isRefreshingQuotes ? 'opacity-100' : 'opacity-0'}`}>
+				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>
+					{'Refresh all quotes'}
+				</p>
+				<span
+					className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${
+						isRefreshingQuotes ? 'opacity-100' : 'opacity-0'
+					}`}>
 					<IconSpinner />
 				</span>
 			</button>
@@ -218,9 +223,9 @@ function Wrapper(): ReactElement {
 	const cowswap = useSolverCowswap();
 	const {isWalletSafe} = useWeb3();
 	const {quotes} = useSweepooor();
-	const [approvalStep, set_approvalStep] = useState<TDict<TPossibleFlowStep>>({});
-	const [signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
-	const [executeStep, set_executeStep] = useState<TDict<TPossibleFlowStep>>({});
+	const [approvalStep, set_approvalStep] = useState<TDict<TStatus>>({});
+	const [signStep, set_signStep] = useState<TDict<TStatus>>({});
+	const [executeStep, set_executeStep] = useState<TDict<TStatus>>({});
 	const [aggregatedQuote, set_aggregatedQuote] = useState<TBebopQuoteAPIResp | undefined>();
 
 	const onRetrieveAggregatedQuote = useCallback(async (): Promise<void> => {

@@ -3,9 +3,9 @@ import {useSweepooor} from 'contexts/useSweepooor';
 import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 
-import BebopBatchedFlow from './ViewApprovalWizard.bebop';
-import CowswapStandardFlow from './ViewApprovalWizard.cowswap';
-import GnosisBatchedFlow from './ViewApprovalWizard.gnosisXCowswap';
+import BebopBatchedFlow from './bebop';
+import CowswapStandardFlow from './cowswap';
+import GnosisBatchedFlow from './gnosisXCowswap';
 
 import type {ReactElement} from 'react';
 
@@ -15,7 +15,10 @@ function ViewApprovalWizard(): ReactElement {
 
 	return (
 		<section>
-			<div className={'box-0 relative flex w-full flex-col items-center justify-center overflow-hidden p-0 md:p-6'}>
+			<div
+				className={
+					'box-0 relative flex w-full flex-col items-center justify-center overflow-hidden p-0 md:p-6'
+				}>
 				<div className={'mb-0 w-full p-4 md:mb-6 md:p-0'}>
 					<b>{'Dump!'}</b>
 					<p

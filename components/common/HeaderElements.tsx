@@ -14,13 +14,23 @@ import {truncateHex} from '@yearn-finance/web-lib/utils/address';
 import type {ReactElement} from 'react';
 import type {Chain} from 'wagmi';
 
-function NetworkButton({label, isDisabled, onClick}: {label: string; isDisabled?: boolean; onClick?: () => void}): ReactElement {
+function NetworkButton({
+	label,
+	isDisabled,
+	onClick
+}: {
+	label: string;
+	isDisabled?: boolean;
+	onClick?: () => void;
+}): ReactElement {
 	return (
 		<button
 			disabled={isDisabled}
 			onClick={onClick}
 			suppressHydrationWarning
-			className={'yearn--header-nav-item mr-4 hidden !cursor-default flex-row items-center border-0 p-0 text-sm hover:!text-neutral-500 md:flex'}>
+			className={
+				'yearn--header-nav-item mr-4 hidden !cursor-default flex-row items-center border-0 p-0 text-sm hover:!text-neutral-500 md:flex'
+			}>
 			<div
 				suppressHydrationWarning
 				className={'relative flex flex-row items-center'}>
@@ -62,7 +72,9 @@ function CurrentNetworkButton({label, value, isOpen}: {label: string; value: num
 				{label}
 			</div>
 			<div className={'ml-1 md:ml-2'}>
-				<IconChevronBottom className={`h-3 w-3 transition-transform md:h-5 md:w-4 ${isOpen ? '-rotate-180' : 'rotate-0'}`} />
+				<IconChevronBottom
+					className={`h-3 w-3 transition-transform md:h-5 md:w-4 ${isOpen ? '-rotate-180' : 'rotate-0'}`}
+				/>
 			</div>
 		</Listbox.Button>
 	);
@@ -86,7 +98,10 @@ export function NetworkSelector({networks}: {networks: number[]}): ReactElement 
 			.map((network: Chain): TNetwork => ({value: network.id, label: network.name}));
 	}, [connectors, networks]);
 
-	const currentNetwork = useMemo((): TNetwork | undefined => supportedNetworks.find((network): boolean => network.value === safeChainID), [safeChainID, supportedNetworks]);
+	const currentNetwork = useMemo(
+		(): TNetwork | undefined => supportedNetworks.find((network): boolean => network.value === safeChainID),
+		[safeChainID, supportedNetworks]
+	);
 
 	if (supportedNetworks.length === 1) {
 		if (publicClient?.chain.id === 1337) {
@@ -154,8 +169,14 @@ export function NetworkSelector({networks}: {networks: number[]}): ReactElement 
 									leave={'transition duration-75 ease-out'}
 									leaveFrom={'transform scale-100 opacity-100'}
 									leaveTo={'transform scale-95 opacity-0'}>
-									<Listbox.Options className={'absolute -inset-x-24 z-50 flex items-center justify-center pt-2 opacity-0 transition-opacity'}>
-										<div className={'w-fit border border-neutral-300 bg-neutral-100 p-1 px-2 text-center text-xxs text-neutral-900'}>
+									<Listbox.Options
+										className={
+											'absolute -inset-x-24 z-50 flex items-center justify-center pt-2 opacity-0 transition-opacity'
+										}>
+										<div
+											className={
+												'w-fit border border-neutral-300 bg-neutral-100 p-1 px-2 text-center text-xxs text-neutral-900'
+											}>
 											{supportedNetworks.map(
 												(network): ReactElement => (
 													<Listbox.Option

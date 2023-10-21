@@ -21,7 +21,7 @@ export enum TPossibleStatus {
 	BEBOP_FAILED = 'bebop_failed'
 }
 
-export enum TPossibleFlowStep {
+export enum TStatus {
 	VALID = 'valid',
 	INVALID = 'invalid',
 	PENDING = 'pending',

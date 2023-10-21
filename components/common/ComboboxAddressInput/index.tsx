@@ -15,7 +15,7 @@ import {PossibleOption} from './PossibleOption';
 import {SelectedOption} from './SelectedOption';
 import {useFilterTokens} from './useFilterTokens';
 
-import type {ReactElement} from 'react';
+import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TToken} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TComboboxAddressInput} from './types';
@@ -54,13 +54,14 @@ function WithTransition({children, isOpen}: {children: ReactElement; isOpen: boo
 
 function Options(
 	props: TComboboxAddressInput & {
+		isOpen: boolean;
+		onToggle: Dispatch<SetStateAction<boolean>>;
 		activaValue: TToken | null;
 		isLoadingTokenData: boolean;
 	}
 ): ReactElement {
 	const {balances} = useWallet();
 	const [query, set_query] = useState<string>('');
-	const [isOpen, set_isOpen] = useThrottledState<boolean>(false, 100);
 	const filteredValues = useFilterTokens(Object.values(props.possibleValues), query);
 
 	const filteredBalances = useMemo((): [TToken[], TToken[]] => {
@@ -86,13 +87,13 @@ function Options(
 				currentValue={props.value}
 				query={query}
 				isFetchingNewToken={props.isLoadingTokenData}
-				onToggleOptions={set_isOpen}
+				onToggleOptions={props.onToggle}
 				onChange={(event): void => {
-					set_isOpen(true);
+					props.onToggle(true);
 					set_query(event.target.value);
 				}}
 			/>
-			<WithTransition isOpen={isOpen}>
+			<WithTransition isOpen={props.isOpen}>
 				<Combobox.Options
 					className={cl(
 						'absolute left-0 z-50',
@@ -184,7 +185,7 @@ function ComboboxAddressInput({
 			onChangeValue(_tokenData);
 			set_isOpen(false);
 		},
-		[possibleValues, fetchToken, safeChainID, onAddValue, onChangeValue, set_isOpen]
+		[fetchToken, safeChainID, onAddValue, onChangeValue, set_isOpen]
 	);
 
 	return (
@@ -198,6 +199,8 @@ function ComboboxAddressInput({
 				onChange={onChange}>
 				{(comboOptions): ReactElement => (
 					<Options
+						isOpen={isOpen}
+						onToggle={set_isOpen}
 						activaValue={comboOptions.activeOption}
 						possibleValues={possibleValues}
 						value={value}

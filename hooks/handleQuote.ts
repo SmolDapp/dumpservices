@@ -33,7 +33,12 @@ export function resetQuote(key: TAddress): void {
  ** initQuote will add a quote to the current state of quotes, but this quote
  ** will be empty, except from a status of 'pending'.
  ******************************************************************************/
-export function initQuote(prev: Maybe<TRequest>, key: TAddress, args: TRequestArgs, solver: 'COWSWAP' | 'BEBOP'): Maybe<TRequest> {
+export function initQuote(
+	prev: Maybe<TRequest>,
+	key: TAddress,
+	args: TRequestArgs,
+	solver: 'COWSWAP' | 'BEBOP'
+): Maybe<TRequest> {
 	if (!prev) {
 		return {
 			solverType: solver,
@@ -99,7 +104,7 @@ export function initQuote(prev: Maybe<TRequest>, key: TAddress, args: TRequestAr
 				},
 				isFetching: true
 			}
-		} as never
+		} as TDict<TPossibleSolverQuote>
 	};
 }
 
@@ -153,7 +158,12 @@ export function deleteQuote(quotes: Maybe<TRequest>, key: TAddress): Maybe<TRequ
 /* 🥟 - Dump Services **********************************************************
  ** assignSignature will add a signature to the current state of a given quote.
  ******************************************************************************/
-export function assignSignature(quotes: Maybe<TRequest>, key: TAddress, signature: string, signingScheme: EcdsaSigningScheme): Maybe<TRequest> {
+export function assignSignature(
+	quotes: Maybe<TRequest>,
+	key: TAddress,
+	signature: string,
+	signingScheme: EcdsaSigningScheme
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}
@@ -236,7 +246,12 @@ export function setInvalidQuote(quotes: Maybe<TRequest>, key: TAddress, orderUID
  ** setStatusQuote will set a quote as "status", by updating the order status
  ** and the orderUID.
  ******************************************************************************/
-export function setStatusQuote(quotes: Maybe<TRequest>, key: TAddress, status: TPossibleStatus, orderUID: string): Maybe<TRequest> {
+export function setStatusQuote(
+	quotes: Maybe<TRequest>,
+	key: TAddress,
+	status: TPossibleStatus,
+	orderUID: string
+): Maybe<TRequest> {
 	if (!quotes) {
 		return undefined;
 	}

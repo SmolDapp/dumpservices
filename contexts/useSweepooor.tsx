@@ -62,9 +62,12 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	const [receiver, set_receiver] = useState<TAddress>(toAddress(address));
 	const [quotes, set_quotes] = useState<Maybe<TRequest>>(defaultProps.quotes);
 	const [currentStep, set_currentStep] = useState<Step>(Step.WALLET);
-	const slippage = useLocalStorageValue<bigint>('dump-services/slippage-0.0.2', {defaultValue: 10n, initializeWithValue: true, stringify: serialize, parse: deserialize});
-
-	console.warn(quotes);
+	const slippage = useLocalStorageValue<bigint>('dump-services/slippage-0.0.2', {
+		defaultValue: 10n,
+		initializeWithValue: true,
+		stringify: serialize,
+		parse: (v, fallback): bigint => (v ? deserialize(v) : fallback)
+	});
 
 	/**********************************************************************************************
 	 ** If the user is not active, reset the state to the default values.
@@ -114,20 +117,20 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 	 ** This effect is triggered only on mount to set the initial scroll position.
 	 **********************************************************************************************/
 	useMountEffect((): void => {
-		setTimeout((): void => {
-			const isEmbedWallet = isWalletLedger || isWalletSafe;
-			if (currentStep === Step.WALLET && !isEmbedWallet) {
-				document?.getElementById('wallet')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
-				document?.getElementById('tokenToReceive')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-			} else if (currentStep === Step.RECEIVER) {
-				document?.getElementById('receiver')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-			} else if (currentStep === Step.SELECTOR) {
-				document?.getElementById('selector')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-			} else if (currentStep === Step.APPROVALS) {
-				document?.getElementById('approvals')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-			}
-		}, 0);
+		// setTimeout((): void => {
+		// 	const isEmbedWallet = isWalletLedger || isWalletSafe;
+		// 	if (currentStep === Step.WALLET && !isEmbedWallet) {
+		// 		document?.getElementById('wallet')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+		// 	} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
+		// 		document?.getElementById('tokenToReceive')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+		// 	} else if (currentStep === Step.RECEIVER) {
+		// 		document?.getElementById('receiver')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+		// 	} else if (currentStep === Step.SELECTOR) {
+		// 		document?.getElementById('selector')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+		// 	} else if (currentStep === Step.APPROVALS) {
+		// 		document?.getElementById('approvals')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+		// 	}
+		// }, 0);
 	});
 
 	/**********************************************************************************************

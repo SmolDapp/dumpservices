@@ -14,7 +14,12 @@ function Home(): ReactElement {
 	return (
 		<div className={'mx-auto grid w-full max-w-4xl'}>
 			<div className={'mb-10 mt-6 flex flex-col justify-center md:mt-20'}>
-				<h1 className={'-ml-1 mt-4 w-full text-3xl tracking-tight text-neutral-900 md:mt-6 md:w-1/2 md:text-5xl'}>{'One click token selling.'}</h1>
+				<h1
+					className={
+						'-ml-1 mt-4 w-full text-3xl tracking-tight text-neutral-900 md:mt-6 md:w-1/2 md:text-5xl'
+					}>
+					{'One click token selling.'}
+				</h1>
 				<b className={'mt-4 w-full text-base leading-normal text-neutral-500 md:w-2/3 md:text-lg md:leading-8'}>
 					{'Dump multiple tokens in a single transaction.'}
 					<p>{'Quicker, easier, and less gas. Ready to dump anon?'}</p>
@@ -31,7 +36,9 @@ function Home(): ReactElement {
 			<div
 				id={'tokenToReceive'}
 				className={`mt-2 pt-8 transition-opacity ${
-					[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER, Step.DESTINATION].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'
+					[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER, Step.DESTINATION].includes(currentStep)
+						? 'opacity-100'
+						: 'pointer-events-none h-0 overflow-hidden opacity-0'
 				}`}>
 				<ViewTokenToReceive
 					onProceed={(): void => {
@@ -46,7 +53,9 @@ function Home(): ReactElement {
 			<div
 				id={'receiver'}
 				className={`mt-2 pt-8 transition-opacity ${
-					[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'
+					[Step.SELECTOR, Step.APPROVALS, Step.RECEIVER].includes(currentStep)
+						? 'opacity-100'
+						: 'pointer-events-none h-0 overflow-hidden opacity-0'
 				}`}>
 				<ViewReceiver
 					onProceed={(): void => {
@@ -59,7 +68,9 @@ function Home(): ReactElement {
 			<div
 				id={'selector'}
 				className={`mt-2 pt-8 transition-opacity ${
-					[Step.SELECTOR, Step.APPROVALS].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'
+					[Step.SELECTOR, Step.APPROVALS].includes(currentStep)
+						? 'opacity-100'
+						: 'pointer-events-none h-0 overflow-hidden opacity-0'
 				}`}>
 				<ViewSweepTable
 					onProceed={(): void => {
@@ -72,7 +83,11 @@ function Home(): ReactElement {
 
 			<div
 				id={'approvals'}
-				className={`mt-2 pt-8 transition-opacity ${[Step.APPROVALS].includes(currentStep) ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'}`}>
+				className={`mt-2 pt-8 transition-opacity ${
+					[Step.APPROVALS].includes(currentStep)
+						? 'opacity-100'
+						: 'pointer-events-none h-0 overflow-hidden opacity-0'
+				}`}>
 				<ViewApprovalWizard />
 			</div>
 		</div>

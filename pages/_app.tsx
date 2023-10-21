@@ -35,7 +35,7 @@ function MyApp(props: AppProps): ReactElement {
 				<TokenListContextApp>
 					<WalletContextApp>
 						<SafeProvider>
-							<main className={`flex h-screen flex-col ${inter.variable}`}>
+							<main className={`flex flex-col ${inter.variable}`}>
 								<AppWrapper {...props} />
 							</main>
 						</SafeProvider>

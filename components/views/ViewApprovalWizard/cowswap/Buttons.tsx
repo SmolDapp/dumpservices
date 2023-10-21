@@ -1,16 +1,22 @@
 import React, {useCallback, useMemo, useState} from 'react';
-import ApprovalWizardItemCowswap from 'components/ApprovalWizardItem.cowswap';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {getTypedCowswapQuote} from 'hooks/assertSolver';
-import {addQuote, assignSignature, setInvalidQuote, setPendingQuote, setRefreshingQuote, setStatusQuote} from 'hooks/handleQuote';
+import {
+	addQuote,
+	assignSignature,
+	setInvalidQuote,
+	setPendingQuote,
+	setRefreshingQuote,
+	setStatusQuote
+} from 'hooks/handleQuote';
 import {getSellAmount} from 'hooks/helperWithSolver';
+import {useAsyncTrigger} from 'hooks/useAsyncEffect';
 import {getSpender, useSolverCowswap} from 'hooks/useSolverCowswap';
 import {approveERC20, isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
-import {TPossibleFlowStep} from 'utils/types';
+import {TStatus} from 'utils/types';
 import {IconSpinner} from '@icons/IconSpinner';
-import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
@@ -21,16 +27,16 @@ import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {Maybe, TCowswapOrderQuoteResponse, TPossibleSolverQuote, TRequest} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
-function CowswapStandardFlow({
+function CowswapButtons({
 	approvals,
 	onUpdateApprovalStep,
 	onUpdateSignStep,
 	onUpdateExecuteStep
 }: {
-	approvals: TDict<TPossibleFlowStep>;
-	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>;
-	onUpdateSignStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>;
-	onUpdateExecuteStep: Dispatch<SetStateAction<TDict<TPossibleFlowStep>>>;
+	approvals: TDict<TStatus>;
+	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TStatus>>>;
+	onUpdateSignStep: Dispatch<SetStateAction<TDict<TStatus>>>;
+	onUpdateExecuteStep: Dispatch<SetStateAction<TDict<TStatus>>>;
 }): ReactElement {
 	const {provider} = useWeb3();
 	const {refresh} = useWallet();
@@ -54,9 +60,9 @@ function CowswapStandardFlow({
 		for (const token of Object.keys(quotes?.quote || {})) {
 			if (
 				!approvals[toAddress(token)] ||
-				approvals[toAddress(token)] === TPossibleFlowStep.UNDETERMINED ||
-				approvals[toAddress(token)] === TPossibleFlowStep.INVALID ||
-				approvals[toAddress(token)] === TPossibleFlowStep.PENDING
+				approvals[toAddress(token)] === TStatus.UNDETERMINED ||
+				approvals[toAddress(token)] === TStatus.INVALID ||
+				approvals[toAddress(token)] === TStatus.PENDING
 			) {
 				return false;
 			}
@@ -68,30 +74,24 @@ function CowswapStandardFlow({
 	 ** Every time the selected tokens change (either a new token is added or the amount is changed),
 	 ** we will check if the allowance is enough for the amount to be swept.
 	 **********************************************************************************************/
-	useUpdateEffect((): void => {
+	useAsyncTrigger(async (): Promise<void> => {
 		const allQuotes = getTypedCowswapQuote(quotes);
 		for (const token of Object.keys(allQuotes.quote)) {
 			const tokenAddress = toAddress(token);
-			isApprovedERC20({
-				connector: provider,
-				chainID: safeChainID,
-				contractAddress: tokenAddress,
-				spenderAddress: getSpender({chainID: safeChainID}),
-				amount: getSellAmount(quotes, tokenAddress).raw
-			})
-				.then((isApproved): void => {
-					onUpdateApprovalStep(
-						(prev): TDict<TPossibleFlowStep> => ({
-							...prev,
-							[token]: isApproved ? TPossibleFlowStep.VALID : TPossibleFlowStep.UNDETERMINED
-						})
-					);
-				})
-				.catch((error): void => {
-					console.error(error);
+			try {
+				const isApproved = await isApprovedERC20({
+					connector: provider,
+					chainID: safeChainID,
+					contractAddress: tokenAddress,
+					spenderAddress: getSpender({chainID: safeChainID}),
+					amount: getSellAmount(quotes, tokenAddress).raw
 				});
+				onUpdateApprovalStep(prev => ({...prev, [token]: isApproved ? TStatus.VALID : TStatus.UNDETERMINED}));
+			} catch (error) {
+				console.error(error);
+			}
 		}
-	}, [quotes, provider, safeChainID]);
+	}, [quotes, provider, safeChainID, onUpdateApprovalStep]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	 ** onApproveERC20 will loop through all the selected tokens and approve them if needed.
@@ -124,13 +124,7 @@ function CowswapStandardFlow({
 				});
 
 				if (!isApproved) {
-					onUpdateApprovalStep(
-						(prev): TDict<TPossibleFlowStep> => ({
-							...prev,
-							[tokenAddress]: TPossibleFlowStep.PENDING
-						})
-					);
-
+					onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.PENDING}));
 					const result = await approveERC20({
 						connector: provider,
 						chainID: safeChainID,
@@ -139,36 +133,16 @@ function CowswapStandardFlow({
 						amount: getSellAmount(quotes, tokenAddress).raw
 					});
 					if (result.isSuccessful) {
-						onUpdateApprovalStep(
-							(prev): TDict<TPossibleFlowStep> => ({
-								...prev,
-								[tokenAddress]: TPossibleFlowStep.VALID
-							})
-						);
+						onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.VALID}));
 					} else {
-						onUpdateApprovalStep(
-							(prev): TDict<TPossibleFlowStep> => ({
-								...prev,
-								[tokenAddress]: TPossibleFlowStep.INVALID
-							})
-						);
+						onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
 					}
 				} else {
-					onUpdateApprovalStep(
-						(prev): TDict<TPossibleFlowStep> => ({
-							...prev,
-							[tokenAddress]: TPossibleFlowStep.VALID
-						})
-					);
+					onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.VALID}));
 				}
 			} catch (error) {
 				console.error(error);
-				onUpdateApprovalStep(
-					(prev): TDict<TPossibleFlowStep> => ({
-						...prev,
-						[tokenAddress]: TPossibleFlowStep.UNDETERMINED
-					})
-				);
+				onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.UNDETERMINED}));
 			}
 		}
 		set_isApproving(false);
@@ -187,6 +161,7 @@ function CowswapStandardFlow({
 			return;
 		}
 		if (!quotes) {
+			console.warn(`no quote`);
 			return;
 		}
 		set_isSigning(true);
@@ -207,29 +182,14 @@ function CowswapStandardFlow({
 			 ** Sign the current quote
 			 ***************************************************************************************/
 			try {
-				onUpdateSignStep(
-					(prev): TDict<TPossibleFlowStep> => ({
-						...prev,
-						[tokenAddress]: TPossibleFlowStep.PENDING
-					})
-				);
+				onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.PENDING}));
 				const {signature, signingScheme} = await cowswap.signOrder(quotes, tokenAddress);
 				quote.signature = signature;
 				quote.signingScheme = signingScheme;
-				onUpdateSignStep(
-					(prev): TDict<TPossibleFlowStep> => ({
-						...prev,
-						[tokenAddress]: TPossibleFlowStep.VALID
-					})
-				);
+				onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.VALID}));
 				set_quotes((prev): Maybe<TRequest> => assignSignature(prev, tokenAddress, signature, signingScheme));
 			} catch (error) {
-				onUpdateSignStep(
-					(prev): TDict<TPossibleFlowStep> => ({
-						...prev,
-						[tokenAddress]: TPossibleFlowStep.INVALID
-					})
-				);
+				onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
 				continue;
 			}
 
@@ -237,12 +197,7 @@ function CowswapStandardFlow({
 			 ** Send the current quote to the cowswap API
 			 ***************************************************************************************/
 			try {
-				onUpdateExecuteStep(
-					(prev): TDict<TPossibleFlowStep> => ({
-						...prev,
-						[tokenAddress]: TPossibleFlowStep.PENDING
-					})
-				);
+				onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.PENDING}));
 				cowswap
 					.execute(quotes, tokenAddress, Boolean(process.env.SHOULD_USE_PRESIGN), (orderUID): void => {
 						set_quotes((prev): Maybe<TRequest> => setPendingQuote(prev, tokenAddress, orderUID));
@@ -250,32 +205,12 @@ function CowswapStandardFlow({
 					.then(async ({status, orderUID, error}): Promise<void> => {
 						if (error?.message) {
 							if (error?.message?.includes('InsufficientAllowance')) {
-								onUpdateExecuteStep(
-									(prev): TDict<TPossibleFlowStep> => ({
-										...prev,
-										[tokenAddress]: TPossibleFlowStep.INVALID
-									})
-								);
-								onUpdateApprovalStep(
-									(prev): TDict<TPossibleFlowStep> => ({
-										...prev,
-										[tokenAddress]: TPossibleFlowStep.UNDETERMINED
-									})
-								);
-								onUpdateApprovalStep(
-									(prev): TDict<TPossibleFlowStep> => ({
-										...prev,
-										[tokenAddress]: TPossibleFlowStep.UNDETERMINED
-									})
-								);
+								onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
+								onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.UNDETERMINED}));
+								onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.UNDETERMINED}));
 								set_quotes((prev): Maybe<TRequest> => setInvalidQuote(prev, tokenAddress, orderUID));
 							} else {
-								onUpdateExecuteStep(
-									(prev): TDict<TPossibleFlowStep> => ({
-										...prev,
-										[tokenAddress]: TPossibleFlowStep.INVALID
-									})
-								);
+								onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
 								set_quotes((prev): Maybe<TRequest> => setInvalidQuote(prev, tokenAddress, orderUID));
 							}
 						} else {
@@ -284,12 +219,7 @@ function CowswapStandardFlow({
 								orderUID: orderUID,
 								orderStatus: status
 							} as unknown as TCowswapOrderQuoteResponse);
-							onUpdateExecuteStep(
-								(prev): TDict<TPossibleFlowStep> => ({
-									...prev,
-									[tokenAddress]: TPossibleFlowStep.VALID
-								})
-							);
+							onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.VALID}));
 							set_quotes((prev): Maybe<TRequest> => setStatusQuote(prev, tokenAddress, status, orderUID));
 							refresh([
 								{
@@ -308,19 +238,23 @@ function CowswapStandardFlow({
 						}
 					});
 			} catch (error) {
-				onUpdateExecuteStep(
-					(prev): TDict<TPossibleFlowStep> => ({
-						...prev,
-						[tokenAddress]: TPossibleFlowStep.INVALID
-					})
-				);
+				onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
 				set_quotes((prev): Maybe<TRequest> => setInvalidQuote(prev, tokenAddress, ''));
 			}
 		}
 
 		notify(executedQuotes, 'COWSWAP', 'EOA', '');
 		set_isSigning(false);
-	}, [areAllApproved, quotes, onUpdateSignStep, cowswap, set_quotes, onUpdateExecuteStep, onUpdateApprovalStep, refresh]);
+	}, [
+		areAllApproved,
+		quotes,
+		onUpdateSignStep,
+		cowswap,
+		set_quotes,
+		onUpdateExecuteStep,
+		onUpdateApprovalStep,
+		refresh
+	]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	 ** Sometimes, the quotes are not valid anymore, or we just want to refresh them after a long
@@ -359,8 +293,13 @@ function CowswapStandardFlow({
 				id={'TRIGGER_ALL_REFRESH'}
 				onClick={onRefreshAllQuotes}
 				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
-				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>{'Refresh all quotes'}</p>
-				<span className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${isRefreshingQuotes ? 'opacity-100' : 'opacity-0'}`}>
+				<p className={`transition-opacity ${isRefreshingQuotes ? 'opacity-0' : 'opacity-100'}`}>
+					{'Refresh all quotes'}
+				</p>
+				<span
+					className={`absolute inset-0 flex w-full items-center justify-center transition-opacity ${
+						isRefreshingQuotes ? 'opacity-100' : 'opacity-0'
+					}`}>
 					<IconSpinner />
 				</span>
 			</button>
@@ -383,38 +322,4 @@ function CowswapStandardFlow({
 	);
 }
 
-function Wrapper(): ReactElement {
-	const {quotes} = useSweepooor();
-	const [approvalStep, set_approvalStep] = useState<TDict<TPossibleFlowStep>>({});
-	const [signStep, set_signStep] = useState<TDict<TPossibleFlowStep>>({});
-	const [executeStep, set_executeStep] = useState<TDict<TPossibleFlowStep>>({});
-
-	return (
-		<>
-			{Object.entries(getTypedCowswapQuote(quotes).quote).map(([token, currentQuote], index): JSX.Element => {
-				return (
-					<ApprovalWizardItemCowswap
-						key={`${token}_${currentQuote?.quote?.buyAmount}_${currentQuote?.quote?.receiver}_${index}`}
-						token={toAddress(token)}
-						index={index}
-						hasSignature={(currentQuote?.signature || '') !== ''}
-						approvalStep={approvalStep}
-						signStep={signStep}
-						executeStep={executeStep}
-					/>
-				);
-			})}
-			<div className={'flex w-full flex-row items-center justify-between pt-4 md:relative'}>
-				<div className={'flex flex-col'} />
-				<CowswapStandardFlow
-					approvals={approvalStep}
-					onUpdateApprovalStep={set_approvalStep}
-					onUpdateSignStep={set_signStep}
-					onUpdateExecuteStep={set_executeStep}
-				/>
-			</div>
-		</>
-	);
-}
-
-export default Wrapper;
+export {CowswapButtons};
