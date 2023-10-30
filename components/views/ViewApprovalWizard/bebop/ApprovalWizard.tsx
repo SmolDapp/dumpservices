@@ -1,9 +1,9 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo, useRef, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useWallet} from 'contexts/useWallet';
 import {isQuote} from 'hooks/assertSolver';
 import {refreshQuote} from 'hooks/handleQuote';
-import {getBuyAmount, getSellAmount, getValidTo, shouldRefreshQuote} from 'hooks/helperWithSolver';
+import {getBuyAmount, getSellAmount, shouldRefreshQuote} from 'hooks/helperWithSolver';
 import {getSpender} from 'hooks/useSolver';
 import {TPossibleStatus, TStatus} from 'utils/types';
 import {erc20ABI, useContractRead} from 'wagmi';
@@ -11,15 +11,16 @@ import {IconCheck} from '@icons/IconCheck';
 import {IconChevronBoth} from '@icons/IconChevronBoth';
 import {IconCircleCross} from '@icons/IconCircleCross';
 import {IconSpinner} from '@icons/IconSpinner';
-import {useIntervalEffect, useUpdateEffect} from '@react-hookz/web';
+import {useIntervalEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 
-import {CowswapDetails} from './DropdownDetails';
+import {BebopDetails} from './DropdownDetails';
 
 import type {ReactElement} from 'react';
 import type {TRequest} from 'utils/types';
@@ -28,26 +29,27 @@ import type {TAddress} from '@yearn-finance/web-lib/types';
 function Expiration({quotes, token}: {quotes: TRequest; token: TAddress}): ReactElement {
 	const {isWalletSafe} = useWeb3();
 	const [expireIn, set_expireIn] = useState(0);
+	const isRefreshingQuoteForExp = useRef(0);
 	const currentQuote = quotes.quote[token];
-	const hasQuote = Boolean(currentQuote);
-	const quoteExpiration = getValidTo(quotes, token, isWalletSafe);
+	const quoteExpiration = currentQuote.expirationTimestamp * 1000;
+
+	useMemo((): void => {
+		isRefreshingQuoteForExp.current = currentQuote.expirationTimestamp;
+	}, [currentQuote.expirationTimestamp]);
 
 	useIntervalEffect(
 		(): void => {
 			set_expireIn(quoteExpiration - new Date().valueOf());
-			if (shouldRefreshQuote(quotes, token, isWalletSafe)) {
+			if (
+				shouldRefreshQuote(quotes, token, isWalletSafe) &&
+				isRefreshingQuoteForExp.current === currentQuote.expirationTimestamp
+			) {
+				isRefreshingQuoteForExp.current = 0;
 				refreshQuote(token);
 			}
 		},
-		!hasQuote ? undefined : 1000
+		!currentQuote ? undefined : 1000
 	);
-
-	useUpdateEffect((): void => {
-		set_expireIn(quoteExpiration - new Date().valueOf());
-		if (shouldRefreshQuote(quotes, token, isWalletSafe)) {
-			refreshQuote(token);
-		}
-	}, [quoteExpiration]);
 
 	function renderExpiration(): ReactElement {
 		if (currentQuote.orderUID) {
@@ -101,12 +103,15 @@ function Expiration({quotes, token}: {quotes: TRequest; token: TAddress}): React
 	);
 }
 
-function Indicators({token, hasSignature, approvalStep, signStep, executeStep}: TCowswapApprovalWizard): ReactElement {
+function Indicators({token, hasSignature, approvalStep, signStep, executeStep}: TBebopApprovalWizard): ReactElement {
 	const {address, isWalletSafe} = useWeb3();
 	const {quotes, destination} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const shouldApprove = useMemo((): boolean => {
-		return !token || !approvalStep[token] || approvalStep[token] === TStatus.UNDETERMINED;
+		return (
+			(!token || !approvalStep[token] || approvalStep[token] === TStatus.UNDETERMINED) &&
+			toAddress(token) !== ETH_TOKEN_ADDRESS
+		);
 	}, [approvalStep, token]);
 	const shouldSign = useMemo((): boolean => {
 		return !token || !signStep[token] || signStep[token] === TStatus.UNDETERMINED;
@@ -141,7 +146,7 @@ function Indicators({token, hasSignature, approvalStep, signStep, executeStep}: 
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
 
-		if (hasAllowance || approvalStep[token] === TStatus.VALID) {
+		if (hasAllowance || approvalStep[token] === TStatus.VALID || toAddress(token) === ETH_TOKEN_ADDRESS) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (shouldApprove) {
@@ -182,7 +187,7 @@ function Indicators({token, hasSignature, approvalStep, signStep, executeStep}: 
 		if (!currentQuote.orderStatus) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (currentQuote.orderStatus === TPossibleStatus.COWSWAP_FULFILLED) {
+		if (currentQuote.orderStatus === TPossibleStatus.BEBOP_CONFIRMED) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		if (executeStep[token] === TStatus.VALID) {
@@ -256,7 +261,7 @@ function Indicators({token, hasSignature, approvalStep, signStep, executeStep}: 
 	);
 }
 
-type TCowswapApprovalWizard = {
+type TBebopApprovalWizard = {
 	token: TAddress;
 	index: number;
 	hasSignature: boolean;
@@ -265,7 +270,7 @@ type TCowswapApprovalWizard = {
 	executeStep: {[key: TAddress]: TStatus};
 };
 
-function CowswapApprovalWizard(props: TCowswapApprovalWizard): ReactElement {
+function BebopApprovalWizard(props: TBebopApprovalWizard): ReactElement {
 	const {quotes, destination} = useSweepooor();
 	const {balances} = useWallet();
 	const currentQuote = quotes?.quote?.[props.token];
@@ -273,7 +278,6 @@ function CowswapApprovalWizard(props: TCowswapApprovalWizard): ReactElement {
 	if (!currentQuote) {
 		return <></>;
 	}
-
 	return (
 		<details
 			key={props.index}
@@ -307,7 +311,7 @@ function CowswapApprovalWizard(props: TCowswapApprovalWizard): ReactElement {
 				<Indicators {...props} />
 			</summary>
 
-			<CowswapDetails
+			<BebopDetails
 				quotes={quotes}
 				token={props.token}
 			/>
@@ -315,4 +319,4 @@ function CowswapApprovalWizard(props: TCowswapApprovalWizard): ReactElement {
 	);
 }
 
-export {CowswapApprovalWizard};
+export {BebopApprovalWizard};

@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {useWallet} from 'contexts/useWallet';
-import {getSpender} from 'hooks/useSolverCowswap';
+import {getSpender} from 'hooks/useSolver';
 import handleInputChangeEventValue from 'utils/handleInputChangeEventValue';
 import {erc20ABI, useContractRead} from 'wagmi';
 import {useAnimate} from 'framer-motion';
@@ -104,7 +104,10 @@ function TokenInput({
 	return (
 		<div className={'grid w-full grid-cols-12 gap-x-2'}>
 			{label && <div className={'col-span-12 mb-1 flex w-full text-neutral-600'}>{label}</div>}
-			<div className={cl('grow-1 col-span-5 flex h-10 w-full items-center justify-start rounded-md p-2 bg-neutral-0 border border-neutral-200')}>
+			<div
+				className={cl(
+					'grow-1 col-span-5 flex h-10 w-full items-center justify-start rounded-md p-2 bg-neutral-0 border border-neutral-200'
+				)}>
 				<div className={'mr-2 h-6 w-6 min-w-[24px]'}>
 					<ImageWithFallback
 						alt={token.name}
@@ -116,8 +119,14 @@ function TokenInput({
 				</div>
 				{tokens && tokens?.length > 0 ? (
 					<select
-						onChange={(e): void => onChangeToken?.((tokens || []).find((lst): boolean => lst.address === e.target.value) || token)}
-						className={'w-full overflow-x-scroll border-none bg-transparent px-0 py-4 outline-none scrollbar-none'}
+						onChange={(e): void =>
+							onChangeToken?.(
+								(tokens || []).find((lst): boolean => lst.address === e.target.value) || token
+							)
+						}
+						className={
+							'w-full overflow-x-scroll border-none bg-transparent px-0 py-4 outline-none scrollbar-none'
+						}
 						value={token.address}
 						defaultValue={token.symbol}>
 						{(tokens || []).map(
@@ -133,7 +142,9 @@ function TokenInput({
 				) : (
 					<div className={'overflow-hidden'}>
 						<p className={'text-sm'}>{token.symbol}</p>
-						<p className={'truncate text-[8px] text-neutral-600'}>{truncateHex(toAddress(token.address), 10)}</p>
+						<p className={'truncate text-[8px] text-neutral-600'}>
+							{truncateHex(toAddress(token.address), 10)}
+						</p>
 					</div>
 				)}
 			</div>
@@ -141,9 +152,14 @@ function TokenInput({
 			<label className={'grow-1 col-span-7 flex h-10 w-full'}>
 				<div
 					ref={inputRef}
-					className={cl('flex w-full items-center justify-between rounded-md p-2 border border-neutral-200 cursor-text', isDisabled ? 'bg-neutral-200' : 'bg-neutral-0')}>
+					className={cl(
+						'flex w-full items-center justify-between rounded-md p-2 border border-neutral-200 cursor-text',
+						isDisabled ? 'bg-neutral-200' : 'bg-neutral-0'
+					)}>
 					<input
-						className={'w-full overflow-x-scroll border-none bg-transparent px-0 py-4 font-mono text-sm outline-none scrollbar-none'}
+						className={
+							'w-full overflow-x-scroll border-none bg-transparent px-0 py-4 font-mono text-sm outline-none scrollbar-none'
+						}
 						type={'number'}
 						min={0}
 						maxLength={20}
@@ -167,16 +183,32 @@ function TokenInput({
 								<div className={'absolute inset-0'}>
 									<span
 										className={'tooltip'}
-										style={{pointerEvents: value.raw > effectiveAllowance.raw && value.raw <= balanceOf.raw ? 'auto' : 'none'}}>
+										style={{
+											pointerEvents:
+												value.raw > effectiveAllowance.raw && value.raw <= balanceOf.raw
+													? 'auto'
+													: 'none'
+										}}>
 										<IconInfo
-											style={{opacity: value.raw > effectiveAllowance.raw && value.raw <= balanceOf.raw ? 1 : 0}}
+											style={{
+												opacity:
+													value.raw > effectiveAllowance.raw && value.raw <= balanceOf.raw
+														? 1
+														: 0
+											}}
 											className={'h-4 w-4 text-neutral-400 transition-opacity'}
 										/>
 										<span className={'tooltipLight !-inset-x-24 top-full mt-2 !w-auto'}>
 											<div
 												suppressHydrationWarning
-												className={'w-fit rounded-md border border-neutral-700 bg-neutral-900 p-1 px-2 text-center text-xs font-medium text-neutral-0'}>
-												{`You will be prompted to approve spending of ${formatAmount(value.normalized, 6, 6)} ${token.symbol}`}
+												className={
+													'w-fit rounded-md border border-neutral-700 bg-neutral-900 p-1 px-2 text-center text-xs font-medium text-neutral-0'
+												}>
+												{`You will be prompted to approve spending of ${formatAmount(
+													value.normalized,
+													6,
+													6
+												)} ${token.symbol}`}
 											</div>
 										</span>
 									</span>
@@ -184,7 +216,10 @@ function TokenInput({
 							)}
 							{shouldCheckBalance && (
 								<IconCircleCross
-									style={{opacity: value.raw > balanceOf.raw ? 1 : 0, pointerEvents: value.raw > balanceOf.raw ? 'auto' : 'none'}}
+									style={{
+										opacity: value.raw > balanceOf.raw ? 1 : 0,
+										pointerEvents: value.raw > balanceOf.raw ? 'auto' : 'none'
+									}}
 									className={'absolute inset-0 h-4 w-4 text-red-900 transition-opacity'}
 								/>
 							)}

@@ -15,7 +15,7 @@ import type {ReactElement} from 'react';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElement {
-	const {currentStep, destination, set_destination} = useSweepooor();
+	const {currentStep, set_destination} = useSweepooor();
 	const {safeChainID} = useChainID();
 	const {tokenList} = useTokenList();
 	const [tokenToSend, set_tokenToSend] = useState<TToken | null>(null);
@@ -31,7 +31,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 	useEffect((): void => {
 		const possibleDestinationsTokens: TDict<TToken> = {};
 		const {wrappedToken} = getNetwork(safeChainID).contracts;
-		if (wrappedToken && safeChainID === 1) {
+		if (wrappedToken) {
 			possibleDestinationsTokens[ETH_TOKEN_ADDRESS] = {
 				address: ETH_TOKEN_ADDRESS,
 				chainId: safeChainID,
@@ -42,6 +42,9 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 			};
 		}
 		for (const eachToken of Object.values(tokenList)) {
+			if (eachToken.address === toAddress(`0x0000000000000000000000000000000000001010`)) {
+				continue; //ignore matic erc20
+			}
 			if (eachToken.chainId === safeChainID) {
 				possibleDestinationsTokens[toAddress(eachToken.address)] = eachToken;
 			}
@@ -79,7 +82,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 				set_tokenToSend(newToken);
 			}
 		},
-		[currentStep, possibleTokenToReceive, safeChainID, set_destination]
+		[currentStep, safeChainID, set_destination]
 	);
 
 	/* 🔵 - Smoldapp *******************************************************************************
@@ -98,7 +101,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 			});
 		}
 		onProceed();
-	}, [onProceed, possibleTokenToReceive, safeChainID, set_destination, tokenToSend]);
+	}, [onProceed, safeChainID, set_destination, tokenToSend]);
 
 	return (
 		<section>
@@ -139,7 +142,7 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 								onClick={onProceedToNextStep}
 								isDisabled={
 									!isValidTokenToReceive ||
-									destination.chainId === 0 ||
+									tokenToSend?.chainId === 0 ||
 									tokenToSend?.address === zeroAddress
 								}>
 								{'Next'}

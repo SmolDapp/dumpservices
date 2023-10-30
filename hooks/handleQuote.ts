@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions */
 import {TPossibleStatus} from 'utils/types';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
-import {isCowswapOrder} from './assertSolver';
+import {isBebopOrder, isCowswapOrder} from './assertSolver';
 
 import type {Maybe, TPossibleSolverQuote, TRequest, TRequestArgs, TTokenWithAmount} from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
@@ -41,7 +42,13 @@ export function initQuote(
 ): Maybe<TRequest> {
 	if (!prev) {
 		return {
-			solverType: solver,
+			buyToken: {
+				address: args.outputToken.address,
+				decimals: args.outputToken.decimals,
+				symbol: args.outputToken.symbol,
+				name: args.outputToken.name,
+				chainId: args.outputToken.chainId
+			},
 			sellTokens: {
 				[args.inputTokens[0].address]: {
 					address: args.inputTokens[0].address,
@@ -52,15 +59,9 @@ export function initQuote(
 					amount: toNormalizedBN(0)
 				}
 			},
-			buyToken: {
-				address: args.outputToken.address,
-				decimals: args.outputToken.decimals,
-				symbol: args.outputToken.symbol,
-				name: args.outputToken.name,
-				chainId: args.outputToken.chainId
-			},
+			bebopAggregatedQuote: undefined,
+			solverType: solver,
 			quote: {
-				// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 				[key]: {
 					isFetching: true,
 					sellToken: {
@@ -77,8 +78,8 @@ export function initQuote(
 						name: args.outputToken.name,
 						amount: toNormalizedBN(0)
 					}
-				} as TPossibleSolverQuote
-			}
+				}
+			} as TDict<TPossibleSolverQuote>
 		};
 	}
 	return {
@@ -177,6 +178,14 @@ export function assignSignature(
 			quote: quoteItems
 		};
 	}
+	if (isBebopOrder(quotes)) {
+		const quoteItems = {...quotes.quote};
+		quoteItems[key].signature = signature;
+		return {
+			...quotes,
+			quote: quoteItems
+		};
+	}
 	return quotes;
 }
 
@@ -189,16 +198,13 @@ export function setPendingQuote(quotes: Maybe<TRequest>, key: TAddress, orderUID
 		return undefined;
 	}
 
-	if (isCowswapOrder(quotes)) {
-		const quoteItems = {...quotes.quote};
-		quoteItems[key].orderUID = orderUID;
-		quoteItems[key].orderStatus = TPossibleStatus.PENDING;
-		return {
-			...quotes,
-			quote: quoteItems
-		};
-	}
-	return quotes;
+	const quoteItems = {...quotes.quote};
+	quoteItems[key].orderUID = orderUID;
+	quoteItems[key].orderStatus = TPossibleStatus.PENDING;
+	return {
+		...quotes,
+		quote: quoteItems
+	};
 }
 
 /* 🥟 - Dump Services **********************************************************
@@ -209,15 +215,12 @@ export function setRefreshingQuote(quotes: Maybe<TRequest>, key: TAddress): Mayb
 		return undefined;
 	}
 
-	if (isCowswapOrder(quotes)) {
-		const quoteItems = {...quotes.quote};
-		quoteItems[key].isRefreshing = true;
-		return {
-			...quotes,
-			quote: quoteItems
-		};
-	}
-	return quotes;
+	const quoteItems = {...quotes.quote};
+	quoteItems[key].isRefreshing = true;
+	return {
+		...quotes,
+		quote: quoteItems
+	};
 }
 
 /* 🥟 - Dump Services **********************************************************
@@ -234,6 +237,15 @@ export function setInvalidQuote(quotes: Maybe<TRequest>, key: TAddress, orderUID
 		quoteItems[key].orderUID = orderUID;
 		quoteItems[key].orderStatus = TPossibleStatus.INVALID;
 		quoteItems[key].validTo = 0;
+		return {
+			...quotes,
+			quote: quoteItems
+		};
+	}
+	if (isBebopOrder(quotes)) {
+		const quoteItems = {...quotes.quote};
+		quoteItems[key].orderUID = orderUID;
+		quoteItems[key].orderStatus = TPossibleStatus.INVALID;
 		return {
 			...quotes,
 			quote: quoteItems
@@ -256,14 +268,11 @@ export function setStatusQuote(
 		return undefined;
 	}
 
-	if (isCowswapOrder(quotes)) {
-		const quoteItems = {...quotes.quote};
-		quoteItems[key].orderUID = orderUID;
-		quoteItems[key].orderStatus = status;
-		return {
-			...quotes,
-			quote: quoteItems
-		};
-	}
-	return quotes;
+	const quoteItems = {...quotes.quote};
+	quoteItems[key].orderUID = orderUID;
+	quoteItems[key].orderStatus = status;
+	return {
+		...quotes,
+		quote: quoteItems
+	};
 }

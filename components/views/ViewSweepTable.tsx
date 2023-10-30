@@ -8,7 +8,7 @@ import {useWallet} from 'contexts/useWallet';
 import {hasQuote} from 'hooks/assertSolver';
 import {addQuote, deleteQuote, initQuote, refreshQuote, resetQuote} from 'hooks/handleQuote';
 import {getBuyAmount} from 'hooks/helperWithSolver';
-import {useSolverCowswap} from 'hooks/useSolverCowswap';
+import {useSolver} from 'hooks/useSolver';
 import {DENYLIST_COWSWAP} from 'utils/denyList.cowswap';
 import {type Maybe, type TRequest, type TRequestArgs} from 'utils/types';
 import {IconChevronPlain} from '@icons/IconChevronPlain';
@@ -39,7 +39,7 @@ function TableLine({
 	balance: TBalanceData;
 	index: number;
 }): ReactElement {
-	const cowswap = useSolverCowswap();
+	const solver = useSolver();
 	const {address} = useWeb3();
 	const {quotes, set_quotes, destination, receiver} = useSweepooor();
 	const {safeChainID} = useChainID();
@@ -101,7 +101,7 @@ function TableLine({
 				return initQuote(q, tokenAddress, request, safeChainID === 1 ? 'COWSWAP' : 'BEBOP');
 			});
 
-			const {quoteResponse, isSuccess, error} = await cowswap.getQuote(request);
+			const {quoteResponse, isSuccess, error} = await solver.getQuote(request);
 			if (nonce !== quoteFetchNonce.current) {
 				return;
 			}
@@ -133,7 +133,7 @@ function TableLine({
 			destination.name,
 			destination.symbol,
 			destination.decimals,
-			cowswap,
+			solver,
 			set_quotes,
 			onDisable
 		]
@@ -210,8 +210,10 @@ function TableLine({
 						'bg-neutral-0'
 					)}>
 					{hasQuote(quotes, tokenAddress) && !quotes?.quote[tokenAddress].isFetching ? (
-						<div>{`${formatAmount(getBuyAmount(quotes, tokenAddress).normalized, 4, 4)} ${quotes?.buyToken
-							.symbol}`}</div>
+						<div>
+							{`${formatAmount(getBuyAmount(quotes, tokenAddress).normalized, 4, 4)} ${quotes?.buyToken
+								.symbol}`}
+						</div>
 					) : (
 						<div className={'text-neutral-300'}>{`${formatAmount(0, 4, 4)}`}</div>
 					)}
@@ -234,7 +236,6 @@ function TableLine({
 						</button>
 						<button
 							id={`quote-reset-${tokenAddress}`}
-							// onClick={onResetClick}
 							className={'pointer-events-none invisible absolute h-0 w-0'}></button>
 					</div>
 				</div>
@@ -284,8 +285,8 @@ function ViewSweepTable({onProceed}: {onProceed: VoidFunction}): ReactElement {
 					(balance?.raw && balance.raw !== 0n) || balance?.force || false
 			)
 			.filter(
-				([tokenAddress]: [string, TBalanceData]): boolean =>
-					toAddress(tokenAddress) !== destination.address && toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS
+				([tokenAddress]: [string, TBalanceData]): boolean => toAddress(tokenAddress) !== destination.address
+				// && toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS //TODO: ONLY FOR COWSWAP
 			)
 			.filter(([tokenAddress]: [string, TBalanceData]): boolean =>
 				destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true

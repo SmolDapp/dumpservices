@@ -34,7 +34,7 @@ export function shouldRefreshQuote(order: TRequest, key: TAddress, isWalletSafe:
 	}
 
 	if (isBebopOrder(order)) {
-		return expiration > new Date().valueOf();
+		return expiration < new Date().valueOf();
 	}
 
 	return false;
@@ -44,12 +44,16 @@ export function shouldRefreshQuote(order: TRequest, key: TAddress, isWalletSafe:
 export function getSellAmount(order: Maybe<TRequest>, tokenAddress: TAddress): TNormalizedBN {
 	if (isCowswapOrder(order) && order.quote[tokenAddress]) {
 		return toNormalizedBN(
-			toBigInt(order.quote[tokenAddress]?.quote?.sellAmount) + toBigInt(order.quote[tokenAddress]?.quote?.feeAmount),
+			toBigInt(order.quote[tokenAddress]?.quote?.sellAmount) +
+				toBigInt(order.quote[tokenAddress]?.quote?.feeAmount),
 			order.quote[tokenAddress].sellToken.decimals
 		);
 	}
 	if (isBebopOrder(order) && order.quote[tokenAddress]) {
-		return toNormalizedBN(toBigInt(order.quote[tokenAddress]?.sellToken?.amount?.raw), order.quote[tokenAddress]?.sellToken?.decimals || 18);
+		return toNormalizedBN(
+			toBigInt(order.quote[tokenAddress]?.sellToken?.amount?.raw),
+			order.quote[tokenAddress]?.sellToken?.decimals || 18
+		);
 	}
 	return toNormalizedBN(0);
 }
@@ -60,7 +64,10 @@ export function getBuyAmount(order: Maybe<TRequest>, tokenAddress: TAddress): TN
 	}
 
 	if (isBebopOrder(order) && order.quote[tokenAddress]) {
-		return toNormalizedBN(toBigInt(order.quote[tokenAddress]?.buyToken?.amount?.raw), order.quote[tokenAddress]?.buyToken?.decimals || 18);
+		return toNormalizedBN(
+			toBigInt(order.quote[tokenAddress]?.buyToken?.amount?.raw),
+			order.quote[tokenAddress]?.buyToken?.decimals || 18
+		);
 	}
 	return toNormalizedBN(0);
 }

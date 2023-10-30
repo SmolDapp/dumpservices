@@ -3,7 +3,7 @@ import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedCowswapQuote, isCowswapOrder} from 'hooks/assertSolver';
 import {addQuote, setRefreshingQuote} from 'hooks/handleQuote';
 import {getSellAmount} from 'hooks/helperWithSolver';
-import {getSpender, useSolverCowswap} from 'hooks/useSolverCowswap';
+import {getSpender, useSolver} from 'hooks/useSolver';
 import {isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
@@ -41,7 +41,7 @@ function GnosisXCowswapBatchedFlow({
 	onUpdateSignStep: Dispatch<SetStateAction<TDict<TStatus>>>;
 }): ReactElement {
 	const {provider} = useWeb3();
-	const cowswap = useSolverCowswap();
+	const solver = useSolver();
 	const {quotes, set_quotes} = useSweepooor();
 	const [isApproving, set_isApproving] = useState(false);
 	const [isRefreshingQuotes, set_isRefreshingQuotes] = useState(false);
@@ -61,7 +61,7 @@ function GnosisXCowswapBatchedFlow({
 					return; //skip already sent
 				}
 				set_quotes((prev): Maybe<TRequest> => setRefreshingQuote(prev, toAddress(key)));
-				const {quoteResponse} = await cowswap.getQuote({
+				const {quoteResponse} = await solver.getQuote({
 					from: toAddress(currentQuote.from),
 					receiver: toAddress(currentQuote.quote.receiver),
 					inputTokens: [currentQuote.sellToken],
@@ -75,7 +75,7 @@ function GnosisXCowswapBatchedFlow({
 			}
 		}
 		set_isRefreshingQuotes(false);
-	}, [cowswap, quotes, set_quotes]);
+	}, [solver, quotes, set_quotes]);
 
 	/* 🔵 - Yearn Finance **************************************************************************
 	 ** If the signer is a Gnosis Safe, we will use another way to perform the approvals and
@@ -145,7 +145,7 @@ function GnosisXCowswapBatchedFlow({
 				})
 			);
 			try {
-				await cowswap.execute(quotes, tokenAddress, true, (orderUID): void => {
+				await solver.execute(quotes, tokenAddress, true, (orderUID): void => {
 					const newPreSignatureForBatch = getSetPreSignatureTransaction(
 						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
 						orderUID,
@@ -196,7 +196,7 @@ function GnosisXCowswapBatchedFlow({
 			console.error(error);
 			set_isApproving(false);
 		}
-	}, [quotes, provider, safeChainID, existingTransactions, onUpdateSignStep, cowswap, sdk.txs]);
+	}, [quotes, provider, safeChainID, existingTransactions, onUpdateSignStep, solver, sdk.txs]);
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>

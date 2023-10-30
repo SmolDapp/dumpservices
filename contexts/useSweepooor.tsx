@@ -1,10 +1,10 @@
 import React, {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import {scrollToTargetAdjusted} from 'utils/animations';
 import {deserialize, serialize} from 'wagmi';
-import {useLocalStorageValue, useMountEffect, useUpdateEffect} from '@react-hookz/web';
+import {useLocalStorageValue, useUpdateEffect} from '@react-hookz/web';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
+import {ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 
 import type {Dispatch, SetStateAction} from 'react';
 import type {Maybe, TRequest, TToken} from 'utils/types';
@@ -34,12 +34,12 @@ export type TSelected = {
 const defaultProps: TSelected = {
 	quotes: undefined,
 	destination: {
-		chainId: 1,
-		address: ETH_TOKEN_ADDRESS,
-		name: 'Ether',
-		symbol: 'ETH',
+		chainId: 0,
+		address: ZERO_ADDRESS,
+		name: 'No token selected',
+		symbol: 'N/A',
 		decimals: 18,
-		logoURI: `https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/multichain-tokens/1/${ETH_TOKEN_ADDRESS}/logo-128.png`
+		logoURI: ``
 	},
 	currentStep: Step.WALLET,
 	receiver: toAddress(),
@@ -110,28 +110,6 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			set_currentStep(Step.WALLET);
 		}
 	}, [address, isActive, isWalletLedger, isWalletSafe]);
-
-	/**********************************************************************************************
-	 ** This effect is used to handle some UI transitions and sections jumps. Once the current step
-	 ** changes, we need to scroll to the correct section.
-	 ** This effect is triggered only on mount to set the initial scroll position.
-	 **********************************************************************************************/
-	useMountEffect((): void => {
-		// setTimeout((): void => {
-		// 	const isEmbedWallet = isWalletLedger || isWalletSafe;
-		// 	if (currentStep === Step.WALLET && !isEmbedWallet) {
-		// 		document?.getElementById('wallet')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-		// 	} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
-		// 		document?.getElementById('tokenToReceive')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-		// 	} else if (currentStep === Step.RECEIVER) {
-		// 		document?.getElementById('receiver')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-		// 	} else if (currentStep === Step.SELECTOR) {
-		// 		document?.getElementById('selector')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-		// 	} else if (currentStep === Step.APPROVALS) {
-		// 		document?.getElementById('approvals')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-		// 	}
-		// }, 0);
-	});
 
 	/**********************************************************************************************
 	 ** This effect is used to handle some UI transitions and sections jumps. Once the current step

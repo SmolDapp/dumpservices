@@ -119,9 +119,65 @@ export type TBebopQuoteAPIResp = {
 	};
 };
 
+export type TBebopJamQuoteAPIResp = {
+	type: string;
+	status: string;
+	quoteId: string;
+	chainId: number;
+	approvalType: string;
+	nativeToken: string;
+	taker: string;
+	receiver: string;
+	isNewReceiver: boolean;
+	expiry: number;
+	gasFee: {
+		native: string;
+		usd: number;
+	};
+	buyTokens: TDict<{
+		amount: string;
+		decimals: number;
+		priceUsd: number;
+		symbol: string;
+		price: number;
+		priceBeforeFee: number;
+		amountBeforeFee: string;
+	}>;
+	sellTokens: TDict<{
+		amount: string;
+		decimals: number;
+		priceUsd: number;
+		symbol: string;
+		price: number;
+		priceBeforeFee: number;
+		amountBeforeFee: string;
+	}>;
+	settlementAddress: string;
+	approvalTarget: string;
+	requiredSignatures: unknown[];
+	hooksHash: string;
+	toSign: {
+		taker: string;
+		receiver: string;
+		expiry: number;
+		nonce: string;
+		executor: string;
+		minFillPercent: number;
+		hooksHash: string;
+		sellTokens: string[];
+		buyTokens: string[];
+		sellAmounts: string[];
+		buyAmounts: string[];
+		sellTokenTransfers: string;
+		buyTokenTransfers: string;
+	};
+	solver: string;
+};
+
 export type TBebopOrderQuoteResponse = {
 	id: string;
 	status: string;
+	signature: string;
 	type: string;
 	chainId: number;
 	receiver: TAddress;
@@ -130,15 +186,19 @@ export type TBebopOrderQuoteResponse = {
 	buyToken: TTokenWithAmount;
 	sellToken: TTokenWithAmount;
 	toSign: {
+		taker: string;
+		receiver: string;
 		expiry: number;
-		taker_address: TAddress;
-		maker_addresses: TAddress[];
-		maker_nonces: number[];
-		taker_tokens: TAddress[][];
-		maker_tokens: TAddress[][];
-		taker_amounts: string[][];
-		maker_amounts: string[][];
-		receiver: TAddress;
+		nonce: string;
+		executor: string;
+		minFillPercent: number;
+		hooksHash: string;
+		sellTokens: string[];
+		buyTokens: string[];
+		sellAmounts: string[];
+		buyAmounts: string[];
+		sellTokenTransfers: string;
+		buyTokenTransfers: string;
 	};
 } & TRequestMetadata;
 
@@ -153,12 +213,18 @@ export type TBebopOrderQuoteError = {
 };
 
 export type TRequest = {
-	solverType: 'COWSWAP' | 'BEBOP';
 	buyToken: TToken; // token we want to receive
 	sellTokens: TDict<TTokenWithAmount>; // address -> TTokenWithAmount
-
 	quote: TDict<TPossibleSolverQuote>;
-	bebopAggregatedQuote?: TBebopQuoteAPIResp;
-};
+} & (
+	| {
+			solverType: 'COWSWAP';
+			bebopAggregatedQuote: undefined;
+	  }
+	| {
+			solverType: 'BEBOP';
+			bebopAggregatedQuote: TBebopJamQuoteAPIResp | undefined;
+	  }
+);
 export type TPossibleSolverQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse;
 export type TOrderQuoteError = TCowQuoteError | TBebopOrderQuoteError;

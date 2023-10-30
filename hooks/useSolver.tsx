@@ -1,8 +1,10 @@
 import {useCallback, useMemo, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {TPossibleStatus} from 'utils/types';
+import axios from 'axios';
 import {OrderBookApi, SigningScheme} from '@cowprotocol/cow-sdk';
 import {useMountEffect} from '@react-hookz/web';
+import {fetchTransaction, signTypedData} from '@wagmi/core';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
@@ -11,13 +13,15 @@ import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigN
 
 import {isBebopOrder, isCowswapOrder} from './assertSolver';
 import {getValidTo} from './helperWithSolver';
-import {retrieveQuoteFromBebop, retrieveQuoteFromCowswap} from './retrieveQuote';
+import {retrieveQuoteFromBebopJam, retrieveQuoteFromCowswap} from './retrieveQuote';
 import {signQuoteFromCowswap} from './signQuote';
 
+import type {TPostOrder} from 'pages/api/jamProxyPost';
 import type {Maybe, TOrderQuoteError, TRequest, TRequestArgs} from 'utils/types';
+import type {Hex} from 'viem';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
-import type {OrderCreation, SigningResult} from '@cowprotocol/cow-sdk';
+import type {EcdsaSigningScheme, OrderCreation, SigningResult} from '@cowprotocol/cow-sdk';
 import type {TGetQuote} from './retrieveQuote';
 
 type TInit = {
@@ -40,7 +44,12 @@ type TExecuteResp = {
 type TSolverContext = {
 	getQuote: (args: TRequestArgs) => Promise<TInit>;
 	signOrder: (quote: TRequest, key: TAddress) => Promise<SigningResult>;
-	execute: (quoteOrder: TRequest, key: TAddress, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void) => Promise<TExecuteResp>;
+	execute: (
+		quoteOrder: TRequest,
+		key: TAddress,
+		shouldUsePresign: boolean,
+		onSubmitted: (orderUID: string) => void
+	) => Promise<TExecuteResp>;
 };
 
 export function getSpender({chainID}: {chainID: number}): TAddress {
@@ -48,12 +57,12 @@ export function getSpender({chainID}: {chainID: number}): TAddress {
 		case 1:
 			return toAddress(process.env.COWSWAP_SPENDER_ADDRESS);
 		case 137:
-			return toAddress(process.env.BEBOP_SPENDER_ADDRESS);
+			return toAddress(process.env.BEBOP_BALANCE_MANAGER_ADDRESS);
 	}
 	return toAddress(process.env.COWSWAP_SPENDER_ADDRESS);
 }
 
-export function useSolverCowswap(): TSolverContext {
+export function useSolver(): TSolverContext {
 	const {slippage} = useSweepooor();
 	const {isWalletSafe} = useWeb3();
 	const {safeChainID} = useChainID();
@@ -93,13 +102,15 @@ export function useSolverCowswap(): TSolverContext {
 					}
 					return {quoteResponse: undefined, feeAmount: 0n, error: undefined};
 				case 137:
-					return await retrieveQuoteFromBebop({
+					return await retrieveQuoteFromBebopJam({
 						request,
 						sellTokens: request.inputTokens.map(({address}): TAddress => toAddress(address)),
 						buyTokens: [toAddress(request.outputToken.address)],
 						from: toAddress(request.from),
 						receiver: toAddress(request.receiver),
-						amounts: request.inputAmounts.map((value, index): TNormalizedBN => toNormalizedBN(value, request.inputTokens[index].decimals)),
+						amounts: request.inputAmounts.map(
+							(value, index): TNormalizedBN => toNormalizedBN(value, request.inputTokens[index].decimals)
+						),
 						isWalletSafe
 					});
 				default:
@@ -141,16 +152,29 @@ export function useSolverCowswap(): TSolverContext {
 			}
 
 			if (isCowswapOrder(quoteResponse)) {
-				const buyAmountWithSlippage = getBuyAmountWithSlippage(toBigInt(quoteResponse.quote[sellTokenAddress].quote.buyAmount));
+				const buyAmountWithSlippage = getBuyAmountWithSlippage(
+					toBigInt(quoteResponse.quote[sellTokenAddress].quote.buyAmount)
+				);
 				const estimateOut = toNormalizedBN(buyAmountWithSlippage || 0, decimals);
 				quoteResponse.quote[sellTokenAddress].buyAmountWithSlippage = buyAmountWithSlippage;
-				quoteResponse.quote[sellTokenAddress].expirationTimestamp = Math.round(new Date(quoteResponse.quote[sellTokenAddress].expiration).getTime() / 1000);
+				quoteResponse.quote[sellTokenAddress].expirationTimestamp = Math.round(
+					new Date(quoteResponse.quote[sellTokenAddress].expiration).getTime() / 1000
+				);
 
 				return {isSuccess: true, quoteResponse, estimateOut};
 			}
 
 			if (isBebopOrder(quoteResponse)) {
 				const estimateOut = quoteResponse.quote[sellTokenAddress].buyToken.amount;
+				if (estimateOut.raw < 0n) {
+					return {
+						isSuccess: false,
+						estimateOut,
+						quoteResponse,
+						// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+						error: {message: 'Invalid quote (price too low)'} as TOrderQuoteError
+					};
+				}
 				return {isSuccess: true, quoteResponse, estimateOut};
 			}
 
@@ -178,7 +202,37 @@ export function useSolverCowswap(): TSolverContext {
 			}
 
 			if (isBebopOrder(quoteOrder)) {
-				console.warn('TODO: Not implemented yet');
+				const quote = quoteOrder.quote[key];
+				const signature = await signTypedData({
+					primaryType: 'JamOrder',
+					domain: {
+						name: 'JamSettlement',
+						version: '1',
+						chainId: quote.chainId,
+						verifyingContract: toAddress(process.env.BEBOP_SETTLEMENT_ADDRESS)
+					},
+					types: {
+						JamOrder: [
+							{name: 'taker', type: 'address'},
+							{name: 'receiver', type: 'address'},
+							{name: 'expiry', type: 'uint256'},
+							{name: 'nonce', type: 'uint256'},
+							{name: 'executor', type: 'address'},
+							{name: 'minFillPercent', type: 'uint16'},
+							{name: 'hooksHash', type: 'bytes32'},
+							{name: 'sellTokens', type: 'address[]'},
+							{name: 'buyTokens', type: 'address[]'},
+							{name: 'sellAmounts', type: 'uint256[]'},
+							{name: 'buyAmounts', type: 'uint256[]'},
+							{name: 'sellNFTIds', type: 'uint256[]'},
+							{name: 'buyNFTIds', type: 'uint256[]'},
+							{name: 'sellTokenTransfers', type: 'bytes'},
+							{name: 'buyTokenTransfers', type: 'bytes'}
+						]
+					},
+					message: quote.toSign
+				});
+				return {signature, signingScheme: 'eip712' as EcdsaSigningScheme};
 			}
 
 			return {signature: '0x', signingScheme: 'presign'} as unknown as SigningResult;
@@ -193,22 +247,42 @@ export function useSolverCowswap(): TSolverContext {
 	 ** It will timeout once the order is no longer valid or after 50 minutes (max should be 30mn)
 	 **********************************************************************************************/
 	const checkOrderStatus = useCallback(
-		async (orderUID: string, validTo: number): Promise<TCheckOrder> => {
+		async (orderUID: string, validTo: number, solverType: 'COWSWAP' | 'BEBOP'): Promise<TCheckOrder> => {
 			for (let i = 0; i < maxIterations; i++) {
-				const order = await cowswapOrderBook?.getOrder(orderUID);
-				if (order?.status === 'fulfilled') {
-					return {status: TPossibleStatus.COWSWAP_FULFILLED, isSuccessful: true};
+				if (solverType === 'COWSWAP') {
+					const order = await cowswapOrderBook?.getOrder(orderUID);
+					if (order?.status === 'fulfilled') {
+						return {status: TPossibleStatus.COWSWAP_FULFILLED, isSuccessful: true};
+					}
+					if (order?.status === 'cancelled') {
+						return {
+							status: TPossibleStatus.COWSWAP_CANCELLED,
+							isSuccessful: false,
+							error: new Error('TX fail because the order was not fulfilled')
+						};
+					}
+					if (order?.status === 'expired' || validTo < new Date().valueOf() / 1000) {
+						return {
+							status: TPossibleStatus.COWSWAP_EXPIRED,
+							isSuccessful: false,
+							error: new Error('TX fail because the order expired')
+						};
+					}
 				}
-				if (order?.status === 'cancelled') {
-					return {status: TPossibleStatus.COWSWAP_CANCELLED, isSuccessful: false, error: new Error('TX fail because the order was not fulfilled')};
-				}
-				if (order?.status === 'expired' || validTo < new Date().valueOf() / 1000) {
-					return {status: TPossibleStatus.COWSWAP_EXPIRED, isSuccessful: false, error: new Error('TX fail because the order expired')};
+				if (solverType === 'BEBOP') {
+					const transaction = await fetchTransaction({hash: orderUID as Hex});
+					if (transaction.blockHash) {
+						return {status: TPossibleStatus.BEBOP_CONFIRMED, isSuccessful: true};
+					}
 				}
 				// Sleep for 3 seconds before checking the status again
 				await new Promise((resolve): NodeJS.Timeout => setTimeout(resolve, 3000));
 			}
-			return {status: TPossibleStatus.COWSWAP_EXPIRED, isSuccessful: false, error: new Error('TX fail because the order expired')};
+			return {
+				status: TPossibleStatus.COWSWAP_EXPIRED,
+				isSuccessful: false,
+				error: new Error('TX fail because the order expired')
+			};
 		},
 		[cowswapOrderBook]
 	);
@@ -219,7 +293,12 @@ export function useSolverCowswap(): TSolverContext {
 	 ** not.
 	 **********************************************************************************************/
 	const execute = useCallback(
-		async (quoteOrder: TRequest, key: TAddress, shouldUsePresign: boolean, onSubmitted: (orderUID: string) => void): Promise<TExecuteResp> => {
+		async (
+			quoteOrder: TRequest,
+			key: TAddress,
+			shouldUsePresign: boolean,
+			onSubmitted: (orderUID: string) => void
+		): Promise<TExecuteResp> => {
 			if (!quoteOrder) {
 				return {status: TPossibleStatus.INVALID, orderUID: '', quote: quoteOrder};
 			}
@@ -227,7 +306,9 @@ export function useSolverCowswap(): TSolverContext {
 			if (isCowswapOrder(quoteOrder)) {
 				const quote = quoteOrder.quote[key];
 				const buyAmountWithSlippage = getBuyAmountWithSlippage(toBigInt(quoteOrder.quote[key].quote.buyAmount));
-				const signingScheme: SigningScheme = shouldUsePresign ? SigningScheme.PRESIGN : (quote.signingScheme as string as SigningScheme);
+				const signingScheme: SigningScheme = shouldUsePresign
+					? SigningScheme.PRESIGN
+					: (quote.signingScheme as string as SigningScheme);
 				const orderCreation: OrderCreation = {
 					...quote.quote,
 					buyAmount: buyAmountWithSlippage.toString(),
@@ -246,7 +327,11 @@ export function useSolverCowswap(): TSolverContext {
 							// return {status: 'fulfilled', orderUID, quote: quoteOrder};
 							return {status: TPossibleStatus.PENDING, orderUID, quote: quoteOrder};
 						}
-						const {status, error} = await checkOrderStatus(orderUID, getValidTo(quoteOrder, key));
+						const {status, error} = await checkOrderStatus(
+							orderUID,
+							getValidTo(quoteOrder, key),
+							'COWSWAP'
+						);
 						if (error) {
 							console.error(error);
 							toast({type: 'error', content: (error as {message: string}).message});
@@ -264,20 +349,94 @@ export function useSolverCowswap(): TSolverContext {
 						const err = `${(error as TError)?.body?.errorType}: ${(error as TError)?.body?.description}`;
 						console.error(err);
 						toast({type: 'error', content: err});
-						return {status: TPossibleStatus.INVALID, orderUID: '', quote: quoteOrder, error: {message: err}};
+						return {
+							status: TPossibleStatus.INVALID,
+							orderUID: '',
+							quote: quoteOrder,
+							error: {message: err}
+						};
 					}
 					console.error(error);
-					return {status: TPossibleStatus.INVALID, orderUID: '', quote: quoteOrder, error: error as {message: string}};
+					return {
+						status: TPossibleStatus.INVALID,
+						orderUID: '',
+						quote: quoteOrder,
+						error: error as {message: string}
+					};
 				}
 			}
 
 			if (isBebopOrder(quoteOrder)) {
-				console.warn('TODO: Not implemented yet');
+				const quote = quoteOrder.quote[key];
+				try {
+					let sign = quote.signature;
+					if (!sign) {
+						const signResp = await signOrder(quoteOrder, key);
+						sign = signResp.signature;
+					}
+
+					const {data: response} = (await axios.post(`http://${'localhost:3000'}/api/jamProxyPost`, {
+						signature: sign,
+						quote_id: quote.id
+					})) as {
+						data: TPostOrder & {
+							error?: {
+								errorCode: number;
+								message: string;
+							};
+						};
+					};
+					if (response) {
+						if (response.error) {
+							console.error(response.error);
+							toast({type: 'error', content: response.error.message});
+							return {
+								status: TPossibleStatus.INVALID,
+								orderUID: '',
+								quote: quoteOrder,
+								error: response.error
+							};
+						}
+						const orderUID = response?.txHash;
+						onSubmitted?.(orderUID);
+						const {status, error} = await checkOrderStatus(orderUID, getValidTo(quoteOrder, key), 'BEBOP');
+						if (error) {
+							console.error(error);
+							toast({type: 'error', content: (error as {message: string}).message});
+						}
+						return {status, orderUID, quote: quoteOrder};
+					}
+				} catch (error) {
+					type TError = {
+						details: {
+							type: string;
+							msg: string;
+						};
+					};
+					if ((error as TError)?.details?.msg) {
+						const err = `${(error as TError)?.details?.type}: ${(error as TError)?.details?.msg}`;
+						console.error(err);
+						toast({type: 'error', content: err});
+						return {
+							status: TPossibleStatus.INVALID,
+							orderUID: '',
+							quote: quoteOrder,
+							error: {message: err}
+						};
+					}
+					console.error(error);
+					return {
+						status: TPossibleStatus.INVALID,
+						orderUID: '',
+						quote: quoteOrder,
+						error: error as {message: string}
+					};
+				}
 			}
 
 			return {status: TPossibleStatus.INVALID, orderUID: '', quote: quoteOrder};
 		},
-		[checkOrderStatus, cowswapOrderBook, getBuyAmountWithSlippage]
+		[checkOrderStatus, cowswapOrderBook, getBuyAmountWithSlippage, signOrder]
 	);
 
 	return useMemo(
