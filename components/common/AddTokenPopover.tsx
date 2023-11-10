@@ -25,7 +25,10 @@ function AddTokenPopover(): ReactElement {
 	const [token, set_token] = useState<TInputAddressLike>(defaultInputAddressLike);
 
 	const fetchToken = useCallback(
-		async (_safeChainID: number, _query: TAddress): Promise<{name: string; symbol: string; decimals: number; balanceOf: bigint} | undefined> => {
+		async (
+			_safeChainID: number,
+			_query: TAddress
+		): Promise<{name: string; symbol: string; decimals: number; balanceOf: bigint} | undefined> => {
 			if (!isAddress(_query)) {
 				return undefined;
 			}
@@ -53,7 +56,9 @@ function AddTokenPopover(): ReactElement {
 		<>
 			<button
 				onClick={(): void => set_isOpen(true)}
-				className={'text-xs text-neutral-200/40 transition-colors before:mr-1 before:text-base before:content-["+"] hover:text-neutral-200'}>
+				className={
+					'text-xs text-neutral-200/40 transition-colors before:mr-1 before:text-base before:content-["+"] hover:text-neutral-200'
+				}>
 				{'Add custom token'}
 			</button>
 			<Transition
@@ -89,13 +94,20 @@ function AddTokenPopover(): ReactElement {
 										<button
 											onClick={(): void => set_isOpen(false)}
 											className={'absolute right-4 top-4'}>
-											<IconCross className={'h-4 w-4 text-neutral-400 transition-colors hover:text-neutral-900'} />
+											<IconCross
+												className={
+													'h-4 w-4 text-neutral-400 transition-colors hover:text-neutral-900'
+												}
+											/>
 										</button>
-										<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
+										<div
+											className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6 md:pb-4'}>
 											<div className={'w-full md:w-3/4'}>
 												<b>{'The power to dump is in your hands.'}</b>
 												<p className={'pt-2 text-sm text-neutral-500'}>
-													{'Want to dump a token that’s not listed? Just enter it’s contract address and we’ll add it to the list so you can dump away.'}
+													{
+														'Want to dump a token that’s not listed? Just enter it’s contract address and we’ll add it to the list so you can dump away.'
+													}
 												</p>
 											</div>
 											<div className={'flex w-full flex-col space-y-2'}>
@@ -110,10 +122,15 @@ function AddTokenPopover(): ReactElement {
 													className={
 														'group mb-0 flex w-full flex-col justify-center rounded-none border border-x-0 border-neutral-200 bg-neutral-100 md:mb-2 md:rounded-md md:border-x'
 													}>
-													<div className={'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'}>
+													<div
+														className={
+															'font-number space-y-2 border-t-0 p-4 text-xs md:text-sm'
+														}>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Address'}</b>
-															<p className={'font-number overflow-hidden text-ellipsis'}>{toAddress(token?.address || '')}</p>
+															<p className={'font-number overflow-hidden text-ellipsis'}>
+																{toAddress(token?.address || '')}
+															</p>
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Name'}</b>
@@ -125,7 +142,12 @@ function AddTokenPopover(): ReactElement {
 														</span>
 														<span className={'flex flex-col justify-between md:flex-row'}>
 															<b>{'Balance'}</b>
-															<p className={'font-number'}>{toNormalizedValue(toBigInt(tokenData?.balanceOf), tokenData?.decimals)}</p>
+															<p className={'font-number'}>
+																{toNormalizedValue(
+																	toBigInt(tokenData?.balanceOf),
+																	tokenData?.decimals
+																)}
+															</p>
 														</span>
 													</div>
 												</div>

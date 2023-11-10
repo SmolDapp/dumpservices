@@ -11,7 +11,13 @@ type TSafeTxHistory = {
 	nonce: number;
 };
 
-function notify(orders: TPossibleSolverQuote[], solver: 'COWSWAP' | 'BEBOP', origin: string, txHash: string, safeTx?: TSafeTxHistory): void {
+function notify(
+	orders: TPossibleSolverQuote[],
+	solver: 'COWSWAP' | 'BEBOP',
+	origin: string,
+	txHash: string,
+	safeTx?: TSafeTxHistory
+): void {
 	if (!orders.length) {
 		return;
 	}
@@ -24,9 +30,21 @@ function notify(orders: TPossibleSolverQuote[], solver: 'COWSWAP' | 'BEBOP', ori
 			const order = orderUnknown as TCowswapOrderQuoteResponse;
 			from = toAddress(order.from);
 			to = toAddress(order.quote.receiver);
-			const buyAmount = formatAmount(toNormalizedBN(order.quote.buyAmount || '', order.buyToken.decimals || 18).normalized, 6, 6);
-			const sellAmount = formatAmount(toNormalizedBN(order.quote.sellAmount || '', order.sellToken.decimals || 18).normalized, 6, 6);
-			const feeAmount = formatAmount(toNormalizedBN(order.quote.feeAmount || '', order.sellToken.decimals || 18).normalized, 6, 6);
+			const buyAmount = formatAmount(
+				toNormalizedBN(order.quote.buyAmount || '', order.buyToken.decimals || 18).normalized,
+				6,
+				6
+			);
+			const sellAmount = formatAmount(
+				toNormalizedBN(order.quote.sellAmount || '', order.sellToken.decimals || 18).normalized,
+				6,
+				6
+			);
+			const feeAmount = formatAmount(
+				toNormalizedBN(order.quote.feeAmount || '', order.sellToken.decimals || 18).normalized,
+				6,
+				6
+			);
 			const buyToken = order.buyToken.symbol;
 			const sellToken = order.sellToken.symbol;
 
@@ -34,12 +52,14 @@ function notify(orders: TPossibleSolverQuote[], solver: 'COWSWAP' | 'BEBOP', ori
 				messages.push(
 					`\t\t\t\t${sellAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${
 						order.sellToken.address
-					}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${order.buyToken.address}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
+					}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${
+						order.buyToken.address
+					}) | Quote ${order.id} | ❌ ERROR: ${order.orderError}`
 				);
 			} else {
-				let status = `${order.orderStatus === TPossibleStatus.COWSWAP_FULFILLED ? '✅' : '❌'} [Order ${order.orderStatus}](https://explorer.cow.fi/orders/${
-					order.orderUID
-				})`;
+				let status = `${order.orderStatus === TPossibleStatus.COWSWAP_FULFILLED ? '✅' : '❌'} [Order ${
+					order.orderStatus
+				}](https://explorer.cow.fi/orders/${order.orderUID})`;
 				if (txHash) {
 					status = `⏳ [Order pending](https://explorer.cow.fi/orders/${order.orderUID})`;
 				}
@@ -48,7 +68,9 @@ function notify(orders: TPossibleSolverQuote[], solver: 'COWSWAP' | 'BEBOP', ori
 						order.sellToken.address
 					}) ▶ ${buyAmount} [${buyToken.toUpperCase()}](https://etherscan.io/address/${
 						order.buyToken.address
-					}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${order.sellToken.address}) | ${status}`
+					}) | ${feeAmount} [${sellToken.toUpperCase()}](https://etherscan.io/address/${
+						order.sellToken.address
+					}) | ${status}`
 				);
 			}
 		}
@@ -59,7 +81,10 @@ function notify(orders: TPossibleSolverQuote[], solver: 'COWSWAP' | 'BEBOP', ori
 		extra.push(
 			...[
 				'\n*📇 - Safe:*',
-				`\t\t\t\tSafeTx: [${truncateHex(txHash, 6)}](https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${txHash})`,
+				`\t\t\t\tSafeTx: [${truncateHex(
+					txHash,
+					6
+				)}](https://safe-transaction-mainnet.safe.global/api/v1/multisig-transactions/${txHash})`,
 				`\t\t\t\tNonce: ${safeTx?.nonce || 'N/A'}`
 			]
 		);

@@ -1,9 +1,9 @@
 import React from 'react';
-import ViewApprovalWizard from 'components/views/ViewApprovalWizard';
-import ViewReceiver from 'components/views/ViewReceiver';
-import ViewSweepTable from 'components/views/ViewSweepTable';
-import ViewTokenToReceive from 'components/views/ViewTokenToReceive';
-import ViewWallet from 'components/views/ViewWallet';
+import ViewWallet from 'components/views/0.ViewWallet';
+import ViewTokenToReceive from 'components/views/1.ViewTokenToReceive';
+import ViewReceiver from 'components/views/2.ViewReceiver';
+import ViewSweepTable from 'components/views/3.ViewSweepTable';
+import ViewApprovalWizard from 'components/views/4.ViewApprovalWizard';
 import {Step, SweepooorContextApp, useSweepooor} from 'contexts/useSweepooor';
 
 import type {ReactElement} from 'react';

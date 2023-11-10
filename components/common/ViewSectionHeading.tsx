@@ -14,7 +14,9 @@ function ViewSectionHeading({title, content, configSection}: TViewSectionHeading
 				<b>{title}</b>
 				<p className={'whitespace-pre-wrap text-sm text-neutral-500'}>{content}</p>
 			</div>
-			{configSection ? <div className={'absolute right-4 top-4 flex flex-col space-y-4'}>{configSection}</div> : null}
+			{configSection ? (
+				<div className={'absolute right-4 top-4 flex flex-col space-y-4'}>{configSection}</div>
+			) : null}
 		</div>
 	);
 }

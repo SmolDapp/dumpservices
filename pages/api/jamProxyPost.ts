@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 import type {NextApiRequest, NextApiResponse} from 'next';
+import type {Hex} from 'viem';
 
-export type TPostOrder = {txHash: 'string'; status: 'string'; expiry: number};
+export type TPostOrder = {txHash: Hex; status: string; expiry: number};
 async function JamProxyPost(req: NextApiRequest, res: NextApiResponse<TPostOrder | unknown>): Promise<void> {
 	const requestURI = new URL(`https://api-test.bebop.xyz/jam/polygon/v1/order`);
 

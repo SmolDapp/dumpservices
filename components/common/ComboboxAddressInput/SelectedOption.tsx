@@ -17,15 +17,22 @@ function ComboboxInput(props: TElement & {onChange: (event: ChangeEvent<HTMLInpu
 					alt={''}
 					unoptimized
 					src={props.logoURI || ''}
-					altSrc={`https://assets.smold.app/api/token/${props.chainId}/${toAddress(props.address)}/logo-128.png`}
+					altSrc={`https://assets.smold.app/api/token/${props.chainId}/${toAddress(
+						props.address
+					)}/logo-128.png`}
 					width={24}
 					height={24}
 				/>
 			</div>
 			<div className={'flex w-full flex-col text-left font-sans text-neutral-900'}>
-				<p className={'w-full overflow-x-hidden text-ellipsis whitespace-nowrap pr-4 font-normal text-neutral-900 scrollbar-none'}>
+				<p
+					className={
+						'w-full overflow-x-hidden text-ellipsis whitespace-nowrap pr-4 font-normal text-neutral-900 scrollbar-none'
+					}>
 					<Combobox.Input
-						className={'font-inter w-full cursor-default overflow-x-scroll border-none bg-transparent p-0 outline-none scrollbar-none'}
+						className={
+							'font-inter w-full cursor-default overflow-x-scroll border-none bg-transparent p-0 outline-none scrollbar-none'
+						}
 						displayValue={(): string => props.symbol}
 						placeholder={'0x...'}
 						autoComplete={'off'}
@@ -60,7 +67,7 @@ function SelectedOption(props: {
 	return (
 		<Combobox.Button
 			onClick={(): void => props.onToggleOptions((o: boolean): boolean => !o)}
-			className={'box-0 grow-1 col-span-12 flex h-12 w-full items-center p-2 px-4 md:col-span-9'}>
+			className={'box-0 grow-1 col-span-12 flex h-10 w-full items-center p-2 px-4 md:col-span-9'}>
 			<ComboboxInput
 				address={toAddress(source?.address)}
 				logoURI={source?.logoURI || ''}
@@ -70,11 +77,15 @@ function SelectedOption(props: {
 			/>
 			{props.isFetchingNewToken && (
 				<div className={'absolute right-8'}>
-					<IconSpinner className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
+					<IconSpinner
+						className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'}
+					/>
 				</div>
 			)}
 			<div className={'absolute right-2 md:right-3'}>
-				<IconChevronBoth className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'} />
+				<IconChevronBoth
+					className={'h-4 w-4 text-neutral-500 transition-colors group-hover:text-neutral-900'}
+				/>
 			</div>
 		</Combobox.Button>
 	);

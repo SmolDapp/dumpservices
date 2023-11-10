@@ -94,7 +94,13 @@ export function getApproveTransaction(amount: string, token: TAddress, spender: 
 		data: coder.encodeFunctionCall(ERC20ABI_APPROVE, [spender, amount])
 	};
 }
-export function getSafeBatchTransferFrom1155(collection: TAddress, from: TAddress, to: TAddress, tokenIDs: string[], amounts: string[]): BaseTransaction {
+export function getSafeBatchTransferFrom1155(
+	collection: TAddress,
+	from: TAddress,
+	to: TAddress,
+	tokenIDs: string[],
+	amounts: string[]
+): BaseTransaction {
 	const coder = abiCoder as unknown as AbiCoder;
 	return {
 		to: collection,
@@ -102,7 +108,12 @@ export function getSafeBatchTransferFrom1155(collection: TAddress, from: TAddres
 		data: coder.encodeFunctionCall(ERC1155_TRANSFERBATCH, [from, to, tokenIDs as never, amounts as never, '0x'])
 	};
 }
-export function getSafeTransferFrom721(collection: TAddress, from: TAddress, to: TAddress, tokenID: string): BaseTransaction {
+export function getSafeTransferFrom721(
+	collection: TAddress,
+	from: TAddress,
+	to: TAddress,
+	tokenID: string
+): BaseTransaction {
 	const coder = abiCoder as unknown as AbiCoder;
 	return {
 		to: collection,

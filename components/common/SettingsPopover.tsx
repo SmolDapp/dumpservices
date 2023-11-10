@@ -26,7 +26,10 @@ export default function SettingsPopover(): ReactElement {
 						leave={'transition ease-in duration-150'}
 						leaveFrom={'opacity-100 translate-y-0'}
 						leaveTo={'opacity-0 translate-y-1'}>
-						<Popover.Panel className={'absolute right-0 top-6 z-[1000] mt-3 w-screen max-w-[260px] md:-right-4 md:top-4'}>
+						<Popover.Panel
+							className={
+								'absolute right-0 top-6 z-[1000] mt-3 w-screen max-w-[260px] md:-right-4 md:top-4'
+							}>
 							<div className={'rounded border border-neutral-300 bg-neutral-0 p-4'}>
 								<div className={'relative'}>
 									<div>
@@ -40,21 +43,27 @@ export default function SettingsPopover(): ReactElement {
 												<button
 													onClick={(): void => slippage.set(10n)}
 													className={`flex h-8 items-center rounded border-2 bg-neutral-100 px-1.5 py-2 ${
-														slippage.value === 10n ? 'border-purple-300' : 'border-transparent'
+														slippage.value === 10n
+															? 'border-purple-300'
+															: 'border-transparent'
 													}`}>
 													<p className={'font-number pr-4 text-neutral-900'}>{'0.1%'}</p>
 												</button>
 												<button
 													onClick={(): void => slippage.set(30n)}
 													className={`flex h-8 items-center rounded border-2 bg-neutral-100 px-1.5 py-2 ${
-														slippage.value === 30n ? 'border-purple-300' : 'border-transparent'
+														slippage.value === 30n
+															? 'border-purple-300'
+															: 'border-transparent'
 													}`}>
 													<p className={'font-number pr-4'}>{'0.3%'}</p>
 												</button>
 												<button
 													onClick={(): void => slippage.set(50n)}
 													className={`flex h-8 items-center rounded border-2 bg-neutral-100 px-1.5 py-2 ${
-														slippage.value === 50n ? 'border-purple-300' : 'border-transparent'
+														slippage.value === 50n
+															? 'border-purple-300'
+															: 'border-transparent'
 													}`}>
 													<p className={'font-number pr-4'}>{'0.5%'}</p>
 												</button>
@@ -64,7 +73,11 @@ export default function SettingsPopover(): ReactElement {
 												<div className={'fond-medium text-xs text-neutral-700'}>{'Custom'}</div>
 												<div
 													className={`md:min-w-72 flex h-8 w-full min-w-[48px] items-center rounded border-2 bg-neutral-100 px-0 py-4 ${
-														slippage.value !== 10n && slippage.value !== 30n && slippage.value !== 50n ? 'border-purple-300' : 'border-transparent'
+														slippage.value !== 10n &&
+														slippage.value !== 30n &&
+														slippage.value !== 50n
+															? 'border-purple-300'
+															: 'border-transparent'
 													}`}>
 													<input
 														id={'slippageTolerance'}
@@ -80,7 +93,9 @@ export default function SettingsPopover(): ReactElement {
 															if (e.target.valueAsNumber > 100) {
 																return slippage.set(10_000n);
 															}
-															const roundedValue = Math.round(e.target.valueAsNumber * 100);
+															const roundedValue = Math.round(
+																e.target.valueAsNumber * 100
+															);
 															slippage.set(toBigInt(roundedValue));
 														}}
 													/>

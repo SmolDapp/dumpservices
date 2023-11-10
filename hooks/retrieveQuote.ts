@@ -68,7 +68,6 @@ export async function retrieveQuoteFromCowswap({
 			const cowRequest: TRequest = {
 				solverType: 'COWSWAP',
 				buyToken: request.outputToken,
-				bebopAggregatedQuote: undefined,
 				sellTokens: {
 					[request.inputTokens[0].address]: {
 						address: toAddress(request.inputTokens[0].address),
@@ -95,7 +94,7 @@ export async function retrieveQuoteFromCowswap({
 		} catch (_error) {
 			const error = _error as TCowQuoteError;
 			error.solverType = 'COWSWAP';
-			error.message = 'Impossible to dump that token';
+			error.message = '[CowSwap] - Impossible to dump that token';
 			error.shouldDisable = true;
 			console.error(error);
 			if (error.body.errorType === 'UnsupportedToken') {
@@ -154,12 +153,12 @@ export async function retrieveQuoteFromBebopJam({
 			if ((data as TBebopOrderQuoteError)?.error?.errorCode) {
 				const error = data as TBebopOrderQuoteError;
 				error.solverType = 'BEBOP';
-				error.message = 'Impossible to dump that token';
+				error.message = '[Bebop] - Impossible to dump that token - ' + error.error.message;
 				console.error(error);
 				return {feeAmount: 0n, error};
 			}
 
-			if (data.status === 'SUCCESS') {
+			if (data.status === 'Success') {
 				const apiResponse = data as TBebopJamQuoteAPIResp;
 				const [[originalBuyTokenAddr, originalBuyToken]] = Object.entries(apiResponse.buyTokens);
 				const [[originalSellTokenAddr, originalSellToken]] = Object.entries(apiResponse.sellTokens);
@@ -193,6 +192,7 @@ export async function retrieveQuoteFromBebopJam({
 					}
 				};
 
+				const updatedQuote: TDict<TBebopOrderQuoteResponse> = {};
 				const sellTokens: TDict<TTokenWithAmount> = {};
 				for (const [tokenAddress, tokenData] of Object.entries(apiResponse.sellTokens)) {
 					const fromInputToken = request.inputTokens.find(
@@ -206,10 +206,6 @@ export async function retrieveQuoteFromBebopJam({
 						chainId: fromInputToken?.chainId || 0,
 						amount: toNormalizedBN(tokenData.amount, tokenData.decimals)
 					};
-				}
-
-				const updatedQuote: TDict<TBebopOrderQuoteResponse> = {};
-				for (const tokenAddress of Object.keys(apiResponse.sellTokens)) {
 					updatedQuote[toAddress(tokenAddress)] = result as TBebopOrderQuoteResponse;
 				}
 
@@ -217,16 +213,16 @@ export async function retrieveQuoteFromBebopJam({
 					solverType: 'BEBOP',
 					buyToken: request.outputToken,
 					sellTokens: sellTokens,
-					quote: updatedQuote,
-					bebopAggregatedQuote: apiResponse
+					quote: updatedQuote
 				};
+
 				return {quoteResponse: bebopRequest};
 			}
 		} catch (_error) {
 			const error = _error as TBebopOrderQuoteError;
 			error.solverType = 'BEBOP';
-			error.message = 'Impossible to dump that token';
-			console.error(error);
+			error.message = '[Bebop] - Impossible to dump that token';
+			console.error(_error);
 			return {feeAmount: 0n, error};
 		}
 	}

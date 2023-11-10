@@ -13,7 +13,10 @@ export type TCardWithIcon = {
 export default function CardWithIcon({isSelected, onClick, label, icon}: TCardWithIcon): ReactElement {
 	return (
 		<button
-			className={cl('hover box-0 group relative flex w-full items-center justify-center p-4 md:p-6', isSelected ? '!bg-primary-50' : '')}
+			className={cl(
+				'hover box-0 group relative flex w-full items-center justify-center p-4 md:p-6',
+				isSelected ? '!bg-primary-50' : ''
+			)}
 			onClick={onClick}>
 			<div className={'relative flex w-full flex-col items-center justify-center'}>
 				<div
@@ -29,7 +32,11 @@ export default function CardWithIcon({isSelected, onClick, label, icon}: TCardWi
 					{label}
 				</b>
 			</div>
-			<IconCheck className={`absolute right-4 top-4 h-4 w-4 text-[#16a34a] transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+			<IconCheck
+				className={`absolute right-4 top-4 h-4 w-4 text-[#16a34a] transition-opacity ${
+					isSelected ? 'opacity-100' : 'opacity-0'
+				}`}
+			/>
 		</button>
 	);
 }
@@ -37,7 +44,10 @@ export default function CardWithIcon({isSelected, onClick, label, icon}: TCardWi
 export function SmallCardWithIcon({isSelected, onClick, label, icon}: TCardWithIcon): ReactElement {
 	return (
 		<button
-			className={cl('hover box-0 group relative flex w-full items-center justify-center p-2 md:p-4', isSelected ? '!bg-primary-50' : '')}
+			className={cl(
+				'hover box-0 group relative flex w-full items-center justify-center p-2 md:p-4',
+				isSelected ? '!bg-primary-50' : ''
+			)}
 			onClick={onClick}>
 			<div className={'relative flex w-full flex-col items-center justify-center'}>
 				<div
@@ -53,7 +63,11 @@ export function SmallCardWithIcon({isSelected, onClick, label, icon}: TCardWithI
 					{label}
 				</b>
 			</div>
-			<IconCheck className={`absolute right-4 top-4 h-4 w-4 text-[#16a34a] transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+			<IconCheck
+				className={`absolute right-4 top-4 h-4 w-4 text-[#16a34a] transition-opacity ${
+					isSelected ? 'opacity-100' : 'opacity-0'
+				}`}
+			/>
 		</button>
 	);
 }

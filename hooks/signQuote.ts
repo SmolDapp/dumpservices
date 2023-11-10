@@ -9,7 +9,11 @@ type TSignQuoteFromCowswap = {
 	safeChainID: number;
 	amountWithSlippage: bigint;
 };
-export async function signQuoteFromCowswap({quoteOrder, safeChainID, amountWithSlippage}: TSignQuoteFromCowswap): Promise<SigningResult> {
+export async function signQuoteFromCowswap({
+	quoteOrder,
+	safeChainID,
+	amountWithSlippage
+}: TSignQuoteFromCowswap): Promise<SigningResult> {
 	if (process.env.SHOULD_USE_PRESIGN) {
 		//sleep 1 second to simulate the signing process
 		await new Promise(async (resolve): Promise<NodeJS.Timeout> => setTimeout(resolve, 1000));
@@ -25,5 +29,9 @@ export async function signQuoteFromCowswap({quoteOrder, safeChainID, amountWithS
 		return {signature: '0x', signingScheme: 'none'} as unknown as SigningResult;
 	}
 
-	return await OrderSigningUtils.signOrder({...(quote as UnsignedOrder), buyAmount: buyAmountWithSlippage.toString()}, safeChainID, signer);
+	return await OrderSigningUtils.signOrder(
+		{...(quote as UnsignedOrder), buyAmount: buyAmountWithSlippage.toString()},
+		safeChainID,
+		signer
+	);
 }

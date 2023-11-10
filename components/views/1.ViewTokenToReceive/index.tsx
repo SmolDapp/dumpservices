@@ -7,6 +7,7 @@ import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {IconSettings} from '@yearn-finance/web-lib/icons/IconSettings';
 import {isZeroAddress, toAddress, zeroAddress} from '@yearn-finance/web-lib/utils/address';
+import {cl} from '@yearn-finance/web-lib/utils/cl';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 import ComboboxAddressInput from '@common/ComboboxAddressInput';
@@ -123,9 +124,9 @@ function ViewTokenToReceive({onProceed}: {onProceed: VoidFunction}): ReactElemen
 					<form
 						suppressHydrationWarning
 						onSubmit={async (e): Promise<void> => e.preventDefault()}
-						className={
-							'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'
-						}>
+						className={cl(
+							'mt-6 grid h-10 w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'
+						)}>
 						<div className={'grow-1 col-span-12 flex h-10 w-full items-center md:col-span-9'}>
 							<ComboboxAddressInput
 								shouldSort={false}

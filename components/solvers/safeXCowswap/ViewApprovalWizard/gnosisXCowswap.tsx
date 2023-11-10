@@ -18,7 +18,7 @@ import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {MAX_UINT_256} from '@yearn-finance/web-lib/utils/constants';
 
-import {CowswapApprovalWizard} from './cowswap/ApprovalWizard';
+import {CowswapApprovalWizard} from '../../cowswap/ViewApprovalWizard/ApprovalWizard';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {Maybe, TCowswapOrderQuoteResponse, TRequest} from 'utils/types';

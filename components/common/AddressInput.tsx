@@ -96,13 +96,28 @@ function AddressInput({value, onChangeValue, ...props}: TAddressInput): ReactEle
 				value={value.label}
 				className={cl(props.inputClassName, 'smol--input font-mono font-bold')}
 			/>
-			<label className={status === 'invalid' || status === 'warning' ? 'relative' : 'pointer-events-none relative h-4 w-4'}>
+			<label
+				className={
+					status === 'invalid' || status === 'warning' ? 'relative' : 'pointer-events-none relative h-4 w-4'
+				}>
 				<span className={status === 'invalid' || status === 'warning' ? 'tooltip' : 'pointer-events-none'}>
 					<div className={'pointer-events-none relative h-4 w-4'}>
-						<IconCheck className={`absolute h-4 w-4 text-[#16a34a] transition-opacity ${status === 'valid' ? 'opacity-100' : 'opacity-0'}`} />
-						<IconCircleCross className={`absolute h-4 w-4 text-[#e11d48] transition-opacity ${status === 'invalid' ? 'opacity-100' : 'opacity-0'}`} />
+						<IconCheck
+							className={`absolute h-4 w-4 text-[#16a34a] transition-opacity ${
+								status === 'valid' ? 'opacity-100' : 'opacity-0'
+							}`}
+						/>
+						<IconCircleCross
+							className={`absolute h-4 w-4 text-[#e11d48] transition-opacity ${
+								status === 'invalid' ? 'opacity-100' : 'opacity-0'
+							}`}
+						/>
 						<div className={'absolute inset-0 flex items-center justify-center'}>
-							<IconLoader className={`h-4 w-4 animate-spin text-neutral-900 transition-opacity ${status === 'pending' ? 'opacity-100' : 'opacity-0'}`} />
+							<IconLoader
+								className={`h-4 w-4 animate-spin text-neutral-900 transition-opacity ${
+									status === 'pending' ? 'opacity-100' : 'opacity-0'
+								}`}
+							/>
 						</div>
 					</div>
 					<span className={'tooltiptextsmall'}>

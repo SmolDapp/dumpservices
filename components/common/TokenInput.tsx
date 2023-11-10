@@ -11,7 +11,7 @@ import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {cl} from '@yearn-finance/web-lib/utils/cl';
-import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 
 import {ImageWithFallback} from './ImageWithFallback';
@@ -22,10 +22,11 @@ import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber'
 
 type TViewFromToken = {
 	token: TToken;
-	value: TNormalizedBN;
+	value: TNormalizedBN | undefined;
 	allowance: TNormalizedBN | -1;
 	onChange: (value: TNormalizedBN) => void;
 	label?: string;
+	placeholder?: string;
 	tokens?: TToken[];
 	onChangeToken?: (token: TToken) => void;
 	shouldCheckBalance?: boolean;
@@ -41,6 +42,7 @@ function TokenInput({
 	onChangeToken,
 	allowance,
 	label,
+	placeholder,
 	shouldCheckAllowance = true,
 	shouldCheckBalance = true,
 	isDisabled = false,
@@ -167,7 +169,7 @@ function TokenInput({
 						step={1 / 10 ** (token?.decimals || 18)}
 						inputMode={'numeric'}
 						disabled={isDisabled}
-						placeholder={`0.000000 ${token.symbol}`}
+						placeholder={placeholder || `0.000000 ${token.symbol}`}
 						pattern={'^((?:0|[1-9]+)(?:.(?:d+?[1-9]|[1-9]))?)$'}
 						value={value?.normalized || ''}
 						onChange={onChangeAmount}
@@ -185,14 +187,16 @@ function TokenInput({
 										className={'tooltip'}
 										style={{
 											pointerEvents:
-												value.raw > effectiveAllowance.raw && value.raw <= balanceOf.raw
+												toBigInt(value?.raw) > effectiveAllowance.raw &&
+												toBigInt(value?.raw) <= balanceOf.raw
 													? 'auto'
 													: 'none'
 										}}>
 										<IconInfo
 											style={{
 												opacity:
-													value.raw > effectiveAllowance.raw && value.raw <= balanceOf.raw
+													toBigInt(value?.raw) > effectiveAllowance.raw &&
+													toBigInt(value?.raw) <= balanceOf.raw
 														? 1
 														: 0
 											}}
@@ -205,7 +209,7 @@ function TokenInput({
 													'w-fit rounded-md border border-neutral-700 bg-neutral-900 p-1 px-2 text-center text-xs font-medium text-neutral-0'
 												}>
 												{`You will be prompted to approve spending of ${formatAmount(
-													value.normalized,
+													value?.normalized || 0,
 													6,
 													6
 												)} ${token.symbol}`}
@@ -217,8 +221,8 @@ function TokenInput({
 							{shouldCheckBalance && (
 								<IconCircleCross
 									style={{
-										opacity: value.raw > balanceOf.raw ? 1 : 0,
-										pointerEvents: value.raw > balanceOf.raw ? 'auto' : 'none'
+										opacity: toBigInt(value?.raw) > balanceOf.raw ? 1 : 0,
+										pointerEvents: toBigInt(value?.raw) > balanceOf.raw ? 'auto' : 'none'
 									}}
 									className={'absolute inset-0 h-4 w-4 text-red-900 transition-opacity'}
 								/>

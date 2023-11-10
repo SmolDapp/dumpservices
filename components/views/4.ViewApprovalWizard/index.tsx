@@ -3,9 +3,9 @@ import {useSweepooor} from 'contexts/useSweepooor';
 import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 
-import BebopBatchedFlow from './bebop';
-import CowswapStandardFlow from './cowswap';
-import GnosisBatchedFlow from './gnosisXCowswap';
+import BebopBatchedFlow from '../../solvers/bebop/ViewApprovalWizard';
+import CowswapStandardFlow from '../../solvers/cowswap/ViewApprovalWizard';
+import GnosisBatchedFlow from '../../solvers/safeXCowswap/ViewApprovalWizard/gnosisXCowswap';
 
 import type {ReactElement} from 'react';
 

@@ -19,7 +19,15 @@ export type TListHead = {
 	onSort: (sortBy: string, sortDirection: string) => void;
 };
 
-function ListHead({items, dataClassName, tokenClassName, wrapperClassName, sortBy, sortDirection, onSort}: TListHead): ReactElement {
+function ListHead({
+	items,
+	dataClassName,
+	tokenClassName,
+	wrapperClassName,
+	sortBy,
+	sortDirection,
+	onSort
+}: TListHead): ReactElement {
 	const renderChevron = useCallback(
 		(shouldSortBy: boolean): ReactElement => {
 			if (shouldSortBy && sortDirection === 'desc') {
@@ -28,7 +36,11 @@ function ListHead({items, dataClassName, tokenClassName, wrapperClassName, sortB
 			if (shouldSortBy && sortDirection === 'asc') {
 				return <IconChevronPlain className={'yearn--sort-chevron rotate-180'} />;
 			}
-			return <IconChevronPlain className={'yearn--sort-chevron--off text-neutral-300 group-hover:text-neutral-500'} />;
+			return (
+				<IconChevronPlain
+					className={'yearn--sort-chevron--off text-neutral-300 group-hover:text-neutral-500'}
+				/>
+			);
 		},
 		[sortDirection]
 	);
@@ -39,7 +51,18 @@ function ListHead({items, dataClassName, tokenClassName, wrapperClassName, sortB
 			<div className={`yearn--table-head-wrapper ${wrapperClassName || ''}`}>
 				<div className={`yearn--table-head-token-section ${tokenClassName || ''}`}>
 					<button
-						onClick={(): void => onSort(first.value, sortBy === first.value ? (sortDirection === '' ? 'desc' : sortDirection === 'desc' ? 'asc' : '') : 'desc')}
+						onClick={(): void =>
+							onSort(
+								first.value,
+								sortBy === first.value
+									? sortDirection === ''
+										? 'desc'
+										: sortDirection === 'desc'
+										? 'asc'
+										: ''
+									: 'desc'
+							)
+						}
 						className={'yearn--table-head-label-wrapper group'}>
 						<p className={'yearn--table-head-label'}>{first.label}</p>
 						{renderChevron(sortBy === first.value)}
@@ -51,7 +74,18 @@ function ListHead({items, dataClassName, tokenClassName, wrapperClassName, sortB
 						(item, index): ReactElement => (
 							<button
 								key={`${index}_${item.value}`}
-								onClick={(): void => onSort(item.value, sortBy === item.value ? (sortDirection === '' ? 'desc' : sortDirection === 'desc' ? 'asc' : '') : 'desc')}
+								onClick={(): void =>
+									onSort(
+										item.value,
+										sortBy === item.value
+											? sortDirection === ''
+												? 'desc'
+												: sortDirection === 'desc'
+												? 'asc'
+												: ''
+											: 'desc'
+									)
+								}
 								disabled={!item.sortable}
 								className={`yearn--table-head-label-wrapper group ${item.className}`}
 								datatype={item.datatype || 'number'}>

@@ -19,10 +19,10 @@ import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber'
 
 export type TWalletContext = {
 	balances: TDict<TBalanceData>;
-	getBalance: (tokenAddress: TAddress) => TNormalizedBN;
 	balancesNonce: number;
 	isLoading: boolean;
 	walletProvider: string;
+	getBalance: (tokenAddress: TAddress) => TNormalizedBN;
 	refresh: (tokenList?: TUseBalancesTokens[], shouldSaveInStorage?: boolean) => Promise<TDict<TBalanceData>>;
 	refreshWithList: (tokenList: TDict<TToken>) => Promise<TDict<TBalanceData>>;
 	set_walletProvider: Dispatch<SetStateAction<string>>;
@@ -49,7 +49,10 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	const {isActive} = useWeb3();
 	const {safeChainID} = useChainID();
 	const [walletProvider, set_walletProvider] = useState('NONE');
-	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TUseBalancesTokens[]>('dumpservices/tokens', {defaultValue: []});
+	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TUseBalancesTokens[]>(
+		'dumpservices/tokens',
+		{defaultValue: []}
+	);
 
 	const availableTokens = useMemo((): TUseBalancesTokens[] => {
 		const withDefaultTokens = [...Object.values(tokenList), ...defaultTokenList.tokens];
@@ -136,6 +139,16 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 		}
 	}, [isActive, onLoadExtraTokens]);
 
+	const getBalance = useCallback(
+		(tokenAddress: TAddress): TNormalizedBN => {
+			return toNormalizedBN(
+				balances?.[toAddress(tokenAddress)]?.raw || 0,
+				balances?.[toAddress(tokenAddress)]?.decimals || 18
+			);
+		},
+		[balances]
+	);
+
 	/* 🔵 - Yearn Finance ******************************************************
 	 **	Setup and render the Context provider to use in the app.
 	 ***************************************************************************/
@@ -143,15 +156,14 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 		(): TWalletContext => ({
 			balances: balances,
 			balancesNonce: nonce,
-			getBalance: (tokenAddress: TAddress): TNormalizedBN =>
-				toNormalizedBN(balances?.[toAddress(tokenAddress)]?.raw || 0, balances?.[toAddress(tokenAddress)]?.decimals || 18),
+			getBalance,
 			isLoading: isLoading || false,
 			refresh: onRefresh,
 			refreshWithList: onRefreshWithList,
 			walletProvider,
 			set_walletProvider
 		}),
-		[balances, isLoading, onRefresh, nonce, onRefreshWithList, walletProvider]
+		[balances, isLoading, onRefresh, nonce, onRefreshWithList, walletProvider, getBalance]
 	);
 
 	return <WalletContext.Provider value={contextValue}>{children}</WalletContext.Provider>;

@@ -1,10 +1,4 @@
-import type {
-	Maybe,
-	TBebopJamQuoteAPIResp,
-	TBebopOrderQuoteResponse,
-	TCowswapOrderQuoteResponse,
-	TRequest
-} from 'utils/types';
+import type {Maybe, TBebopOrderQuoteResponse, TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 export function isQuote(order: Maybe<TRequest>): order is TRequest {
@@ -76,9 +70,8 @@ export function getTypedCowswapQuote(order: Maybe<TRequest>): TRequest & {quote:
 	return order as TRequest & {quote: TDict<TCowswapOrderQuoteResponse>};
 }
 
-type TTypedBebopQuote = TRequest & {
+export type TTypedBebopQuote = TRequest & {
 	quote: TDict<TBebopOrderQuoteResponse>;
-	bebopAggregatedQuote: TBebopJamQuoteAPIResp;
 };
 export function getTypedBebopQuote(order: Maybe<TRequest>): TTypedBebopQuote {
 	return order as TTypedBebopQuote;

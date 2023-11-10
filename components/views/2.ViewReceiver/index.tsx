@@ -26,11 +26,17 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
 					<div className={'w-full md:w-3/4'}>
 						<b>{'Recipient'}</b>
-						<p className={'text-sm text-neutral-500'}>{'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'}</p>
+						<p className={'text-sm text-neutral-500'}>
+							{
+								'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'
+							}
+						</p>
 					</div>
 					<form
 						onSubmit={async (e): Promise<void> => e.preventDefault()}
-						className={'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'}>
+						className={
+							'mt-6 grid w-full grid-cols-12 flex-row items-center justify-between gap-4 md:w-3/4 md:gap-6'
+						}>
 						<div className={'col-span-12 md:col-span-9'}>
 							<AddressInput
 								value={tokenReceiver}
@@ -54,28 +60,6 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 				</div>
 			</div>
 		</section>
-
-		// <section>
-		// 	<div className={'box-0 grid w-full grid-cols-12 overflow-hidden'}>
-		// 		<div className={'col-span-12 flex flex-col p-4 text-neutral-900 md:p-6'}>
-		// 			<div className={'w-full md:w-3/4'}>
-		// 				<b>{'Recipient'}</b>
-		// 				<p className={'text-sm text-neutral-500'}>
-		// 					{'You can change the address to which the funds will be sent to. Be careful, this is irreversible!'}
-		// 				</p>
-		// 			</div>
-		// 			<AddressInput
-		// 				value={tokenReceiver}
-		// 				shouldBeDisabled={hasBeenConfirmed && toAddress(tokenReceiver.address) === receiver}
-		// onChangeValue={(e): void => {
-		// 		set_tokenReceiver(e);
-		// 		set_receiver(toAddress(e.address));
-		// 		set_hasBeenConfirmed(true);
-		// 		onProceed();
-		// }} />
-		// 		</div>
-		// 	</div>
-		// </section>
 	);
 }
 

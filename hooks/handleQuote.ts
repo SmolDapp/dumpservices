@@ -59,7 +59,6 @@ export function initQuote(
 					amount: toNormalizedBN(0)
 				}
 			},
-			bebopAggregatedQuote: undefined,
 			solverType: solver,
 			quote: {
 				[key]: {
@@ -133,7 +132,7 @@ export function addQuote(prev: Maybe<TRequest>, quote: TRequest): Maybe<TRequest
 		...prev,
 		quote: updatedQuote,
 		sellTokens: updatedSellTokens
-	};
+	} as TRequest;
 }
 
 /* 🥟 - Dump Services **********************************************************

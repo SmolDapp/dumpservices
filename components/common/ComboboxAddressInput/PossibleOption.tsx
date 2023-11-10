@@ -16,7 +16,9 @@ function Option(props: TElement): ReactElement {
 					alt={''}
 					unoptimized
 					src={props.logoURI || ''}
-					altSrc={`https://assets.smold.app/api/token/${props.chainId}/${toAddress(props.address)}/logo-128.png`}
+					altSrc={`https://assets.smold.app/api/token/${props.chainId}/${toAddress(
+						props.address
+					)}/logo-128.png`}
 					width={24}
 					height={24}
 				/>
@@ -30,11 +32,18 @@ function Option(props: TElement): ReactElement {
 }
 
 function PossibleOption({option}: {option: TToken}): ReactElement {
-	const memorizedElement = useMemo<ReactElement>((): ReactElement => <Option {...(option satisfies TElement)} />, [option]);
+	const memorizedElement = useMemo<ReactElement>(
+		(): ReactElement => <Option {...(option satisfies TElement)} />,
+		[option]
+	);
 
 	return (
 		<Combobox.Option
-			className={({active: isActive}): string => `relative cursor-pointer select-none py-2 px-4 ${isActive ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-900'}`}
+			className={({active: isActive}): string =>
+				`relative cursor-pointer select-none py-2 px-4 ${
+					isActive ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-900'
+				}`
+			}
 			value={option}>
 			{({selected: isSelected}): ReactElement => (
 				<div>

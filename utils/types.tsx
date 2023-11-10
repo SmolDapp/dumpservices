@@ -1,5 +1,6 @@
 import {zeroAddress} from '@yearn-finance/web-lib/utils/address';
 
+import type {Hex} from 'viem';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import type {EcdsaSigningScheme, OrderQuoteResponse} from '@cowprotocol/cow-sdk';
@@ -172,6 +173,15 @@ export type TBebopJamQuoteAPIResp = {
 		buyTokenTransfers: string;
 	};
 	solver: string;
+	//Override for dump
+	isSigned: boolean;
+	isSigning: boolean;
+	hasSignatureError: boolean;
+	signature: Hex;
+	isExecuted: boolean;
+	isExecuting: boolean;
+	hasExecutionError: boolean;
+	txHash: Hex;
 };
 
 export type TBebopOrderQuoteResponse = {
@@ -216,15 +226,7 @@ export type TRequest = {
 	buyToken: TToken; // token we want to receive
 	sellTokens: TDict<TTokenWithAmount>; // address -> TTokenWithAmount
 	quote: TDict<TPossibleSolverQuote>;
-} & (
-	| {
-			solverType: 'COWSWAP';
-			bebopAggregatedQuote: undefined;
-	  }
-	| {
-			solverType: 'BEBOP';
-			bebopAggregatedQuote: TBebopJamQuoteAPIResp | undefined;
-	  }
-);
+	solverType: 'COWSWAP' | 'BEBOP';
+};
 export type TPossibleSolverQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse;
 export type TOrderQuoteError = TCowQuoteError | TBebopOrderQuoteError;
