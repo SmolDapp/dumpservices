@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useEffect, useMemo, useState} from 'react';
+import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import {scrollToTargetAdjusted} from 'utils/animations';
 import {deserialize, serialize} from 'wagmi';
 import {useLocalStorageValue, useUpdateEffect} from '@react-hookz/web';
@@ -6,8 +6,8 @@ import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ZERO_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 
-import type {Dispatch, SetStateAction} from 'react';
-import type {Maybe, TRequest, TToken} from 'utils/types';
+import type {Dispatch, ReactElement, SetStateAction} from 'react';
+import type {TRequest, TToken} from 'utils/types';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {UseStorageValueResult} from '@react-hookz/web/cjs/useStorageValue';
 
@@ -20,19 +20,20 @@ export enum Step {
 }
 
 export type TSelected = {
-	quotes: Maybe<TRequest>;
+	quotes: TRequest;
 	destination: TToken;
 	currentStep: Step;
 	receiver: TAddress;
-	set_quotes: Dispatch<SetStateAction<Maybe<TRequest>>>;
+	set_quotes: Dispatch<SetStateAction<TRequest>>;
 	set_currentStep: Dispatch<SetStateAction<Step>>;
 	set_destination: Dispatch<SetStateAction<TToken>>;
 	set_receiver: Dispatch<SetStateAction<TAddress>>;
 	slippage: UseStorageValueResult<bigint, bigint>;
+	onReset: VoidFunction;
 };
 
 const defaultProps: TSelected = {
-	quotes: undefined,
+	quotes: {} as TRequest,
 	destination: {
 		chainId: 0,
 		address: ZERO_ADDRESS,
@@ -52,15 +53,16 @@ const defaultProps: TSelected = {
 		set: (): void => undefined,
 		remove: (): void => undefined,
 		fetch: (): void => undefined
-	}
+	},
+	onReset: (): void => undefined
 };
 
 const SweepooorContext = createContext<TSelected>(defaultProps);
-export const SweepooorContextApp = ({children}: {children: React.ReactElement}): React.ReactElement => {
+export const SweepooorContextApp = ({children}: {children: ReactElement}): ReactElement => {
 	const {address, isActive, isWalletLedger, isWalletSafe} = useWeb3();
 	const [destination, set_destination] = useState<TToken>(defaultProps.destination);
 	const [receiver, set_receiver] = useState<TAddress>(toAddress(address));
-	const [quotes, set_quotes] = useState<Maybe<TRequest>>(defaultProps.quotes);
+	const [quotes, set_quotes] = useState(defaultProps.quotes);
 	const [currentStep, set_currentStep] = useState<Step>(Step.WALLET);
 	const slippage = useLocalStorageValue<bigint>('dump-services/slippage-0.0.2', {
 		defaultValue: 10n,
@@ -145,6 +147,13 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 		}, 0);
 	}, [currentStep, isWalletLedger, isWalletSafe]);
 
+	const onReset = useCallback((): void => {
+		set_quotes(defaultProps.quotes);
+		set_destination(defaultProps.destination);
+		set_receiver(defaultProps.receiver);
+		set_currentStep(Step.DESTINATION);
+	}, []);
+
 	const contextValue = useMemo(
 		(): TSelected => ({
 			quotes,
@@ -155,9 +164,10 @@ export const SweepooorContextApp = ({children}: {children: React.ReactElement}):
 			set_destination,
 			receiver,
 			set_receiver,
-			slippage
+			slippage,
+			onReset
 		}),
-		[quotes, currentStep, destination, receiver, slippage]
+		[quotes, currentStep, destination, receiver, slippage, onReset]
 	);
 
 	return (

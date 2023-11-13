@@ -93,7 +93,7 @@ export function useSolver(): TSolverContext {
 						return await retrieveQuoteFromCowswap({
 							request,
 							sellToken: toAddress(request.inputTokens[0].address),
-							buyToken: toAddress(request.outputToken.address),
+							buyToken: request.outputToken,
 							from: toAddress(request.from),
 							receiver: toAddress(request.receiver),
 							amount: toNormalizedBN(request.inputAmounts[0], request.inputTokens[0].decimals),
@@ -105,7 +105,7 @@ export function useSolver(): TSolverContext {
 					return await retrieveQuoteFromBebopJam({
 						request,
 						sellTokens: request.inputTokens.map(({address}): TAddress => toAddress(address)),
-						buyTokens: [toAddress(request.outputToken.address)],
+						buyToken: request.outputToken,
 						from: toAddress(request.from),
 						receiver: toAddress(request.receiver),
 						amounts: request.inputAmounts.map(
@@ -165,7 +165,7 @@ export function useSolver(): TSolverContext {
 			}
 
 			if (isBebopOrder(quoteResponse)) {
-				const estimateOut = quoteResponse.quote[sellTokenAddress].buyToken.amount;
+				const estimateOut = quoteResponse.quote.buyToken.amount;
 				if (estimateOut.raw < 0n) {
 					return {
 						isSuccess: false,
@@ -202,7 +202,7 @@ export function useSolver(): TSolverContext {
 			}
 
 			if (isBebopOrder(quoteOrder)) {
-				const quote = quoteOrder.quote[key];
+				const {quote} = quoteOrder;
 				const signature = await signTypedData({
 					primaryType: 'JamOrder',
 					domain: {
@@ -367,7 +367,7 @@ export function useSolver(): TSolverContext {
 			}
 
 			if (isBebopOrder(quoteOrder)) {
-				const quote = quoteOrder.quote[key];
+				const {quote} = quoteOrder;
 				try {
 					let sign = quote.signature;
 					if (!sign) {

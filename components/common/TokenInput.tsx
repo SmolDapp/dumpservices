@@ -69,6 +69,7 @@ function TokenInput({
 	const onChangeAmount = useCallback(
 		(e: ChangeEvent<HTMLInputElement>): void => {
 			const element = document.getElementById('amountToSend') as HTMLInputElement;
+			console.warn(e.target.value, element);
 			const newAmount = handleInputChangeEventValue(e, token?.decimals || 18);
 			if (newAmount.raw > balanceOf?.raw) {
 				if (element?.value) {
@@ -114,7 +115,13 @@ function TokenInput({
 					<ImageWithFallback
 						alt={token.name}
 						unoptimized
-						src={token.logoURI || ''}
+						src={
+							token.logoURI?.includes('assets.smold.app')
+								? `https://assets.smold.app/api/token/${token.chainId}/${toAddress(
+										token.address
+								  )}/logo-32.png`
+								: token.logoURI || ''
+						}
 						width={24}
 						height={24}
 					/>
@@ -171,7 +178,7 @@ function TokenInput({
 						disabled={isDisabled}
 						placeholder={placeholder || `0.000000 ${token.symbol}`}
 						pattern={'^((?:0|[1-9]+)(?:.(?:d+?[1-9]|[1-9]))?)$'}
-						value={value?.normalized || ''}
+						value={value ? value.normalized : ''}
 						onChange={onChangeAmount}
 						onFocus={onFocus}
 					/>

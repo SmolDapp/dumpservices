@@ -1,79 +1,89 @@
-import React, {useMemo, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
-import {getTypedBebopQuote} from 'hooks/assertSolver';
-import {useAsyncTrigger} from 'hooks/useAsyncEffect';
-import {serialize} from 'wagmi';
-import axios from 'axios';
+import {getTypedBebopQuote, hasQuote} from 'hooks/assertSolver';
+import {addQuote} from 'hooks/handleQuote';
+import {useSolver} from 'hooks/useSolver';
+import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
-import {IconLoader} from '@yearn-finance/web-lib/icons/IconLoader';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 import {BebopApprovalWizard} from './ApprovalWizard';
 import {BebopButtons} from './Buttons';
+import {SuccessModal} from './SuccessModal';
 
 import type {ReactElement} from 'react';
-import type {TBebopJamQuoteAPIResp, TStatus} from 'utils/types';
+import type {TBebopRequest, TQuote, TRequest, TRequestArgs, TStatus, TToken, TTokenWithAmount} from 'utils/types';
 import type {Hex} from 'viem';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 function Wrapper(): ReactElement {
 	const {address} = useWeb3();
-	const {quotes, receiver} = useSweepooor();
+	const {quotes, set_quotes, receiver, destination, onReset} = useSweepooor();
 	const [approvalStep, set_approvalStep] = useState<TDict<TStatus>>({});
-	const [aggregatedQuote, set_aggregatedQuote] = useState<TBebopJamQuoteAPIResp | null>(null);
-	const [isRefreshingQuote, set_isRefreshingQuote] = useState(false);
-	const listOfQuotes = useMemo(
-		() =>
-			Object.values(getTypedBebopQuote(quotes).quote).filter(
-				quote => toBigInt(quote?.buyToken?.amount?.raw) > 0n
-			),
-		[quotes]
-	);
+	const solver = useSolver();
+	const currentQuote = getTypedBebopQuote(quotes);
 
-	const onRefreshAggregatedQuote = useAsyncTrigger(async (): Promise<void> => {
-		if (!quotes) {
+	const prepareRequest = useCallback((): TRequestArgs => {
+		const previousInputTokens = Object.values(quotes?.sellTokens || []).map((token: TTokenWithAmount): TToken => {
+			return {
+				address: token.address,
+				name: token.name,
+				symbol: token.symbol,
+				decimals: token.decimals,
+				chainId: token.chainId
+			};
+		});
+		const previousInputAmounts = Object.values(quotes?.sellTokens || []).map((token: TTokenWithAmount): bigint => {
+			return toBigInt(token.amount.raw);
+		});
+
+		const request: TRequestArgs = {
+			from: toAddress(address),
+			receiver: toAddress(receiver),
+			inputTokens: previousInputTokens,
+			outputToken: {
+				address: destination.address,
+				name: destination.name,
+				symbol: destination.symbol,
+				decimals: destination.decimals,
+				chainId: destination.chainId
+			},
+			inputAmounts: previousInputAmounts,
+			inputBalances: previousInputAmounts
+		};
+		return request;
+	}, [
+		address,
+		destination.address,
+		destination.chainId,
+		destination.decimals,
+		destination.name,
+		destination.symbol,
+		quotes?.sellTokens,
+		receiver
+	]);
+
+	const onHandleQuote = useCallback(async (): Promise<void> => {
+		if (currentQuote.quote.isExecuted || currentQuote.quote.isExecuting) {
 			return;
 		}
-		const hasNoActualQuotes = Object.values(quotes.sellTokens).every(({amount}) => toBigInt(amount.raw) === 0n);
-		if (hasNoActualQuotes) {
+		const request = prepareRequest();
+		const {quoteResponse, isSuccess, error} = await solver.getQuote(request);
+		if (isSuccess && quoteResponse) {
+			set_quotes((q): TQuote => addQuote(q, quoteResponse));
 			return;
 		}
-		set_isRefreshingQuote(true);
-		const requestURI = new URL(`http://${'localhost:3000'}/api/jamProxy`);
-		requestURI.searchParams.append('buy_tokens', quotes.buyToken.address);
-		requestURI.searchParams.append(
-			'sell_tokens',
-			Object.values(quotes.sellTokens)
-				.map(({address}): string => address)
-				.join(',')
-		);
-		requestURI.searchParams.append(
-			'sell_amounts',
-			Object.values(quotes.sellTokens)
-				.map(({amount}): string => toBigInt(amount.raw).toString())
-				.join(',')
-		);
-		requestURI.searchParams.append('taker_address', toAddress(address));
-		requestURI.searchParams.append('receiver_address', toAddress(receiver));
-		requestURI.searchParams.append('approval_type', 'Standard');
-		requestURI.searchParams.append('source', 'smol');
-		const {data} = await axios.get(requestURI.toString());
-		set_aggregatedQuote(data);
-		set_isRefreshingQuote(false);
-	}, [address, serialize(quotes), receiver]);
+		if (error) {
+			toast({type: 'error', content: error.message});
+		}
+		return;
+	}, [currentQuote, prepareRequest, set_quotes, solver]);
 
-	if (listOfQuotes.length === 0) {
+	if (!hasQuote(quotes, '') || toBigInt(getTypedBebopQuote(quotes).quote.buyToken.amount.raw) === 0n) {
 		return (
 			<div className={'py-20'}>
 				<p className={'text-sm text-neutral-400/60'}>{'Select a token to dump'}</p>
-			</div>
-		);
-	}
-	if (!aggregatedQuote) {
-		return (
-			<div className={'py-20'}>
-				<IconLoader className={`h-4 w-4 animate-spin text-neutral-900`} />
 			</div>
 		);
 	}
@@ -81,41 +91,52 @@ function Wrapper(): ReactElement {
 	return (
 		<>
 			<BebopApprovalWizard
-				aggregatedQuote={aggregatedQuote}
-				onRefreshAggregatedQuote={onRefreshAggregatedQuote}
+				onRefreshQuote={onHandleQuote}
 				approvalStep={approvalStep}
 			/>
 			<div className={'flex w-full flex-row items-center justify-between p-4 md:relative md:px-0 md:pb-0'}>
 				<BebopButtons
-					aggregatedQuote={aggregatedQuote}
-					onRefreshAggregatedQuote={onRefreshAggregatedQuote}
-					isRefreshingQuote={isRefreshingQuote}
+					onRefreshQuote={onHandleQuote}
+					isRefreshingQuote={currentQuote.quote.isRefreshing}
 					approvals={approvalStep}
 					onUpdateApprovalStep={set_approvalStep}
-					onUpdateSignStep={(isSuccess: boolean, isSigning: boolean, hasError: boolean, signature: Hex) =>
-						set_aggregatedQuote((q): TBebopJamQuoteAPIResp => {
+					onUpdateSignStep={(isSuccess: boolean, isSigning: boolean, hasError: boolean, signature: Hex) => {
+						console.log({isSuccess, isSigning, hasError, signature});
+						set_quotes((q): TRequest & TBebopRequest => {
+							const previousQuote = getTypedBebopQuote(q);
 							return {
-								...(q as TBebopJamQuoteAPIResp),
-								isSigned: isSuccess,
-								isSigning: isSigning,
-								hasSignatureError: hasError,
-								signature
+								...previousQuote,
+								quote: {
+									...previousQuote.quote,
+									isSigned: isSuccess,
+									isSigning: isSigning,
+									hasSignatureError: hasError,
+									signature
+								}
 							};
-						})
-					}
+						});
+					}}
 					onUpdateExecuteStep={(isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) =>
-						set_aggregatedQuote((q): TBebopJamQuoteAPIResp => {
+						set_quotes((q): TRequest & TBebopRequest => {
+							const previousQuote = getTypedBebopQuote(q);
 							return {
-								...(q as TBebopJamQuoteAPIResp),
-								isExecuted: isSuccess,
-								isExecuting: isExecuting,
-								hasExecutionError: hasError,
-								txHash
+								...previousQuote,
+								quote: {
+									...previousQuote.quote,
+									isExecuted: isSuccess,
+									isExecuting: isExecuting,
+									hasExecutionError: hasError,
+									txHash
+								}
 							};
 						})
 					}
 				/>
 			</div>
+			<SuccessModal
+				isOpen={currentQuote.quote.isExecuted || true}
+				onClose={(): void => onReset()}
+			/>
 		</>
 	);
 }

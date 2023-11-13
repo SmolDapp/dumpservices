@@ -5,12 +5,12 @@ import {getTypedCowswapQuote} from 'hooks/assertSolver';
 import {
 	addQuote,
 	assignSignature,
+	getSellAmount,
 	setInvalidQuote,
 	setPendingQuote,
 	setRefreshingQuote,
 	setStatusQuote
 } from 'hooks/handleQuote';
-import {getSellAmount} from 'hooks/helperWithSolver';
 import {useAsyncTrigger} from 'hooks/useAsyncEffect';
 import {getSpender, useSolver} from 'hooks/useSolver';
 import {approveERC20, isApprovedERC20} from 'utils/actions';
@@ -24,7 +24,7 @@ import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
-import type {Maybe, TCowswapOrderQuoteResponse, TPossibleSolverQuote, TRequest} from 'utils/types';
+import type {TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
 function CowswapButtons({
@@ -165,7 +165,7 @@ function CowswapButtons({
 			return;
 		}
 		set_isSigning(true);
-		const executedQuotes: TPossibleSolverQuote[] = [];
+		const executedQuotes: TCowswapOrderQuoteResponse[] = [];
 		const allQuotes = getTypedCowswapQuote(quotes);
 		for (const [token, quote] of Object.entries(allQuotes.quote)) {
 			const tokenAddress = toAddress(token);
@@ -187,7 +187,7 @@ function CowswapButtons({
 				quote.signature = signature;
 				quote.signingScheme = signingScheme;
 				onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.VALID}));
-				set_quotes((prev): Maybe<TRequest> => assignSignature(prev, tokenAddress, signature, signingScheme));
+				set_quotes((prev): TRequest => assignSignature(prev, tokenAddress, signature, signingScheme));
 			} catch (error) {
 				onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
 				continue;
@@ -200,7 +200,7 @@ function CowswapButtons({
 				onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.PENDING}));
 				solver
 					.execute(quotes, tokenAddress, Boolean(process.env.SHOULD_USE_PRESIGN), (orderUID): void => {
-						set_quotes((prev): Maybe<TRequest> => setPendingQuote(prev, tokenAddress, orderUID));
+						set_quotes((prev): TRequest => setPendingQuote(prev, tokenAddress, orderUID));
 					})
 					.then(async ({status, orderUID, error}): Promise<void> => {
 						if (error?.message) {
@@ -208,10 +208,10 @@ function CowswapButtons({
 								onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
 								onUpdateSignStep(prev => ({...prev, [tokenAddress]: TStatus.UNDETERMINED}));
 								onUpdateApprovalStep(prev => ({...prev, [tokenAddress]: TStatus.UNDETERMINED}));
-								set_quotes((prev): Maybe<TRequest> => setInvalidQuote(prev, tokenAddress, orderUID));
+								set_quotes((prev): TRequest => setInvalidQuote(prev, tokenAddress, orderUID));
 							} else {
 								onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
-								set_quotes((prev): Maybe<TRequest> => setInvalidQuote(prev, tokenAddress, orderUID));
+								set_quotes((prev): TRequest => setInvalidQuote(prev, tokenAddress, orderUID));
 							}
 						} else {
 							executedQuotes.push({
@@ -220,7 +220,7 @@ function CowswapButtons({
 								orderStatus: status
 							} as unknown as TCowswapOrderQuoteResponse);
 							onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.VALID}));
-							set_quotes((prev): Maybe<TRequest> => setStatusQuote(prev, tokenAddress, status, orderUID));
+							set_quotes((prev): TRequest => setStatusQuote(prev, tokenAddress, status, orderUID));
 							refresh([
 								{
 									token: toAddress(quote.quote.buyToken),
@@ -239,7 +239,7 @@ function CowswapButtons({
 					});
 			} catch (error) {
 				onUpdateExecuteStep(prev => ({...prev, [tokenAddress]: TStatus.INVALID}));
-				set_quotes((prev): Maybe<TRequest> => setInvalidQuote(prev, tokenAddress, ''));
+				set_quotes((prev): TRequest => setInvalidQuote(prev, tokenAddress, ''));
 			}
 		}
 
@@ -271,7 +271,7 @@ function CowswapButtons({
 				return;
 			}
 
-			set_quotes((prev): Maybe<TRequest> => setRefreshingQuote(prev, toAddress(key)));
+			set_quotes((prev): TRequest => setRefreshingQuote(prev, toAddress(key)));
 			const {quoteResponse} = await solver.getQuote({
 				from: toAddress(currentQuote.from),
 				receiver: toAddress(currentQuote.quote.receiver),
@@ -281,7 +281,7 @@ function CowswapButtons({
 				inputBalances: [0n] //Non relevant here
 			});
 			if (quoteResponse) {
-				set_quotes((prev): Maybe<TRequest> => addQuote(prev, quoteResponse));
+				set_quotes((prev): TRequest => addQuote(prev, quoteResponse));
 			}
 		}
 		set_isRefreshingQuotes(false);

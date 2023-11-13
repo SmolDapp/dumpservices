@@ -1,4 +1,5 @@
 import React from 'react';
+import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import ViewSectionHeading from '@common/ViewSectionHeading';
 
 import {WalletCard} from './WalletCard';
@@ -10,6 +11,7 @@ type TViewWalletProps = {
 };
 
 function ViewWallet({onSelect}: TViewWalletProps): ReactElement {
+	const {chainID} = useChainID();
 	return (
 		<section
 			id={'wallet'}
@@ -19,7 +21,7 @@ function ViewWallet({onSelect}: TViewWalletProps): ReactElement {
 					className={
 						'absolute right-6 top-6 flex flex-row items-center justify-center space-x-2 text-xs text-neutral-400'
 					}>
-					<p className={''}>{'Powered by CoW Protocol'}</p>
+					<p suppressHydrationWarning>{chainID === 137 ? 'Powered by Bebop' : 'Powered by CoW Protocol'}</p>
 				</div>
 				<ViewSectionHeading
 					title={'Connect your Wallet'}

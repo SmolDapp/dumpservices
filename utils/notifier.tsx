@@ -4,7 +4,7 @@ import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
 import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 
-import type {TCowswapOrderQuoteResponse, TPossibleSolverQuote} from 'utils/types';
+import type {TCowswapOrderQuoteResponse} from 'utils/types';
 
 type TSafeTxHistory = {
 	safe: string;
@@ -12,7 +12,7 @@ type TSafeTxHistory = {
 };
 
 function notify(
-	orders: TPossibleSolverQuote[],
+	orders: TCowswapOrderQuoteResponse[],
 	solver: 'COWSWAP' | 'BEBOP',
 	origin: string,
 	txHash: string,

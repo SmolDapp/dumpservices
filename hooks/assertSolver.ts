@@ -1,7 +1,8 @@
-import type {Maybe, TBebopOrderQuoteResponse, TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
-import type {TDict} from '@yearn-finance/web-lib/types';
+import {toAddress} from '@yearn-finance/web-lib/utils/address';
 
-export function isQuote(order: Maybe<TRequest>): order is TRequest {
+import type {TBebopRequest, TCowswapRequest, TRequest} from 'utils/types';
+
+export function isQuote(order: TRequest): order is TRequest {
 	if (!order) {
 		return false;
 	}
@@ -14,9 +15,7 @@ export function isQuote(order: Maybe<TRequest>): order is TRequest {
 	return true;
 }
 
-export function asCowswapOrder(
-	order: Maybe<TRequest>
-): asserts order is TRequest & {quote: TDict<TCowswapOrderQuoteResponse>} {
+export function asCowswapOrder(order: TRequest): asserts order is TRequest & TCowswapRequest {
 	if (!order) {
 		throw new Error('Order is undefined');
 	}
@@ -31,7 +30,7 @@ export function asCowswapOrder(
 	}
 }
 
-export function isCowswapOrder(order: Maybe<TRequest>): order is TRequest & {quote: TDict<TCowswapOrderQuoteResponse>} {
+export function isCowswapOrder(order: TRequest): order is TRequest & TCowswapRequest {
 	try {
 		asCowswapOrder(order);
 		return true;
@@ -40,9 +39,7 @@ export function isCowswapOrder(order: Maybe<TRequest>): order is TRequest & {quo
 	}
 }
 
-export function asBebopOrder(
-	order: Maybe<TRequest>
-): asserts order is TRequest & {quote: TDict<TBebopOrderQuoteResponse>} {
+export function asBebopOrder(order: TRequest): asserts order is TRequest & TBebopRequest {
 	if (!order) {
 		throw new Error('Order is undefined');
 	}
@@ -57,7 +54,7 @@ export function asBebopOrder(
 	}
 }
 
-export function isBebopOrder(order: Maybe<TRequest>): order is TRequest & {quote: TDict<TBebopOrderQuoteResponse>} {
+export function isBebopOrder(order: TRequest): order is TRequest & TBebopRequest {
 	try {
 		asBebopOrder(order);
 		return true;
@@ -66,17 +63,30 @@ export function isBebopOrder(order: Maybe<TRequest>): order is TRequest & {quote
 	}
 }
 
-export function getTypedCowswapQuote(order: Maybe<TRequest>): TRequest & {quote: TDict<TCowswapOrderQuoteResponse>} {
-	return order as TRequest & {quote: TDict<TCowswapOrderQuoteResponse>};
+export function getTypedCowswapQuote(order: TRequest): TRequest & TCowswapRequest {
+	return order as TRequest & TCowswapRequest;
 }
 
-export type TTypedBebopQuote = TRequest & {
-	quote: TDict<TBebopOrderQuoteResponse>;
-};
-export function getTypedBebopQuote(order: Maybe<TRequest>): TTypedBebopQuote {
-	return order as TTypedBebopQuote;
+export function getTypedBebopQuote(order: TRequest): TRequest & TBebopRequest {
+	return order as TRequest & TBebopRequest;
 }
 
-export function hasQuote(order: Maybe<TRequest>, tokenAddress: string): boolean {
-	return !!order?.quote?.[tokenAddress];
+export function hasQuote(quote: TRequest, tokenAddress: string): boolean {
+	if (!quote) {
+		return false;
+	}
+	if (isCowswapOrder(quote)) {
+		const currentQuote = getTypedCowswapQuote(quote);
+		if (tokenAddress === '') {
+			return !!currentQuote.quote;
+		}
+		return !!currentQuote?.quote?.[toAddress(tokenAddress)];
+	}
+
+	if (isBebopOrder(quote)) {
+		const currentQuote = getTypedBebopQuote(quote);
+		return !!currentQuote?.quote?.buyToken;
+	}
+
+	return false;
 }

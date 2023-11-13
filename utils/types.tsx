@@ -9,6 +9,8 @@ import type {EcdsaSigningScheme, OrderQuoteResponse} from '@cowprotocol/cow-sdk'
 export type Maybe<T> = T | null | undefined;
 
 export enum TPossibleStatus {
+	NOT_STARTED = 'not_started',
+
 	INVALID = 'invalid',
 	PENDING = 'pending',
 
@@ -67,8 +69,8 @@ export type TRequestMetadata = {
 	isRefreshing: boolean;
 	isFetching?: boolean;
 	expirationTimestamp: number;
-	buyToken: TToken;
-	sellToken: TToken;
+	buyToken: TTokenWithAmount;
+	sellToken: TTokenWithAmount;
 };
 export type TCowswapOrderQuoteResponse = OrderQuoteResponse & {
 	validTo: number;
@@ -85,38 +87,6 @@ export type TCowQuoteError = {
 		description: string;
 		errorType: string;
 		data: {fee_amount: string};
-	};
-};
-
-export type TBebopToken = {
-	amount: string;
-	amountUsd: number;
-	contractAddress: TAddress;
-	priceUsd: number;
-	decimals: number;
-	rate: number;
-};
-
-export type TBebopQuoteAPIResp = {
-	status: string;
-	type: string;
-	chainId: number;
-	quoteId: string;
-	receiver: TAddress;
-	from: TAddress;
-	expiry: number;
-	buyTokens: TDict<TBebopToken>;
-	sellTokens: TDict<TBebopToken>;
-	toSign: {
-		expiry: number;
-		taker_address: TAddress;
-		maker_addresses: TAddress[];
-		maker_nonces: number[];
-		taker_tokens: TAddress[][];
-		maker_tokens: TAddress[][];
-		taker_amounts: string[][];
-		maker_amounts: string[][];
-		receiver: TAddress;
 	};
 };
 
@@ -183,6 +153,11 @@ export type TBebopJamQuoteAPIResp = {
 	hasExecutionError: boolean;
 	txHash: Hex;
 };
+export type TBebopJamOrderStatusAPIResp = {
+	status: 'string';
+	tx_hash: Hex;
+	amounts: number;
+};
 
 export type TBebopOrderQuoteResponse = {
 	id: string;
@@ -193,8 +168,6 @@ export type TBebopOrderQuoteResponse = {
 	receiver: TAddress;
 	from: TAddress;
 	expirationTimestamp: number;
-	buyToken: TTokenWithAmount;
-	sellToken: TTokenWithAmount;
 	toSign: {
 		taker: string;
 		receiver: string;
@@ -210,6 +183,14 @@ export type TBebopOrderQuoteResponse = {
 		sellTokenTransfers: string;
 		buyTokenTransfers: string;
 	};
+	//Override for dump
+	isSigned: boolean;
+	isSigning: boolean;
+	hasSignatureError: boolean;
+	isExecuted: boolean;
+	isExecuting: boolean;
+	hasExecutionError: boolean;
+	txHash: Hex;
 } & TRequestMetadata;
 
 export type TBebopOrderQuoteError = {
@@ -222,11 +203,19 @@ export type TBebopOrderQuoteError = {
 	};
 };
 
-export type TRequest = {
+export type TCowswapRequest = {
+	solverType: 'COWSWAP';
+	quote: TDict<TCowswapOrderQuoteResponse>;
 	buyToken: TToken; // token we want to receive
-	sellTokens: TDict<TTokenWithAmount>; // address -> TTokenWithAmount
-	quote: TDict<TPossibleSolverQuote>;
-	solverType: 'COWSWAP' | 'BEBOP';
 };
-export type TPossibleSolverQuote = TCowswapOrderQuoteResponse | TBebopOrderQuoteResponse;
+export type TBebopRequest = {
+	solverType: 'BEBOP';
+	quote: TBebopOrderQuoteResponse;
+	buyTokens: TDict<TTokenWithAmount>; // tokens, where the key is the address of the token we send for it
+};
+export type TRequest = {
+	sellTokens: TDict<TTokenWithAmount>; // address -> TTokenWithAmount
+} & (TCowswapRequest | TBebopRequest);
 export type TOrderQuoteError = TCowQuoteError | TBebopOrderQuoteError;
+
+export type TQuote = TRequest & (TBebopRequest | TCowswapRequest);

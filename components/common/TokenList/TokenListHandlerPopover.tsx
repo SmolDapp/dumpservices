@@ -41,7 +41,7 @@ function TokenListHandlerPopover({
 					leave={'ease-in duration-200'}
 					leaveFrom={'opacity-100'}
 					leaveTo={'opacity-0'}>
-					<div className={'fixed inset-0 bg-neutral-900/20 transition-opacity'} />
+					<div className={'fixed inset-0 bg-primary-900/40 backdrop-blur-sm transition-opacity'} />
 				</Transition.Child>
 
 				<div className={'fixed inset-0 z-10 w-screen overflow-y-auto'}>

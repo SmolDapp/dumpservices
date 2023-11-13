@@ -1,5 +1,5 @@
 import React from 'react';
-import {useSweepooor} from 'contexts/useSweepooor';
+import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 
@@ -11,7 +11,7 @@ import type {ReactElement} from 'react';
 
 function ViewApprovalWizard(): ReactElement {
 	const {isWalletSafe} = useWeb3();
-	const {quotes} = useSweepooor();
+	const {quotes, currentStep} = useSweepooor();
 
 	return (
 		<section>
@@ -30,9 +30,9 @@ function ViewApprovalWizard(): ReactElement {
 					</p>
 				</div>
 
-				{isWalletSafe && <GnosisBatchedFlow />}
-				{isBebopOrder(quotes) && <BebopBatchedFlow />}
-				{isCowswapOrder(quotes) && <CowswapStandardFlow />}
+				{currentStep === Step.APPROVALS && isWalletSafe && <GnosisBatchedFlow />}
+				{currentStep === Step.APPROVALS && isBebopOrder(quotes) && <BebopBatchedFlow />}
+				{currentStep === Step.APPROVALS && isCowswapOrder(quotes) && <CowswapStandardFlow />}
 			</div>
 		</section>
 	);

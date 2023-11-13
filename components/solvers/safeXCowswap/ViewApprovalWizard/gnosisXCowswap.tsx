@@ -1,8 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedCowswapQuote, isCowswapOrder} from 'hooks/assertSolver';
-import {addQuote, setRefreshingQuote} from 'hooks/handleQuote';
-import {getSellAmount} from 'hooks/helperWithSolver';
+import {addQuote, getSellAmount, setRefreshingQuote} from 'hooks/handleQuote';
 import {getSpender, useSolver} from 'hooks/useSolver';
 import {isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
@@ -21,7 +20,7 @@ import {MAX_UINT_256} from '@yearn-finance/web-lib/utils/constants';
 import {CowswapApprovalWizard} from '../../cowswap/ViewApprovalWizard/ApprovalWizard';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
-import type {Maybe, TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
+import type {TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
@@ -60,7 +59,7 @@ function GnosisXCowswapBatchedFlow({
 				if (currentQuote.orderUID && ['fulfilled', 'pending'].includes(currentQuote?.orderStatus || '')) {
 					return; //skip already sent
 				}
-				set_quotes((prev): Maybe<TRequest> => setRefreshingQuote(prev, toAddress(key)));
+				set_quotes((prev): TRequest => setRefreshingQuote(prev, toAddress(key)));
 				const {quoteResponse} = await solver.getQuote({
 					from: toAddress(currentQuote.from),
 					receiver: toAddress(currentQuote.quote.receiver),
@@ -70,7 +69,7 @@ function GnosisXCowswapBatchedFlow({
 					inputBalances: [0n] // Non relevant here
 				});
 				if (quoteResponse) {
-					set_quotes((prev): Maybe<TRequest> => addQuote(prev, quoteResponse));
+					set_quotes((prev): TRequest => addQuote(prev, quoteResponse));
 				}
 			}
 		}
@@ -97,8 +96,9 @@ function GnosisXCowswapBatchedFlow({
 		// Check approvals and add them to the batch if needed
 		const allQuotes = getTypedCowswapQuote(quotes);
 		for (const token of Object.keys(allQuotes.quote)) {
+			const currentQuote = getTypedCowswapQuote(quotes);
 			const tokenAddress = toAddress(token);
-			const quoteOrder = quotes.quote[tokenAddress] as TCowswapOrderQuoteResponse;
+			const quoteOrder = currentQuote.quote[tokenAddress] as TCowswapOrderQuoteResponse;
 			const isApproved = await isApprovedERC20({
 				connector: provider,
 				chainID: safeChainID,
@@ -240,7 +240,7 @@ function Wrapper(): ReactElement {
 				return (
 					<CowswapApprovalWizard
 						key={`${token}_${currentQuote?.quote?.buyAmount}_${currentQuote?.quote?.receiver}_${index}`}
-						token={toAddress(token)}
+						token={currentQuote.sellToken}
 						index={index}
 						hasSignature={((currentQuote as TCowswapOrderQuoteResponse)?.signature || '') !== ''}
 						approvalStep={approvalStep}

@@ -1,4 +1,5 @@
 import {VALID_TO_MN, VALID_TO_MN_SAFE} from 'utils/constants';
+import {TPossibleStatus} from 'utils/types';
 import axios from 'axios';
 import {OrderBookApi, OrderQuoteSideKindSell, SigningScheme} from '@cowprotocol/cow-sdk';
 import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -10,9 +11,11 @@ import type {
 	TBebopOrderQuoteResponse,
 	TCowQuoteError,
 	TCowswapOrderQuoteResponse,
+	TCowswapRequest,
 	TOrderQuoteError,
 	TRequest,
 	TRequestArgs,
+	TToken,
 	TTokenWithAmount
 } from 'utils/types';
 import type {TAddress, TDict} from '@yearn-finance/web-lib/types';
@@ -27,7 +30,7 @@ export type TGetQuote = {
 
 type TRetreiveCowQuote = {
 	sellToken: TAddress;
-	buyToken: TAddress;
+	buyToken: TToken;
 	from: TAddress;
 	receiver: TAddress;
 	amount: TNormalizedBN;
@@ -45,7 +48,7 @@ export async function retrieveQuoteFromCowswap({
 	const cowswapOrderBook = new OrderBookApi({chainId: 1});
 	const quote: OrderQuoteRequest = {
 		sellToken, // token to spend
-		buyToken, // token to receive
+		buyToken: buyToken.address, // token to receive
 		from,
 		receiver,
 		appData: process.env.COWSWAP_APP_DATA || '',
@@ -65,28 +68,33 @@ export async function retrieveQuoteFromCowswap({
 		);
 		try {
 			const result = (await cowswapOrderBook.getQuote(quote)) as TCowswapOrderQuoteResponse;
-			const cowRequest: TRequest = {
+			const sellToken: TTokenWithAmount = {
+				address: toAddress(request.inputTokens[0].address),
+				name: request.inputTokens[0].name,
+				symbol: request.inputTokens[0].symbol,
+				decimals: request.inputTokens[0].decimals,
+				chainId: request.inputTokens[0].chainId,
+				amount: toNormalizedBN(
+					toBigInt(result.quote.sellAmount) + toBigInt(result.quote.feeAmount),
+					request.outputToken.decimals
+				)
+			};
+			const buyTokenWithAmount: TTokenWithAmount = {
+				...buyToken,
+				amount: toNormalizedBN(result.quote.buyAmount, buyToken.decimals)
+			};
+			const cowRequest: TRequest & TCowswapRequest = {
 				solverType: 'COWSWAP',
-				buyToken: request.outputToken,
+				buyToken: buyTokenWithAmount,
 				sellTokens: {
-					[request.inputTokens[0].address]: {
-						address: toAddress(request.inputTokens[0].address),
-						name: request.inputTokens[0].name,
-						symbol: request.inputTokens[0].symbol,
-						decimals: request.inputTokens[0].decimals,
-						chainId: request.inputTokens[0].chainId,
-						amount: toNormalizedBN(
-							toBigInt(result.quote.sellAmount) + toBigInt(result.quote.feeAmount),
-							request.outputToken.decimals
-						)
-					}
+					[request.inputTokens[0].address]: sellToken
 				},
 				quote: {
 					[toAddress(result.quote.sellToken)]: {
 						...result,
-						buyToken: request.outputToken,
-						sellToken: request.inputTokens[0],
-						validTo: quote.validTo
+						quote: result.quote,
+						buyToken: buyTokenWithAmount,
+						sellToken: sellToken
 					}
 				}
 			};
@@ -119,7 +127,7 @@ export async function retrieveQuoteFromCowswap({
 
 type TRetreiveBebopQuote = {
 	sellTokens: TAddress[];
-	buyTokens: TAddress[];
+	buyToken: TToken;
 	from: TAddress;
 	receiver: TAddress;
 	amounts: TNormalizedBN[];
@@ -128,7 +136,7 @@ type TRetreiveBebopQuote = {
 export async function retrieveQuoteFromBebopJam({
 	request,
 	sellTokens,
-	buyTokens,
+	buyToken,
 	from,
 	receiver,
 	amounts
@@ -136,12 +144,12 @@ export async function retrieveQuoteFromBebopJam({
 	const hasZeroAddressSellToken = sellTokens.some((token): boolean => isZeroAddress(token));
 	const hasZeroAmount = amounts.some((amount): boolean => toBigInt(amount.raw || 0) <= 0n);
 	const canExecuteFetch =
-		!(isZeroAddress(from) || hasZeroAddressSellToken || isZeroAddress(buyTokens[0])) && !hasZeroAmount;
+		!(isZeroAddress(from) || hasZeroAddressSellToken || isZeroAddress(buyToken.address)) && !hasZeroAmount;
 
 	if (canExecuteFetch) {
 		try {
 			const requestURI = new URL(`http://${'localhost:3000'}/api/jamProxy`);
-			requestURI.searchParams.append('buy_tokens', buyTokens[0]);
+			requestURI.searchParams.append('buy_tokens', buyToken.address);
 			requestURI.searchParams.append('sell_tokens', sellTokens.join(','));
 			requestURI.searchParams.append('sell_amounts', amounts.map(({raw}): string => raw.toString()).join(','));
 			requestURI.searchParams.append('taker_address', from);
@@ -160,12 +168,11 @@ export async function retrieveQuoteFromBebopJam({
 
 			if (data.status === 'Success') {
 				const apiResponse = data as TBebopJamQuoteAPIResp;
-				const [[originalBuyTokenAddr, originalBuyToken]] = Object.entries(apiResponse.buyTokens);
+				const [[, originalBuyToken]] = Object.entries(apiResponse.buyTokens);
 				const [[originalSellTokenAddr, originalSellToken]] = Object.entries(apiResponse.sellTokens);
-				const requestedBuyToken = request.inputTokens.find((t): boolean => t.address === buyTokens[0]);
 				const requestedSellToken = request.outputToken;
 
-				const result: Partial<TBebopOrderQuoteResponse> = {
+				const result: TBebopOrderQuoteResponse = {
 					id: apiResponse.quoteId,
 					status: apiResponse.status,
 					type: apiResponse.type,
@@ -175,11 +182,11 @@ export async function retrieveQuoteFromBebopJam({
 					expirationTimestamp: Number(apiResponse.expiry),
 					toSign: apiResponse.toSign,
 					buyToken: {
-						address: toAddress(originalBuyTokenAddr),
+						address: toAddress(buyToken.address),
 						decimals: originalBuyToken.decimals,
-						name: requestedBuyToken?.name || '',
-						symbol: requestedBuyToken?.symbol || '',
-						chainId: requestedBuyToken?.chainId || 0,
+						name: buyToken.name || '',
+						symbol: buyToken.symbol || '',
+						chainId: buyToken.chainId || 0,
 						amount: toNormalizedBN(originalBuyToken.amount, originalBuyToken.decimals)
 					},
 					sellToken: {
@@ -189,31 +196,71 @@ export async function retrieveQuoteFromBebopJam({
 						symbol: requestedSellToken.symbol,
 						chainId: requestedSellToken.chainId,
 						amount: toNormalizedBN(originalSellToken.amount, originalSellToken.decimals)
-					}
+					},
+					//Rest
+					orderUID: '',
+					orderStatus: TPossibleStatus.NOT_STARTED,
+					orderError: undefined,
+					isRefreshing: false,
+					signature: '0x',
+					isSigned: false,
+					isSigning: false,
+					hasSignatureError: false,
+					isExecuted: false,
+					isExecuting: false,
+					hasExecutionError: false,
+					txHash: '0x'
 				};
 
-				const updatedQuote: TDict<TBebopOrderQuoteResponse> = {};
 				const sellTokens: TDict<TTokenWithAmount> = {};
-				for (const [tokenAddress, tokenData] of Object.entries(apiResponse.sellTokens)) {
+				const buyTokens: TDict<TTokenWithAmount> = {};
+				for (const [tokenAddress, tokenToSell] of Object.entries(apiResponse.sellTokens)) {
 					const fromInputToken = request.inputTokens.find(
 						(t): boolean => t.address === toAddress(tokenAddress)
 					);
 					sellTokens[toAddress(tokenAddress)] = {
 						address: toAddress(tokenAddress),
-						decimals: tokenData.decimals,
+						decimals: tokenToSell.decimals,
 						name: fromInputToken?.name || '',
 						symbol: fromInputToken?.symbol || '',
 						chainId: fromInputToken?.chainId || 0,
-						amount: toNormalizedBN(tokenData.amount, tokenData.decimals)
+						amount: toNormalizedBN(tokenToSell.amount, tokenToSell.decimals)
 					};
-					updatedQuote[toAddress(tokenAddress)] = result as TBebopOrderQuoteResponse;
+
+					const estimatedOut = toNormalizedBN(
+						Math.round(
+							Number(
+								Number(toNormalizedBN(tokenToSell.amount, tokenToSell.decimals).normalized) *
+									(Number(tokenToSell.price) * Number(10 ** originalBuyToken.decimals))
+							)
+						),
+						originalBuyToken.decimals
+					);
+					const estimatedOutBeforeFees = toNormalizedBN(
+						Math.round(
+							Number(
+								Number(toNormalizedBN(tokenToSell.amount, tokenToSell.decimals).normalized) *
+									(Number(tokenToSell.priceBeforeFee) * Number(10 ** originalBuyToken.decimals))
+							)
+						),
+						originalBuyToken.decimals
+					);
+					buyTokens[toAddress(tokenAddress)] = {
+						address: toAddress(buyToken.address),
+						decimals: originalBuyToken.decimals,
+						name: buyToken?.name || '',
+						symbol: buyToken?.symbol || '',
+						chainId: buyToken?.chainId || 0,
+						amount: estimatedOut,
+						amountWithSlippage: estimatedOutBeforeFees
+					};
 				}
 
 				const bebopRequest: TRequest = {
 					solverType: 'BEBOP',
-					buyToken: request.outputToken,
+					buyTokens: buyTokens,
 					sellTokens: sellTokens,
-					quote: updatedQuote
+					quote: result
 				};
 
 				return {quoteResponse: bebopRequest};

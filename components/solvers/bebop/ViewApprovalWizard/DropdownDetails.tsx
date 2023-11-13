@@ -5,10 +5,10 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDate} from '@yearn-finance/web-lib/utils/format.time';
 
 import type {ReactElement} from 'react';
-import type {TBebopJamQuoteAPIResp} from 'utils/types';
+import type {TBebopRequest, TRequest} from 'utils/types';
 
-function BebopDetails({aggregatedQuote}: {aggregatedQuote: TBebopJamQuoteAPIResp}): ReactElement {
-	if (!aggregatedQuote) {
+function BebopDetails({currentQuote}: {currentQuote: TRequest & TBebopRequest}): ReactElement {
+	if (!currentQuote) {
 		return <div />;
 	}
 
@@ -16,76 +16,57 @@ function BebopDetails({aggregatedQuote}: {aggregatedQuote: TBebopJamQuoteAPIResp
 		<div className={'font-number space-y-2 border-t border-neutral-200 bg-neutral-100 p-4 text-xs md:text-sm'}>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'Kind'}</b>
-				<p className={'font-number'}>{aggregatedQuote.type || ''}</p>
+				<p className={'font-number'}>{currentQuote.quote.type || ''}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'From'}</b>
-				<p className={'font-number'}>{toAddress(aggregatedQuote.taker || '')}</p>
+				<p className={'font-number'}>{toAddress(currentQuote.quote.toSign.taker || '')}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'Receiver'}</b>
-				<p className={'font-number'}>{toAddress(aggregatedQuote.receiver || '')}</p>
+				<p className={'font-number'}>{toAddress(currentQuote.quote.toSign.receiver || '')}</p>
 			</span>
 			<span className={'flex flex-col justify-between md:flex-row'}>
 				<b>{'ValidTo'}</b>
-				<p className={'font-number'}>{formatDate(aggregatedQuote.expiry * 1000)}</p>
+				<p className={'font-number'}>{formatDate(currentQuote.quote.toSign.expiry * 1000)}</p>
 			</span>
-			<span className={'mt-4 flex flex-col justify-between border-t border-neutral-200 pt-4 md:flex-row'}>
+			<span className={'mt-4 flex flex-col justify-between pt-4 md:flex-row'}>
 				<b>{'Dumping'}</b>
 				<div className={'flex flex-col gap-y-1 text-right'}>
-					{Object.entries(aggregatedQuote.sellTokens).map(([key, value]) => {
+					{Object.entries(currentQuote.sellTokens).map(([key, value]) => {
 						return (
-							<p
-								className={'font-number'}
-								key={key}>
-								<span className={'font-number'}>
-									{formatAmount(toNormalizedBN(value.amount, value.decimals).normalized, 6, 6)}
-								</span>
-								{` ${value.symbol} `}
-								<span className={'font-number text-xs'}>{`(${toAddress(key)})`}</span>
-							</p>
+							<div
+								key={key}
+								className={'flex gap-4'}>
+								<p
+									className={'font-number'}
+									key={key}>
+									<span className={'font-number font-bold'}>
+										{formatAmount(value.amount.normalized, 6, 6)}
+									</span>
+									{` ${value.symbol} for `}
+									<span className={'font-number font-bold'}>
+										{formatAmount(currentQuote.buyTokens[value.address].amount.normalized, 6, 6)}
+									</span>
+									{` ${currentQuote.buyTokens[value.address].symbol} (`}
+									<span className={'font-number font-bold'}>
+										{formatAmount(
+											toNormalizedBN(
+												toBigInt(
+													currentQuote.buyTokens[value.address].amountWithSlippage?.raw || 0n
+												) - toBigInt(currentQuote.buyTokens[value.address]?.amount.raw || 0n),
+												currentQuote.buyTokens[value.address].decimals
+											).normalized,
+											6,
+											6
+										)}
+									</span>
+									{` ${currentQuote.buyTokens[value.address].symbol} fees)`}
+								</p>
+							</div>
 						);
 					})}
 				</div>
-			</span>
-			<span className={'mt-4 flex flex-col justify-between border-t border-neutral-200 pt-4 md:flex-row'}>
-				<b>{'Receiving'}</b>
-				{Object.entries(aggregatedQuote.buyTokens).map(([key, value]) => {
-					return (
-						<p
-							className={'font-number'}
-							key={key}>
-							<span className={'font-number'}>
-								{formatAmount(toNormalizedBN(value.amount, value.decimals).normalized, 6, 6)}
-							</span>
-							{` ${value.symbol} `}
-							<span className={'font-number text-xs'}>{`(${toAddress(key)})`}</span>
-						</p>
-					);
-				})}
-			</span>
-			<span className={'flex flex-col justify-between opacity-60 md:flex-row'}>
-				<b>{'Fees'}</b>
-				{Object.entries(aggregatedQuote.buyTokens).map(([key, value]) => {
-					return (
-						<p
-							className={'font-number'}
-							key={key}>
-							<span className={'font-number'}>
-								{formatAmount(
-									toNormalizedBN(
-										toBigInt(value.amountBeforeFee) - toBigInt(value.amount),
-										value.decimals
-									).normalized,
-									6,
-									6
-								)}
-							</span>
-							{` ${value.symbol} `}
-							<span className={'font-number text-xs'}>{`(${toAddress(key)})`}</span>
-						</p>
-					);
-				})}
 			</span>
 		</div>
 	);

@@ -1,10 +1,11 @@
 import React, {useCallback, useMemo, useRef} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
+import {useTokenList} from 'contexts/useTokenList';
 import {useWallet} from 'contexts/useWallet';
-import {addQuote, deleteQuote, initQuote, resetQuote} from 'hooks/handleQuote';
-import {getBuyAmount} from 'hooks/helperWithSolver';
+import {addQuote, deleteQuote, getBuyAmount, initQuote, resetQuote} from 'hooks/handleQuote';
 import {useSolver} from 'hooks/useSolver';
 import {DENYLIST_COWSWAP} from 'utils/denyList.cowswap';
+import {serialize} from 'wagmi';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -16,14 +17,15 @@ import {NothingToDump} from './NothingToDump';
 import {TokenRow} from './TokenRow';
 
 import type {ReactElement} from 'react';
-import type {Maybe, TRequest, TRequestArgs, TToken} from 'utils/types';
+import type {TQuote, TRequestArgs, TToken, TTokenWithAmount} from 'utils/types';
 import type {TDict} from '@yearn-finance/web-lib/types';
 import type {TBalanceData} from '@yearn-finance/web-lib/types/hooks';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 function CardList(props: {search: string}): ReactElement {
 	const {address, chainID} = useWeb3();
-	const {set_quotes, destination, receiver} = useSweepooor();
+	const {getToken} = useTokenList();
+	const {quotes, set_quotes, destination, receiver} = useSweepooor();
 	const {balances, getBalance, balancesNonce, isLoading} = useWallet();
 	const solver = useSolver();
 	const perTokenInputRef = useRef<TDict<HTMLInputElement>>({});
@@ -55,41 +57,95 @@ function CardList(props: {search: string}): ReactElement {
 					(balance?.raw && balance.raw !== 0n) || balance?.force || false
 			)
 			.filter(
-				([tokenAddress]: [string, TBalanceData]): boolean => toAddress(tokenAddress) !== destination.address
-				// && toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS //TODO: ONLY FOR BEBOP
+				([tokenAddress]: [string, TBalanceData]): boolean =>
+					toAddress(tokenAddress) !== destination.address &&
+					chainID === 1 &&
+					toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS //It's impossible to dump eth with CowSwap
 			)
 			.filter(([tokenAddress]: [string, TBalanceData]): boolean =>
 				destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true
 			);
-	}, [balancesNonce, balances, props.search, destination.address]);
+	}, [balancesNonce, balances, props.search, destination.address, chainID]);
 
 	const prepareRequest = useCallback(
-		(props: {inputToken: TToken; rawAmount: bigint; rawBalance: bigint}): TRequestArgs => {
+		(props: {
+			solver: 'COWSWAP' | 'BEBOP';
+			inputToken: TToken;
+			rawAmount: bigint;
+			rawBalance: bigint;
+		}): TRequestArgs => {
+			const previousInputTokens = Object.values(props.solver === 'BEBOP' ? quotes?.sellTokens || [] : []).map(
+				(token: TTokenWithAmount): TToken => {
+					return {
+						address: token.address,
+						name: token.name,
+						symbol: token.symbol,
+						decimals: token.decimals,
+						chainId: token.chainId
+					};
+				}
+			);
+			const previousInputAmounts = Object.values(props.solver === 'BEBOP' ? quotes?.sellTokens || [] : []).map(
+				(token: TTokenWithAmount): bigint => {
+					return toBigInt(token.amount.raw);
+				}
+			);
+			const previousInputBalance = Object.values(props.solver === 'BEBOP' ? quotes?.sellTokens || [] : []).map(
+				(token: TTokenWithAmount): bigint => {
+					return toBigInt(token.amount.raw);
+				}
+			);
+			const indexOfTokenToUpdate = previousInputTokens.findIndex(
+				(token: TToken) => props.inputToken.address === token.address
+			);
+			if (indexOfTokenToUpdate === -1) {
+				previousInputTokens.push({
+					address: props.inputToken.address,
+					name: props.inputToken.name,
+					symbol: props.inputToken.symbol,
+					decimals: props.inputToken.decimals,
+					chainId: props.inputToken.chainId
+				});
+				previousInputAmounts.push(props.rawAmount);
+				previousInputBalance.push(props.rawBalance);
+			} else {
+				previousInputTokens[indexOfTokenToUpdate] = {
+					address: props.inputToken.address,
+					name: props.inputToken.name,
+					symbol: props.inputToken.symbol,
+					decimals: props.inputToken.decimals,
+					chainId: props.inputToken.chainId
+				};
+				previousInputAmounts[indexOfTokenToUpdate] = props.rawAmount;
+				previousInputBalance[indexOfTokenToUpdate] = props.rawBalance;
+			}
+
 			const request: TRequestArgs = {
 				from: toAddress(address),
 				receiver: toAddress(receiver),
-				inputTokens: [
-					{
-						address: props.inputToken.address,
-						name: props.inputToken.name,
-						symbol: props.inputToken.symbol,
-						decimals: props.inputToken.decimals,
-						chainId: chainID
-					}
-				],
+				inputTokens: [...previousInputTokens],
 				outputToken: {
 					address: destination.address,
 					name: destination.name,
 					symbol: destination.symbol,
 					decimals: destination.decimals,
-					chainId: chainID
+					chainId: destination.chainId
 				},
-				inputAmounts: [props.rawAmount],
-				inputBalances: [props.rawBalance]
+				inputAmounts: [...previousInputAmounts],
+				inputBalances: [...previousInputBalance]
 			};
 			return request;
 		},
-		[address, chainID, destination.address, destination.decimals, destination.name, destination.symbol, receiver]
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[
+			address,
+			destination.address,
+			destination.decimals,
+			destination.name,
+			destination.symbol,
+			receiver,
+			serialize(quotes)
+		]
 	);
 
 	const onHandleQuote = useCallback(
@@ -97,46 +153,45 @@ function CardList(props: {search: string}): ReactElement {
 			if (rawAmount === 0n) {
 				return toNormalizedBN(0);
 			}
-			if (perTokenInputRef.current[token.address]?.ariaBusy === 'true') {
+			if (perTokenInputRef.current[toAddress(token.address)]?.ariaBusy === 'true') {
 				return toNormalizedBN(0);
 			}
-			if (perTokenInputRef.current[token.address]) {
-				perTokenInputRef.current[token.address].ariaBusy = 'true';
-				perTokenInputRef.current[token.address].ariaInvalid = 'false';
-				perTokenInputRef.current[token.address].indeterminate = false;
+			if (perTokenInputRef.current[toAddress(token.address)]) {
+				perTokenInputRef.current[toAddress(token.address)].ariaBusy = 'true';
+				perTokenInputRef.current[toAddress(token.address)].ariaInvalid = 'false';
+				perTokenInputRef.current[toAddress(token.address)].indeterminate = false;
 			}
+			const currentSolver = chainID === 1 ? 'COWSWAP' : 'BEBOP';
 			const tokenBalance = getBalance(token.address);
 			const request = prepareRequest({
+				solver: currentSolver,
 				inputToken: token,
 				rawAmount: toBigInt(rawAmount),
 				rawBalance: toBigInt(tokenBalance.raw)
 			});
 
-			const currentSolver = chainID === 1 ? 'COWSWAP' : 'BEBOP';
-			set_quotes((q): Maybe<TRequest> => initQuote(q, token.address, request, currentSolver));
-
+			set_quotes((q): TQuote => initQuote(q, token.address, request, currentSolver));
 			const {quoteResponse, isSuccess, error} = await solver.getQuote(request);
 			if (isSuccess && quoteResponse) {
-				set_quotes((q): Maybe<TRequest> => addQuote(q, quoteResponse));
-				if (perTokenInputRef.current[token.address]) {
-					perTokenInputRef.current[token.address].ariaBusy = 'false';
-					perTokenInputRef.current[token.address].ariaInvalid = 'false';
-					perTokenInputRef.current[token.address].indeterminate = false;
+				set_quotes((q): TQuote => addQuote(q, quoteResponse));
+				if (perTokenInputRef.current[toAddress(token.address)]) {
+					perTokenInputRef.current[toAddress(token.address)].ariaBusy = 'false';
+					perTokenInputRef.current[toAddress(token.address)].ariaInvalid = 'false';
+					perTokenInputRef.current[toAddress(token.address)].indeterminate = false;
 				}
-				// return quoteResponse.
 				return getBuyAmount(quoteResponse, token.address);
 			}
-			set_quotes((q): Maybe<TRequest> => deleteQuote(q, token.address));
+			set_quotes((q): TQuote => deleteQuote(q, token.address));
 			resetQuote(toAddress(token.address));
 			if (error) {
 				toast({type: 'error', content: error.message});
-				if (perTokenInputRef.current[token.address]) {
+				if (perTokenInputRef.current[toAddress(token.address)]) {
 					if (error.shouldDisable) {
-						perTokenInputRef.current[token.address].ariaBusy = 'false';
-						perTokenInputRef.current[token.address].ariaInvalid = 'true';
+						perTokenInputRef.current[toAddress(token.address)].ariaBusy = 'false';
+						perTokenInputRef.current[toAddress(token.address)].ariaInvalid = 'true';
 					} else {
-						perTokenInputRef.current[token.address].ariaBusy = 'false';
-						perTokenInputRef.current[token.address].indeterminate = true;
+						perTokenInputRef.current[toAddress(token.address)].ariaBusy = 'false';
+						perTokenInputRef.current[toAddress(token.address)].indeterminate = true;
 					}
 				}
 			}
@@ -151,6 +206,11 @@ function CardList(props: {search: string}): ReactElement {
 	return (
 		<div className={'col-span-12 px-6 pb-6'}>
 			{balancesToDisplay.map(([tokenAddress, balance]: [string, TBalanceData], index): ReactElement => {
+				const fromToken = getToken(toAddress(tokenAddress));
+				const toToken = destination;
+				if (!fromToken || !toToken) {
+					return <></>;
+				}
 				return (
 					<div
 						key={`${tokenAddress}-${chainID}-${balance.symbol}-${address}-${destination.address}-${receiver}`}
@@ -158,7 +218,8 @@ function CardList(props: {search: string}): ReactElement {
 						<TokenRow
 							index={10_000 - index}
 							perTokenInputRef={perTokenInputRef}
-							tokenAddress={toAddress(tokenAddress)}
+							fromToken={fromToken}
+							toToken={toToken}
 							balance={balance}
 							onHandleQuote={onHandleQuote}
 						/>

@@ -1,7 +1,7 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
-import {getTypedBebopQuote} from 'hooks/assertSolver';
-import {getSellAmount} from 'hooks/helperWithSolver';
+import {getTypedBebopQuote, hasQuote} from 'hooks/assertSolver';
+import {getSellAmount} from 'hooks/handleQuote';
 import {useAsyncTrigger} from 'hooks/useAsyncEffect';
 import {getSpender} from 'hooks/useSolver';
 import {approveERC20, isApprovedERC20} from 'utils/actions';
@@ -19,7 +19,7 @@ import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 
 import type {TPostOrder} from 'pages/api/jamProxyPost';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
-import type {TBebopJamQuoteAPIResp} from 'utils/types';
+import type {TBebopJamOrderStatusAPIResp, TBebopRequest, TRequest} from 'utils/types';
 import type {Hex} from 'viem';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
@@ -40,9 +40,9 @@ function BebopApproveButton({
 	 ** we will check if the allowance is enough for the amount to be swept.
 	 **********************************************************************************************/
 	useAsyncTrigger(async (): Promise<void> => {
-		const allQuotes = getTypedBebopQuote(quotes);
-		for (const token of Object.keys(allQuotes.quote)) {
-			const tokenAddress = toAddress(token);
+		const currentQuote = getTypedBebopQuote(quotes);
+		for (const tokenAddressString of Object.keys(currentQuote.sellTokens)) {
+			const tokenAddress = toAddress(tokenAddressString);
 			try {
 				const isApproved = await isApprovedERC20({
 					connector: provider,
@@ -51,7 +51,10 @@ function BebopApproveButton({
 					spenderAddress: getSpender({chainID: safeChainID}),
 					amount: getSellAmount(quotes, tokenAddress).raw
 				});
-				onUpdateApprovalStep(prev => ({...prev, [token]: isApproved ? TStatus.VALID : TStatus.UNDETERMINED}));
+				onUpdateApprovalStep(prev => ({
+					...prev,
+					[tokenAddress]: isApproved ? TStatus.VALID : TStatus.UNDETERMINED
+				}));
 			} catch (error) {
 				console.error(error);
 			}
@@ -71,14 +74,9 @@ function BebopApproveButton({
 		onUpdateApprovalStep({});
 		set_isApproving(true);
 
-		const allQuotes = getTypedBebopQuote(quotes);
-		for (const [token, quote] of Object.entries(allQuotes.quote)) {
-			const tokenAddress = toAddress(token);
-			const quoteID = quote?.id;
-			if (!quoteID) {
-				console.warn(`No quote for ${tokenAddress}`);
-				continue;
-			}
+		const currentQuote = getTypedBebopQuote(quotes);
+		for (const tokenAddressString of Object.keys(currentQuote.sellTokens)) {
+			const tokenAddress = toAddress(tokenAddressString);
 			try {
 				const isApproved = await isApprovedERC20({
 					connector: provider,
@@ -119,8 +117,8 @@ function BebopApproveButton({
 			className={'yearn--button !w-fit !px-6 !text-sm'}
 			isBusy={isApproving}
 			isDisabled={
-				Object.values(quotes?.quote || {}).length === 0 ||
-				Object.values(quotes?.quote || {}).every(q => q.orderStatus === TPossibleStatus.BEBOP_CONFIRMED) ||
+				Object.values(quotes.quote.sellToken || {}).length === 0 ||
+				quotes.quote.orderStatus === TPossibleStatus.BEBOP_CONFIRMED ||
 				areAllApproved
 			}
 			onClick={onApproveERC20}>
@@ -130,14 +128,10 @@ function BebopApproveButton({
 }
 
 function BebopSignButton(props: {
-	aggregatedQuote: TBebopJamQuoteAPIResp;
+	currentQuote: TRequest & TBebopRequest;
 	onUpdateSignStep: (isSuccess: boolean, isSigning: boolean, hasError: boolean, signature: Hex) => void;
 }): ReactElement {
 	const onSignOrders = useCallback(async (): Promise<void> => {
-		if (!props.aggregatedQuote) {
-			console.warn(`no quote`);
-			return;
-		}
 		try {
 			props.onUpdateSignStep(false, true, false, '0x');
 			const signature = await signTypedData({
@@ -145,7 +139,7 @@ function BebopSignButton(props: {
 				domain: {
 					name: 'JamSettlement',
 					version: '1',
-					chainId: props.aggregatedQuote.chainId,
+					chainId: props.currentQuote.quote.chainId,
 					verifyingContract: toAddress(process.env.BEBOP_SETTLEMENT_ADDRESS)
 				},
 				types: {
@@ -167,7 +161,7 @@ function BebopSignButton(props: {
 						{name: 'buyTokenTransfers', type: 'bytes'}
 					]
 				},
-				message: props.aggregatedQuote.toSign
+				message: props.currentQuote.quote.toSign
 			});
 			props.onUpdateSignStep(true, false, false, signature);
 		} catch (error) {
@@ -179,8 +173,8 @@ function BebopSignButton(props: {
 	return (
 		<Button
 			className={'yearn--button !w-fit !px-6 !text-sm'}
-			isBusy={props.aggregatedQuote.isSigning}
-			isDisabled={!props.aggregatedQuote || props.aggregatedQuote.isSigned}
+			isBusy={props.currentQuote.quote.isSigning}
+			isDisabled={!props.currentQuote.quote || props.currentQuote.quote.isSigned}
 			onClick={onSignOrders}>
 			<p>{'Sign'}</p>
 		</Button>
@@ -188,14 +182,23 @@ function BebopSignButton(props: {
 }
 
 function BebopExecuteButton(props: {
-	aggregatedQuote: TBebopJamQuoteAPIResp;
+	currentQuote: TRequest & TBebopRequest;
 	onUpdateExecuteStep: (isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) => void;
 }): ReactElement {
-	const checkOrderStatus = useCallback(async (txHash: Hex): Promise<boolean> => {
+	const checkOrderStatus = useCallback(async (quoteID: string): Promise<boolean> => {
 		for (let i = 0; i < 1000; i++) {
-			const transaction = await fetchTransaction({hash: txHash});
-			if (transaction.blockHash) {
-				return true;
+			try {
+				const {data} = (await axios.get(
+					`http://${'localhost:3000'}/api/jamProxyOrderStatus?quote_id=${quoteID}`
+				)) as {data: TBebopJamOrderStatusAPIResp};
+				if (data?.tx_hash && data.tx_hash !== '0x') {
+					const transaction = await fetchTransaction({hash: data.tx_hash});
+					if (transaction.blockHash) {
+						return true;
+					}
+				}
+			} catch (error) {
+				//
 			}
 			// Sleep for 3 seconds before checking the status again
 			await new Promise((resolve): NodeJS.Timeout => setTimeout(resolve, 3000));
@@ -204,15 +207,11 @@ function BebopExecuteButton(props: {
 	}, []);
 
 	const onSendOrders = useCallback(async (): Promise<void> => {
-		if (!props.aggregatedQuote) {
-			console.warn(`no quote`);
-			return;
-		}
 		try {
 			props.onUpdateExecuteStep(false, true, false, '0x');
 			const {data: response} = (await axios.post(`http://${'localhost:3000'}/api/jamProxyPost`, {
-				signature: props.aggregatedQuote.signature,
-				quote_id: props.aggregatedQuote.quoteId
+				signature: props.currentQuote.quote.signature,
+				quote_id: props.currentQuote.quote.id
 			})) as {
 				data: TPostOrder & {
 					error?: {
@@ -227,7 +226,7 @@ function BebopExecuteButton(props: {
 				props.onUpdateExecuteStep(false, false, true, '0x');
 				return;
 			}
-			const isSuccess = await checkOrderStatus(response.txHash);
+			const isSuccess = await checkOrderStatus(props.currentQuote.quote.id);
 			if (!isSuccess) {
 				console.error(`Order failed`);
 				props.onUpdateExecuteStep(false, false, true, '0x');
@@ -243,8 +242,10 @@ function BebopExecuteButton(props: {
 	return (
 		<Button
 			className={'yearn--button !w-fit !px-6 !text-sm'}
-			isBusy={props.aggregatedQuote.isExecuting}
-			isDisabled={!props.aggregatedQuote || !props.aggregatedQuote.isSigned || props.aggregatedQuote.isExecuted}
+			isBusy={props.currentQuote.quote.isExecuting}
+			isDisabled={
+				!props.currentQuote.quote || !props.currentQuote.quote.isSigned || props.currentQuote.quote.isExecuted
+			}
 			onClick={onSendOrders}>
 			{'Execute'}
 		</Button>
@@ -252,16 +253,14 @@ function BebopExecuteButton(props: {
 }
 
 function BebopButtons({
-	aggregatedQuote,
-	onRefreshAggregatedQuote,
+	onRefreshQuote,
 	isRefreshingQuote,
 	approvals,
 	onUpdateApprovalStep,
 	onUpdateSignStep,
 	onUpdateExecuteStep
 }: {
-	aggregatedQuote: TBebopJamQuoteAPIResp;
-	onRefreshAggregatedQuote: () => Promise<void>;
+	onRefreshQuote: () => Promise<void>;
 	isRefreshingQuote: boolean;
 	approvals: TDict<TStatus>;
 	onUpdateApprovalStep: Dispatch<SetStateAction<TDict<TStatus>>>;
@@ -276,11 +275,12 @@ function BebopButtons({
 	 ** If so, the onSendOrders function will be called.
 	 **********************************************************************************************/
 	const areAllApproved = useMemo((): boolean => {
-		if (Object.values(quotes?.quote || {}).length === 0) {
+		const currentQuote = getTypedBebopQuote(quotes);
+		if (Object.keys(currentQuote.sellTokens).length === 0) {
 			return false;
 		}
 		const isOk = true;
-		for (const token of Object.keys(quotes?.quote || {})) {
+		for (const token of Object.keys(currentQuote.sellTokens || {})) {
 			if (toAddress(token) === ETH_TOKEN_ADDRESS) {
 				continue;
 			}
@@ -296,6 +296,11 @@ function BebopButtons({
 		return isOk;
 	}, [approvals, serialize(quotes)]); // eslint-disable-line react-hooks/exhaustive-deps
 
+	if (!hasQuote(quotes, '')) {
+		return <></>;
+	}
+
+	const currentQuote = getTypedBebopQuote(quotes);
 	function renderCurrentButton(): ReactElement {
 		if (!areAllApproved) {
 			return (
@@ -305,18 +310,18 @@ function BebopButtons({
 				/>
 			);
 		}
-		if (!aggregatedQuote.isSigned) {
+		if (!currentQuote.quote.isSigned) {
 			return (
 				<BebopSignButton
-					aggregatedQuote={aggregatedQuote}
+					currentQuote={currentQuote}
 					onUpdateSignStep={onUpdateSignStep}
 				/>
 			);
 		}
-		if (!aggregatedQuote.isExecuted) {
+		if (!currentQuote.quote.isExecuted) {
 			return (
 				<BebopExecuteButton
-					aggregatedQuote={aggregatedQuote}
+					currentQuote={currentQuote}
 					onUpdateExecuteStep={onUpdateExecuteStep}
 				/>
 			);
@@ -334,7 +339,7 @@ function BebopButtons({
 		<div className={'flex w-full flex-row items-center justify-between space-x-4'}>
 			<button
 				id={'TRIGGER_ALL_REFRESH'}
-				onClick={onRefreshAggregatedQuote}
+				onClick={onRefreshQuote}
 				className={'relative cursor-pointer text-xs text-neutral-400 hover:text-neutral-900'}>
 				<p className={`transition-opacity ${isRefreshingQuote ? 'opacity-0' : 'opacity-100'}`}>
 					{'Refresh all quotes'}

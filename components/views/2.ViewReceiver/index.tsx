@@ -10,7 +10,7 @@ import type {TInputAddressLike} from '@common/AddressInput';
 
 function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 	const {address} = useWeb3();
-	const {receiver, set_receiver} = useSweepooor();
+	const {set_receiver} = useSweepooor();
 	const [tokenReceiver, set_tokenReceiver] = useState<TInputAddressLike>(defaultInputAddressLike);
 	const [hasBeenConfirmed, set_hasBeenConfirmed] = useState(false);
 
@@ -40,7 +40,10 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 						<div className={'col-span-12 md:col-span-9'}>
 							<AddressInput
 								value={tokenReceiver}
-								onChangeValue={(e): void => set_tokenReceiver(e)}
+								onChangeValue={(e): void => {
+									set_hasBeenConfirmed(false);
+									set_tokenReceiver(e);
+								}}
 							/>
 						</div>
 
@@ -52,7 +55,7 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 									set_hasBeenConfirmed(true);
 									onProceed();
 								}}
-								isDisabled={hasBeenConfirmed && toAddress(tokenReceiver.address) === receiver}>
+								isDisabled={hasBeenConfirmed}>
 								{'Next'}
 							</Button>
 						</div>

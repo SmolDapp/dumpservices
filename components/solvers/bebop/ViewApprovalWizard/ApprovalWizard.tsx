@@ -1,7 +1,7 @@
 import React, {useMemo, useRef, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
-import {isQuote} from 'hooks/assertSolver';
-import {getSellAmount} from 'hooks/helperWithSolver';
+import {getTypedBebopQuote, hasQuote, isQuote} from 'hooks/assertSolver';
+import {getSellAmount} from 'hooks/handleQuote';
 import {getSpender} from 'hooks/useSolver';
 import {TStatus} from 'utils/types';
 import {erc20ABI, useContractRead} from 'wagmi';
@@ -14,7 +14,7 @@ import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
-import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
@@ -22,37 +22,36 @@ import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 import {BebopDetails} from './DropdownDetails';
 
 import type {ReactElement} from 'react';
-import type {TBebopJamQuoteAPIResp} from 'utils/types';
+import type {TBebopRequest, TRequest} from 'utils/types';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 
 type TBebopApprovalWizard = {
-	aggregatedQuote: TBebopJamQuoteAPIResp;
-	onRefreshAggregatedQuote: () => Promise<void>;
+	onRefreshQuote: () => Promise<void>;
 	approvalStep: {[key: TAddress]: TStatus};
 };
 
-function Expiration(props: TBebopApprovalWizard): ReactElement {
+function Expiration(props: TBebopApprovalWizard & {currentQuote: TRequest & TBebopRequest}): ReactElement {
 	const [expireIn, set_expireIn] = useState(0);
 	const isRefreshingQuoteForExp = useRef(0);
-	const quoteExpiration = props.aggregatedQuote.expiry * 1000;
+	const quoteExpiration = props.currentQuote.quote.expirationTimestamp * 1000;
 
 	useMemo((): void => {
-		isRefreshingQuoteForExp.current = props.aggregatedQuote.expiry;
-	}, [props.aggregatedQuote.expiry]);
+		isRefreshingQuoteForExp.current = props.currentQuote.quote.expirationTimestamp;
+	}, [props.currentQuote.quote.expirationTimestamp]);
 
 	useIntervalEffect((): void => {
 		set_expireIn(quoteExpiration - new Date().valueOf());
 		if (
 			quoteExpiration < new Date().valueOf() &&
-			isRefreshingQuoteForExp.current === props.aggregatedQuote.expiry
+			isRefreshingQuoteForExp.current === props.currentQuote.quote.expirationTimestamp
 		) {
 			isRefreshingQuoteForExp.current = 0;
-			props.onRefreshAggregatedQuote();
+			props.onRefreshQuote();
 		}
 	}, 1000);
 
 	function renderExpiration(): ReactElement {
-		if (props.aggregatedQuote.txHash) {
+		if (props.currentQuote.quote.txHash !== '0x') {
 			return <small className={'text-xs tabular-nums text-neutral-500'}>&nbsp;</small>;
 		}
 
@@ -165,13 +164,13 @@ function EachTokenApprovalIndicator(
 	);
 }
 
-function Indicators(props: TBebopApprovalWizard): ReactElement {
+function Indicators(props: TBebopApprovalWizard & {currentQuote: TRequest & TBebopRequest}): ReactElement {
 	function renderExplorerLink(): ReactElement {
-		if (props.aggregatedQuote?.txHash && props.aggregatedQuote.txHash !== '0x') {
+		if (props.currentQuote.quote?.txHash && props.currentQuote.quote.txHash !== '0x') {
 			return (
 				<a
-					href={`${getNetwork(props.aggregatedQuote?.chainId || 137).blockExplorers?.default.url}/tx/${
-						props.aggregatedQuote.txHash
+					href={`${getNetwork(props.currentQuote.quote?.chainId || 137).blockExplorers?.default.url}/tx/${
+						props.currentQuote.quote.txHash
 					}`}
 					target={'_blank'}
 					className={'text-neutral-500 hover:underline'}
@@ -184,32 +183,32 @@ function Indicators(props: TBebopApprovalWizard): ReactElement {
 	}
 
 	function renderSignatureIndication(): ReactElement {
-		if (props.aggregatedQuote.isSigning) {
+		if (props.currentQuote.quote.isSigning) {
 			return <IconSpinner />;
 		}
-		if (props.aggregatedQuote.hasSignatureError) {
+		if (props.currentQuote.quote.hasSignatureError) {
 			return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
 		}
-		if (!props.aggregatedQuote.isSigned) {
+		if (!props.currentQuote.quote.isSigned) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (props.aggregatedQuote.isSigned) {
+		if (props.currentQuote.quote.isSigned) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 	}
 
 	function renderExecuteIndication(): ReactElement {
-		if (props.aggregatedQuote.isExecuting) {
+		if (props.currentQuote.quote.isExecuting) {
 			return <IconSpinner />;
 		}
-		if (props.aggregatedQuote.hasExecutionError) {
+		if (props.currentQuote.quote.hasExecutionError) {
 			return <IconCircleCross className={'h-4 w-4 text-[#e11d48]'} />;
 		}
-		if (!props.aggregatedQuote.isExecuted) {
+		if (!props.currentQuote.quote.isExecuted) {
 			return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
 		}
-		if (props.aggregatedQuote.isExecuted) {
+		if (props.currentQuote.quote.isExecuted) {
 			return <IconCheck className={'h-4 w-4 text-[#16a34a]'} />;
 		}
 		return <div className={'h-4 w-4 rounded-full bg-neutral-300'} />;
@@ -218,7 +217,7 @@ function Indicators(props: TBebopApprovalWizard): ReactElement {
 	return (
 		<div className={'flex flex-row items-start space-x-2 pt-2 md:space-x-4'}>
 			<div className={'flex flex-col gap-1'}>
-				{Object.entries(props.aggregatedQuote?.sellTokens || {}).map(([key, value]) => {
+				{Object.entries(props.currentQuote?.sellTokens || {}).map(([key, value]) => {
 					return (
 						<EachTokenApprovalIndicator
 							key={key}
@@ -256,12 +255,14 @@ function Indicators(props: TBebopApprovalWizard): ReactElement {
 }
 
 function BebopApprovalWizard(props: TBebopApprovalWizard): ReactElement {
-	if (!props.aggregatedQuote) {
+	const {quotes} = useSweepooor();
+	if (!hasQuote(quotes, '')) {
 		return <></>;
 	}
 
-	const [tokenToBuy] = Object.values(props.aggregatedQuote.buyTokens || []);
-	const tokensToSell = Object.values(props.aggregatedQuote.sellTokens || []);
+	const currentQuote = getTypedBebopQuote(quotes);
+	const tokensToSell = Object.values(currentQuote.sellTokens || []);
+
 	return (
 		<details
 			className={
@@ -280,11 +281,7 @@ function BebopApprovalWizard(props: TBebopApprovalWizard): ReactElement {
 								return (
 									<span key={index}>
 										<span className={'font-number font-bold'}>
-											{formatAmount(
-												toNormalizedBN(token.amount, token.decimals).normalized,
-												6,
-												6
-											)}
+											{formatAmount(token.amount.normalized, 6, 6)}
 										</span>
 										<span>{` ${token.symbol}`}</span>
 									</span>
@@ -294,18 +291,26 @@ function BebopApprovalWizard(props: TBebopApprovalWizard): ReactElement {
 						{' for at least '}
 
 						<span className={'font-number font-bold'}>
-							{formatAmount(toNormalizedBN(tokenToBuy.amount, tokenToBuy.decimals).normalized, 6, 6)}
+							{formatAmount(currentQuote.quote.buyToken.amount.normalized, 6, 6)}
 						</span>
 
-						{` ${tokenToBuy.symbol}`}
+						{` ${currentQuote.quote.buyToken.symbol}`}
 					</div>
-					{props.aggregatedQuote && <Expiration {...props} />}
+					{currentQuote && (
+						<Expiration
+							currentQuote={currentQuote}
+							{...props}
+						/>
+					)}
 				</div>
 
-				<Indicators {...props} />
+				<Indicators
+					currentQuote={currentQuote}
+					{...props}
+				/>
 			</summary>
 
-			<BebopDetails aggregatedQuote={props.aggregatedQuote} />
+			<BebopDetails currentQuote={currentQuote} />
 		</details>
 	);
 }

@@ -37,7 +37,7 @@ function Wrapper(): ReactElement {
 				return (
 					<CowswapApprovalWizard
 						key={`${currentQuote.sellToken.address}_${currentQuote?.quote?.buyAmount}_${currentQuote?.quote?.receiver}_${index}`}
-						token={currentQuote.sellToken.address}
+						token={currentQuote.sellToken}
 						index={index}
 						hasSignature={(currentQuote?.signature || '') !== ''}
 						approvalStep={approvalStep}

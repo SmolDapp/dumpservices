@@ -80,6 +80,7 @@ function AddressInput({value, onChangeValue, ...props}: TAddressInput): ReactEle
 		<div className={'smol--input-wrapper'}>
 			<input
 				aria-invalid={status === 'invalid'}
+				autoFocus
 				onFocus={async (): Promise<void> => {
 					isFocused.current = true;
 					onChange(value.label);
