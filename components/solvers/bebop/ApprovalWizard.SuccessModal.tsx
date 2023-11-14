@@ -1,13 +1,25 @@
 import {Fragment, useState} from 'react';
 import Confetti from 'react-dom-confetti';
+import Link from 'next/link';
+import Lottie from 'lottie-react';
 import {Dialog, Transition} from '@headlessui/react';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {cl} from '@yearn-finance/web-lib/utils/cl';
 
+import groovyWalkAnimation from '../../../utils/lottie/success.json';
+
 import type {ReactElement} from 'react';
 
-function SuccessModal({isOpen, onClose}: {isOpen: boolean; onClose: VoidFunction}): ReactElement {
+function SuccessModal({
+	isOpen,
+	onClose,
+	txHashURI
+}: {
+	isOpen: boolean;
+	onClose: VoidFunction;
+	txHashURI: string;
+}): ReactElement {
 	const [shouldTriggerConfettis, set_shouldTriggerConfettis] = useState(false);
 
 	useUpdateEffect((): void => {
@@ -59,23 +71,35 @@ function SuccessModal({isOpen, onClose}: {isOpen: boolean; onClose: VoidFunction
 									'sm:my-8 sm:w-full sm:max-w-2xl sm:p-6'
 								)}>
 								<div>
-									<div className={'text-left'}>
+									<div className={'text-center'}>
 										<Dialog.Title
 											as={'h3'}
 											className={'text-3xl font-bold leading-6 text-primary-900'}>
-											{'You are a pro dumper now'}
+											{'Great dump anon.'}
 										</Dialog.Title>
 										<div className={'mt-6'}>
 											<p className={'text-neutral-900/80'}>
 												{
-													'Whao, you dumped it. You did it you dumper. Do it more. We need fees.'
+													'See you next time you have some shitc... valuable digital assets to sell.'
 												}
 											</p>
 										</div>
 									</div>
 								</div>
-								<div className={'mt-10 flex items-center justify-center text-center'}>
-									<Button onClick={onClose}>{'I want to dump harder'}</Button>
+								<div className={'my-10 flex items-center justify-center'}>
+									<div className={'h-52 w-52'}>
+										<Lottie
+											loop={false}
+											animationData={groovyWalkAnimation}
+										/>
+									</div>
+								</div>
+								<div className={'flex items-center justify-center text-center'}>
+									<Link
+										href={txHashURI}
+										target={'_blank'}>
+										<Button onClick={onClose}>{'See on explorer'}</Button>
+									</Link>
 								</div>
 							</Dialog.Panel>
 						</Transition.Child>

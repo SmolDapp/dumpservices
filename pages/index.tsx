@@ -7,6 +7,7 @@ import ViewApprovalWizard from 'components/views/4.ViewApprovalWizard';
 import {Step, SweepooorContextApp, useSweepooor} from 'contexts/useSweepooor';
 
 import type {ReactElement} from 'react';
+import type {TRequest} from 'utils/types';
 
 function Home(): ReactElement {
 	const {currentStep, set_currentStep, set_quotes} = useSweepooor();
@@ -44,7 +45,7 @@ function Home(): ReactElement {
 					onProceed={(): void => {
 						if (currentStep === Step.DESTINATION) {
 							set_currentStep(Step.RECEIVER);
-							set_quotes(undefined); // Reset quotes
+							set_quotes({} as TRequest); // Reset quotes
 						}
 					}}
 				/>
@@ -60,7 +61,7 @@ function Home(): ReactElement {
 				<ViewReceiver
 					onProceed={(): void => {
 						set_currentStep(Step.SELECTOR);
-						set_quotes(undefined); // Reset quotes
+						set_quotes({} as TRequest); // Reset quotes
 					}}
 				/>
 			</div>

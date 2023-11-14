@@ -19,7 +19,6 @@ import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber'
 
 export type TWalletContext = {
 	balances: TDict<TBalanceData>;
-	balancesNonce: number;
 	isLoading: boolean;
 	walletProvider: string;
 	getBalance: (tokenAddress: TAddress) => TNormalizedBN;
@@ -30,7 +29,6 @@ export type TWalletContext = {
 
 const defaultProps = {
 	balances: {},
-	balancesNonce: 0,
 	getBalance: (): TNormalizedBN => toNormalizedBN(0),
 	isLoading: true,
 	walletProvider: 'NONE',
@@ -79,7 +77,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 		return tokens;
 	}, [safeChainID, tokenList]);
 
-	const {data: balances, update, updateSome, nonce, isLoading} = useBalances({tokens: availableTokens});
+	const {data: balances, update, updateSome, isLoading} = useBalances({tokens: availableTokens});
 
 	const onRefresh = useCallback(
 		async (tokenToUpdate?: TUseBalancesTokens[], shouldSaveInStorage?: boolean): Promise<TDict<TBalanceData>> => {
@@ -155,7 +153,6 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	const contextValue = useMemo(
 		(): TWalletContext => ({
 			balances: balances,
-			balancesNonce: nonce,
 			getBalance,
 			isLoading: isLoading || false,
 			refresh: onRefresh,
@@ -163,7 +160,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 			walletProvider,
 			set_walletProvider
 		}),
-		[balances, isLoading, onRefresh, nonce, onRefreshWithList, walletProvider, getBalance]
+		[balances, isLoading, onRefresh, onRefreshWithList, walletProvider, getBalance]
 	);
 
 	return <WalletContext.Provider value={contextValue}>{children}</WalletContext.Provider>;

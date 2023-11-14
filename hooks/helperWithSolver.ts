@@ -8,7 +8,6 @@ export function getValidTo(order: TRequest, key: TAddress, isWalletSafe: boolean
 		return order.quote[key].validTo;
 	}
 	if (isCowswapOrder(order)) {
-		console.warn(order.quote[key]);
 		return order.quote[key].expirationTimestamp * 1000;
 	}
 	if (isBebopOrder(order)) {

@@ -69,7 +69,6 @@ function TokenInput({
 	const onChangeAmount = useCallback(
 		(e: ChangeEvent<HTMLInputElement>): void => {
 			const element = document.getElementById('amountToSend') as HTMLInputElement;
-			console.warn(e.target.value, element);
 			const newAmount = handleInputChangeEventValue(e, token?.decimals || 18);
 			if (newAmount.raw > balanceOf?.raw) {
 				if (element?.value) {
@@ -117,9 +116,7 @@ function TokenInput({
 						unoptimized
 						src={
 							token.logoURI?.includes('assets.smold.app')
-								? `https://assets.smold.app/api/token/${token.chainId}/${toAddress(
-										token.address
-								  )}/logo-32.png`
+								? `${process.env.SMOL_ASSETS_URL}/token/${token.chainId}/${token.address}/logo-32.png`
 								: token.logoURI || ''
 						}
 						width={24}

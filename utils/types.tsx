@@ -212,6 +212,7 @@ export type TBebopRequest = {
 	solverType: 'BEBOP';
 	quote: TBebopOrderQuoteResponse;
 	buyTokens: TDict<TTokenWithAmount>; // tokens, where the key is the address of the token we send for it
+	lastUpdate: Date;
 };
 export type TRequest = {
 	sellTokens: TDict<TTokenWithAmount>; // address -> TTokenWithAmount
@@ -219,3 +220,33 @@ export type TRequest = {
 export type TOrderQuoteError = TCowQuoteError | TBebopOrderQuoteError;
 
 export type TQuote = TRequest & (TBebopRequest | TCowswapRequest);
+
+export type TGetQuote = {
+	quoteResponse?: TRequest;
+	feeAmount?: bigint;
+	error?: TOrderQuoteError;
+};
+
+export type TRetreiveCowQuote = {
+	sellToken: TAddress;
+	buyToken: TToken;
+	from: TAddress;
+	receiver: TAddress;
+	amount: TNormalizedBN;
+	isWalletSafe: boolean;
+};
+
+export type TRetreiveBebopQuote = {
+	sellTokens: TAddress[];
+	buyToken: TToken;
+	from: TAddress;
+	receiver: TAddress;
+	amounts: TNormalizedBN[];
+	isWalletSafe: boolean;
+};
+
+export type TSignQuoteFromCowswap = {
+	quoteOrder: TCowswapOrderQuoteResponse;
+	safeChainID: number;
+	amountWithSlippage: bigint;
+};

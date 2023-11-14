@@ -169,9 +169,7 @@ function ComboboxAddressInput({
 					symbol: result?.symbol || '',
 					decimals: result?.decimals || 0,
 					chainId: safeChainID,
-					logoURI: `https://assets.smold.app/api/token/${_selected.chainId}/${toAddress(
-						_selected.address
-					)}/logo-128.png`
+					logoURI: `${process.env.SMOL_ASSETS_URL}/token/${_selected.chainId}/${_selected.address}/logo-32.png`
 				};
 				set_isLoadingTokenData(false);
 			}

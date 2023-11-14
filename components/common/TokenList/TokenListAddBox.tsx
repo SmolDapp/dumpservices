@@ -60,7 +60,7 @@ function TokenListAddBox({onAddTokenList, onAddToken}: TTokenListAddBox): React.
 				const {name, logoURI, tokens} = fromLabel.value.data;
 				if (name && logoURI && Array.isArray(tokens) && tokens.length > 0) {
 					//Check if the tokens contains address, name, symbol, logoURI, chainId and decimals
-					const areTokensValid = tokens.every((eachToken: TToken): boolean => {
+					const areTokensValid = (tokens as TToken[]).every((eachToken: TToken): boolean => {
 						const {address, name, symbol, logoURI, chainId, decimals} = eachToken;
 						return Boolean(
 							address &&
@@ -119,7 +119,7 @@ function TokenListAddBox({onAddTokenList, onAddToken}: TTokenListAddBox): React.
 					name: decodeAsString(name),
 					symbol: decodeAsString(symbol),
 					decimals: Number(decodeAsBigInt(decimals)) || decodeAsNumber(decimals),
-					logoURI: `https://assets.smold.app/api/token/${safeChainID}/${extraToken.address}/logo-128.png`
+					logoURI: `${process.env.SMOL_ASSETS_URL}/token/${safeChainID}/${extraToken.address}/logo-32.png`
 				});
 				set_extraToken(defaultInputAddressLike);
 				set_isLoadingTokenAddress(false);

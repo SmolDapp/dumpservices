@@ -18,7 +18,7 @@ import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 
-import {CowswapDetails} from './DropdownDetails';
+import {CowswapDetails} from './ApprovalWizard.DropdownDetails';
 
 import type {ReactElement} from 'react';
 import type {TRequest, TTokenWithAmount} from 'utils/types';

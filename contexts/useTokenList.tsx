@@ -68,12 +68,14 @@ export const TokenListContextApp = ({children}: {children: React.ReactElement}):
 	const [isTokenListModalOpen, set_isTokenListModalOpen] = useState<boolean>(false);
 
 	useAsyncTrigger(async (): Promise<void> => {
-		const tokenListURIs = [
-			`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/etherscan.json`,
-			`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/yearn.json`,
-			`https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}/tokenlistooor.json`
-		];
-		const [fromEtherscan, fromYearn, fromSmol] = await Promise.allSettled(
+		const rootURI = `https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/${safeChainID}`;
+		const tokenListURIs = [`${rootURI}/etherscan.json`, `${rootURI}/tokenlistooor.json`];
+		if (safeChainID === 1) {
+			tokenListURIs.push(`${rootURI}/yearn.json`);
+		} else {
+			tokenListURIs.push(`${rootURI}/bebop.json`);
+		}
+		const [fromEtherscan, fromSmol, otherList] = await Promise.allSettled(
 			tokenListURIs.map(async (eachURI: string): Promise<AxiosResponse> => axios.get(eachURI))
 		);
 		const tokens: TToken[] = [];
@@ -82,13 +84,13 @@ export const TokenListContextApp = ({children}: {children: React.ReactElement}):
 			tokens.push(...(fromEtherscan.value.data as TTokenList).tokens);
 			fromList.push({...(fromEtherscan.value.data as TTokenList), uri: tokenListURIs[0]});
 		}
-		if (fromYearn.status === 'fulfilled' && fromYearn.value.data?.tokens) {
-			tokens.push(...(fromYearn.value.data as TTokenList).tokens);
-			fromList.push({...(fromYearn.value.data as TTokenList), uri: tokenListURIs[1]});
-		}
 		if (fromSmol.status === 'fulfilled' && fromSmol.value.data?.tokens) {
 			tokens.push(...(fromSmol.value.data as TTokenList).tokens);
 			fromList.push({...(fromSmol.value.data as TTokenList), uri: tokenListURIs[2]});
+		}
+		if (otherList.status === 'fulfilled' && otherList.value.data?.tokens) {
+			tokens.push(...(otherList.value.data as TTokenList).tokens);
+			fromList.push({...(otherList.value.data as TTokenList), uri: tokenListURIs[1]});
 		}
 
 		const tokenListTokens: TDict<TToken> = {};

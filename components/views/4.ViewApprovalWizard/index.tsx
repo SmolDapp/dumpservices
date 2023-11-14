@@ -1,17 +1,34 @@
-import React from 'react';
+import React, {Fragment} from 'react';
 import {Step, useSweepooor} from 'contexts/useSweepooor';
 import {isBebopOrder, isCowswapOrder} from 'hooks/assertSolver';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 
-import BebopBatchedFlow from '../../solvers/bebop/ViewApprovalWizard';
-import CowswapStandardFlow from '../../solvers/cowswap/ViewApprovalWizard';
-import GnosisBatchedFlow from '../../solvers/safeXCowswap/ViewApprovalWizard/gnosisXCowswap';
+import BebopBatchedFlow from '../../solvers/bebop';
+import CowswapStandardFlow from '../../solvers/cowswap';
+import SafeXBebop from '../../solvers/safeXCowswap/SafeXBebop';
+import SafeXCowswap from '../../solvers/safeXCowswap/SafeXCowswap';
 
 import type {ReactElement} from 'react';
 
 function ViewApprovalWizard(): ReactElement {
 	const {isWalletSafe} = useWeb3();
 	const {quotes, currentStep} = useSweepooor();
+
+	function renderFlow(): ReactElement {
+		if (currentStep === Step.APPROVALS && isWalletSafe && isCowswapOrder(quotes)) {
+			return <SafeXCowswap />;
+		}
+		if (currentStep === Step.APPROVALS && isWalletSafe && isBebopOrder(quotes)) {
+			return <SafeXBebop />;
+		}
+		if (currentStep === Step.APPROVALS && isBebopOrder(quotes)) {
+			return <BebopBatchedFlow />;
+		}
+		if (currentStep === Step.APPROVALS && isCowswapOrder(quotes)) {
+			return <CowswapStandardFlow />;
+		}
+		return <Fragment />;
+	}
 
 	return (
 		<section>
@@ -30,9 +47,7 @@ function ViewApprovalWizard(): ReactElement {
 					</p>
 				</div>
 
-				{currentStep === Step.APPROVALS && isWalletSafe && <GnosisBatchedFlow />}
-				{currentStep === Step.APPROVALS && isBebopOrder(quotes) && <BebopBatchedFlow />}
-				{currentStep === Step.APPROVALS && isCowswapOrder(quotes) && <CowswapStandardFlow />}
+				{renderFlow()}
 			</div>
 		</section>
 	);

@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useRef} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useTokenList} from 'contexts/useTokenList';
 import {useWallet} from 'contexts/useWallet';
@@ -6,6 +6,7 @@ import {addQuote, deleteQuote, getBuyAmount, initQuote, resetQuote} from 'hooks/
 import {useSolver} from 'hooks/useSolver';
 import {DENYLIST_COWSWAP} from 'utils/denyList.cowswap';
 import {serialize} from 'wagmi';
+import {useDeepCompareMemo} from '@react-hookz/web';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -26,12 +27,11 @@ function CardList(props: {search: string}): ReactElement {
 	const {address, chainID} = useWeb3();
 	const {getToken} = useTokenList();
 	const {quotes, set_quotes, destination, receiver} = useSweepooor();
-	const {balances, getBalance, balancesNonce, isLoading} = useWallet();
+	const {balances, getBalance, isLoading} = useWallet();
 	const solver = useSolver();
 	const perTokenInputRef = useRef<TDict<HTMLInputElement>>({});
 
-	const balancesToDisplay = useMemo((): [string, TBalanceData][] => {
-		balancesNonce;
+	const balancesToDisplay = useDeepCompareMemo((): [string, TBalanceData][] => {
 		return Object.entries(balances || [])
 			.filter(([tokenAddress]: [string, TBalanceData]): boolean => {
 				return !DENYLIST_COWSWAP.includes(toAddress(tokenAddress));
@@ -59,13 +59,12 @@ function CardList(props: {search: string}): ReactElement {
 			.filter(
 				([tokenAddress]: [string, TBalanceData]): boolean =>
 					toAddress(tokenAddress) !== destination.address &&
-					chainID === 1 &&
-					toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS //It's impossible to dump eth with CowSwap
+					(chainID === 1 ? toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS : true) //It's impossible to dump eth with CowSwap
 			)
 			.filter(([tokenAddress]: [string, TBalanceData]): boolean =>
 				destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true
 			);
-	}, [balancesNonce, balances, props.search, destination.address, chainID]);
+	}, [balances, props.search, destination.address, chainID]);
 
 	const prepareRequest = useCallback(
 		(props: {

@@ -7,10 +7,11 @@ import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
 import {BebopApprovalWizard} from './ApprovalWizard';
-import {BebopButtons} from './Buttons';
-import {SuccessModal} from './SuccessModal';
+import {BebopButtons} from './ApprovalWizard.Buttons';
+import {SuccessModal} from './ApprovalWizard.SuccessModal';
 
 import type {ReactElement} from 'react';
 import type {TBebopRequest, TQuote, TRequest, TRequestArgs, TStatus, TToken, TTokenWithAmount} from 'utils/types';
@@ -134,7 +135,10 @@ function Wrapper(): ReactElement {
 				/>
 			</div>
 			<SuccessModal
-				isOpen={currentQuote.quote.isExecuted || true}
+				txHashURI={`${getNetwork(currentQuote.quote.chainId).blockExplorers?.etherscan?.url}/tx/${
+					currentQuote.quote.txHash
+				}`}
+				isOpen={currentQuote.quote.isExecuted}
 				onClose={(): void => onReset()}
 			/>
 		</>

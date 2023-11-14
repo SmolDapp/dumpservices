@@ -35,7 +35,7 @@ export type TSelected = {
 const defaultProps: TSelected = {
 	quotes: {} as TRequest,
 	destination: {
-		chainId: 0,
+		chainId: 1,
 		address: ZERO_ADDRESS,
 		name: 'No token selected',
 		symbol: 'N/A',
@@ -59,7 +59,7 @@ const defaultProps: TSelected = {
 
 const SweepooorContext = createContext<TSelected>(defaultProps);
 export const SweepooorContextApp = ({children}: {children: ReactElement}): ReactElement => {
-	const {address, isActive, isWalletLedger, isWalletSafe} = useWeb3();
+	const {address, isActive, isWalletLedger, isWalletSafe, chainID} = useWeb3();
 	const [destination, set_destination] = useState<TToken>(defaultProps.destination);
 	const [receiver, set_receiver] = useState<TAddress>(toAddress(address));
 	const [quotes, set_quotes] = useState(defaultProps.quotes);
@@ -70,6 +70,13 @@ export const SweepooorContextApp = ({children}: {children: ReactElement}): React
 		stringify: serialize,
 		parse: (v, fallback): bigint => (v ? deserialize(v) : fallback)
 	});
+
+	const onReset = useCallback((): void => {
+		set_quotes(defaultProps.quotes);
+		set_destination(defaultProps.destination);
+		set_receiver(defaultProps.receiver);
+		set_currentStep(Step.DESTINATION);
+	}, []);
 
 	/**********************************************************************************************
 	 ** If the user is not active, reset the state to the default values.
@@ -147,12 +154,9 @@ export const SweepooorContextApp = ({children}: {children: ReactElement}): React
 		}, 0);
 	}, [currentStep, isWalletLedger, isWalletSafe]);
 
-	const onReset = useCallback((): void => {
-		set_quotes(defaultProps.quotes);
-		set_destination(defaultProps.destination);
-		set_receiver(defaultProps.receiver);
-		set_currentStep(Step.DESTINATION);
-	}, []);
+	useUpdateEffect((): void => {
+		onReset();
+	}, [chainID]);
 
 	const contextValue = useMemo(
 		(): TSelected => ({

@@ -111,7 +111,7 @@ function CowswapButtons({
 			const tokenAddress = toAddress(token);
 			const quoteID = quote?.id;
 			if (!quoteID) {
-				console.warn(`No quote for ${tokenAddress}`);
+				console.warn(`[CowSwap] - No quote for ${tokenAddress}`);
 				continue;
 			}
 			try {
@@ -157,11 +157,11 @@ function CowswapButtons({
 	 **********************************************************************************************/
 	const onSendOrders = useCallback(async (): Promise<void> => {
 		if (!areAllApproved) {
-			toast({type: 'error', content: 'Please approve all tokens before sending orders'});
+			toast({type: 'error', content: '[CowSwap] - Please approve all tokens before sending orders'});
 			return;
 		}
 		if (!quotes) {
-			console.warn(`no quote`);
+			console.warn(`[CowSwap] - No quotes available`);
 			return;
 		}
 		set_isSigning(true);
@@ -171,7 +171,7 @@ function CowswapButtons({
 			const tokenAddress = toAddress(token);
 			const quoteID = quote?.id;
 			if (!quoteID) {
-				console.warn(`No quote for ${token}`); //should not happen
+				console.warn(`[CowSwap] - No quote for ${token}`); //should not happen
 				continue;
 			}
 			if (quote.orderUID && ['fulfilled', 'pending'].includes(quote?.orderStatus || '')) {

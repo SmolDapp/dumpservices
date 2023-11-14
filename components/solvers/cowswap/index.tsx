@@ -4,7 +4,7 @@ import {getTypedCowswapQuote} from 'hooks/assertSolver';
 import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 import {CowswapApprovalWizard} from './ApprovalWizard';
-import {CowswapButtons} from './Buttons';
+import {CowswapButtons} from './ApprovalWizard.Buttons';
 
 import type {ReactElement} from 'react';
 import type {TStatus} from 'utils/types';

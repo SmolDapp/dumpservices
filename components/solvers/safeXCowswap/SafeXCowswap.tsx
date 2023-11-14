@@ -7,6 +7,7 @@ import {isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
 import {TStatus} from 'utils/types';
+import {maxUint256, stringToHex} from 'viem';
 import axios from 'axios';
 import {SigningScheme} from '@cowprotocol/cow-sdk';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
@@ -15,9 +16,8 @@ import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
-import {MAX_UINT_256} from '@yearn-finance/web-lib/utils/constants';
 
-import {CowswapApprovalWizard} from '../../cowswap/ViewApprovalWizard/ApprovalWizard';
+import {CowswapApprovalWizard} from '../cowswap/ApprovalWizard';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
@@ -34,11 +34,7 @@ type TSafeTxHistory = {
 	nonce: number;
 };
 
-function GnosisXCowswapBatchedFlow({
-	onUpdateSignStep
-}: {
-	onUpdateSignStep: Dispatch<SetStateAction<TDict<TStatus>>>;
-}): ReactElement {
+function SafeXCowswapBatchedFlow(props: {onUpdateSignStep: Dispatch<SetStateAction<TDict<TStatus>>>}): ReactElement {
 	const {provider} = useWeb3();
 	const solver = useSolver();
 	const {quotes, set_quotes} = useSweepooor();
@@ -99,19 +95,16 @@ function GnosisXCowswapBatchedFlow({
 			const currentQuote = getTypedCowswapQuote(quotes);
 			const tokenAddress = toAddress(token);
 			const quoteOrder = currentQuote.quote[tokenAddress] as TCowswapOrderQuoteResponse;
+			const spender = getSpender({chainID: safeChainID});
 			const isApproved = await isApprovedERC20({
 				connector: provider,
 				chainID: safeChainID,
 				contractAddress: tokenAddress,
-				spenderAddress: getSpender({chainID: safeChainID}),
-				amount: MAX_UINT_256
+				spenderAddress: spender,
+				amount: maxUint256
 			});
 			if (!isApproved) {
-				const newApprovalForBatch = getApproveTransaction(
-					MAX_UINT_256.toString(),
-					tokenAddress,
-					getSpender({chainID: safeChainID})
-				);
+				const newApprovalForBatch = getApproveTransaction(maxUint256, tokenAddress, spender);
 				preparedTransactions.push(newApprovalForBatch);
 			}
 
@@ -119,17 +112,17 @@ function GnosisXCowswapBatchedFlow({
 			quoteOrder.signingScheme = SigningScheme.PRESIGN as unknown as EcdsaSigningScheme;
 			const quoteID = quoteOrder.id;
 			if (!quoteID) {
-				console.warn(`No quote for ${tokenAddress}`);
+				console.warn(`[SafeXCowSwap] - No quote for ${tokenAddress}`);
 				continue;
 			}
 
 			const existingTx = existingTransactions[String(quoteOrder.id)];
 			if (existingTx) {
 				//we already have an execute tx for this token in our batch
-				console.warn(`Execute for ${tokenAddress} already in batch`);
+				console.warn(`[SafeXCowSwap] - Execute for ${tokenAddress} already in batch`);
 				preparedTransactions.push(existingTx.tx);
 				executedQuotes.push({...quoteOrder, orderUID: existingTx.orderUID});
-				onUpdateSignStep(
+				props.onUpdateSignStep(
 					(prev): TDict<TStatus> => ({
 						...prev,
 						[tokenAddress]: TStatus.VALID
@@ -138,7 +131,7 @@ function GnosisXCowswapBatchedFlow({
 				continue;
 			}
 
-			onUpdateSignStep(
+			props.onUpdateSignStep(
 				(prev): TDict<TStatus> => ({
 					...prev,
 					[tokenAddress]: TStatus.PENDING
@@ -148,7 +141,7 @@ function GnosisXCowswapBatchedFlow({
 				await solver.execute(quotes, tokenAddress, true, (orderUID): void => {
 					const newPreSignatureForBatch = getSetPreSignatureTransaction(
 						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
-						orderUID,
+						stringToHex(orderUID),
 						true
 					);
 					newlyExistingTransactions[String(quoteOrder.id)] = {
@@ -157,7 +150,7 @@ function GnosisXCowswapBatchedFlow({
 					};
 					preparedTransactions.push(newPreSignatureForBatch);
 					executedQuotes.push({...quoteOrder, orderUID});
-					onUpdateSignStep(
+					props.onUpdateSignStep(
 						(prev): TDict<TStatus> => ({
 							...prev,
 							[tokenAddress]: TStatus.VALID
@@ -165,7 +158,7 @@ function GnosisXCowswapBatchedFlow({
 					);
 				});
 			} catch (error) {
-				onUpdateSignStep(
+				props.onUpdateSignStep(
 					(prev): TDict<TStatus> => ({
 						...prev,
 						[tokenAddress]: TStatus.INVALID
@@ -196,7 +189,7 @@ function GnosisXCowswapBatchedFlow({
 			console.error(error);
 			set_isApproving(false);
 		}
-	}, [quotes, provider, safeChainID, existingTransactions, onUpdateSignStep, solver, sdk.txs]);
+	}, [quotes, provider, safeChainID, existingTransactions, props, solver, sdk.txs]);
 
 	return (
 		<div className={'flex flex-row items-center space-x-4'}>
@@ -251,7 +244,7 @@ function Wrapper(): ReactElement {
 			})}
 			<div className={'flex w-full flex-row items-center justify-between pt-4 md:relative'}>
 				<div className={'flex flex-col'} />
-				<GnosisXCowswapBatchedFlow onUpdateSignStep={set_signStep} />
+				<SafeXCowswapBatchedFlow onUpdateSignStep={set_signStep} />
 			</div>
 		</>
 	);

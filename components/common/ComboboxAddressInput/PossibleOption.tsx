@@ -16,9 +16,7 @@ function Option(props: TElement): ReactElement {
 					alt={''}
 					unoptimized
 					src={props.logoURI || ''}
-					altSrc={`https://assets.smold.app/api/token/${props.chainId}/${toAddress(
-						props.address
-					)}/logo-128.png`}
+					altSrc={`${process.env.SMOL_ASSETS_URL}/token/${props.chainId}/${props.address}/logo-32.png`}
 					width={24}
 					height={24}
 				/>

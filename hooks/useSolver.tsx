@@ -4,7 +4,7 @@ import {TPossibleStatus} from 'utils/types';
 import axios from 'axios';
 import {OrderBookApi, SigningScheme} from '@cowprotocol/cow-sdk';
 import {useMountEffect} from '@react-hookz/web';
-import {fetchTransaction, signTypedData} from '@wagmi/core';
+import {fetchTransaction} from '@wagmi/core';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
@@ -12,17 +12,15 @@ import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 import {isBebopOrder, isCowswapOrder} from './assertSolver';
+import {retrieveQuote, signQuoteFromBebop, signQuoteFromCowswap} from './handleQuote';
 import {getValidTo} from './helperWithSolver';
-import {retrieveQuoteFromBebopJam, retrieveQuoteFromCowswap} from './retrieveQuote';
-import {signQuoteFromCowswap} from './signQuote';
 
 import type {TPostOrder} from 'pages/api/jamProxyPost';
-import type {Maybe, TOrderQuoteError, TRequest, TRequestArgs} from 'utils/types';
+import type {Maybe, TGetQuote, TOrderQuoteError, TRequest, TRequestArgs} from 'utils/types';
 import type {Hex} from 'viem';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
-import type {EcdsaSigningScheme, OrderCreation, SigningResult} from '@cowprotocol/cow-sdk';
-import type {TGetQuote} from './retrieveQuote';
+import type {OrderCreation, SigningResult} from '@cowprotocol/cow-sdk';
 
 type TInit = {
 	estimateOut: TNormalizedBN;
@@ -87,35 +85,7 @@ export function useSolver(): TSolverContext {
 			if (request.inputAmounts.length !== request.inputTokens.length) {
 				return {quoteResponse: undefined, feeAmount: 0n, error: undefined};
 			}
-			switch (safeChainID) {
-				case 1:
-					if (request.inputAmounts.length === 1 && request.inputTokens.length === 1) {
-						return await retrieveQuoteFromCowswap({
-							request,
-							sellToken: toAddress(request.inputTokens[0].address),
-							buyToken: request.outputToken,
-							from: toAddress(request.from),
-							receiver: toAddress(request.receiver),
-							amount: toNormalizedBN(request.inputAmounts[0], request.inputTokens[0].decimals),
-							isWalletSafe
-						});
-					}
-					return {quoteResponse: undefined, feeAmount: 0n, error: undefined};
-				case 137:
-					return await retrieveQuoteFromBebopJam({
-						request,
-						sellTokens: request.inputTokens.map(({address}): TAddress => toAddress(address)),
-						buyToken: request.outputToken,
-						from: toAddress(request.from),
-						receiver: toAddress(request.receiver),
-						amounts: request.inputAmounts.map(
-							(value, index): TNormalizedBN => toNormalizedBN(value, request.inputTokens[index].decimals)
-						),
-						isWalletSafe
-					});
-				default:
-					return {quoteResponse: undefined, feeAmount: 0n, error: undefined};
-			}
+			return await retrieveQuote({chainID: safeChainID, request, isWalletSafe});
 		},
 		[isWalletSafe, safeChainID]
 	);
@@ -203,36 +173,7 @@ export function useSolver(): TSolverContext {
 
 			if (isBebopOrder(quoteOrder)) {
 				const {quote} = quoteOrder;
-				const signature = await signTypedData({
-					primaryType: 'JamOrder',
-					domain: {
-						name: 'JamSettlement',
-						version: '1',
-						chainId: quote.chainId,
-						verifyingContract: toAddress(process.env.BEBOP_SETTLEMENT_ADDRESS)
-					},
-					types: {
-						JamOrder: [
-							{name: 'taker', type: 'address'},
-							{name: 'receiver', type: 'address'},
-							{name: 'expiry', type: 'uint256'},
-							{name: 'nonce', type: 'uint256'},
-							{name: 'executor', type: 'address'},
-							{name: 'minFillPercent', type: 'uint16'},
-							{name: 'hooksHash', type: 'bytes32'},
-							{name: 'sellTokens', type: 'address[]'},
-							{name: 'buyTokens', type: 'address[]'},
-							{name: 'sellAmounts', type: 'uint256[]'},
-							{name: 'buyAmounts', type: 'uint256[]'},
-							{name: 'sellNFTIds', type: 'uint256[]'},
-							{name: 'buyNFTIds', type: 'uint256[]'},
-							{name: 'sellTokenTransfers', type: 'bytes'},
-							{name: 'buyTokenTransfers', type: 'bytes'}
-						]
-					},
-					message: quote.toSign
-				});
-				return {signature, signingScheme: 'eip712' as EcdsaSigningScheme};
+				return signQuoteFromBebop({quote});
 			}
 
 			return {signature: '0x', signingScheme: 'presign'} as unknown as SigningResult;

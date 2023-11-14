@@ -19,7 +19,7 @@ import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 import {formatDuration} from '@yearn-finance/web-lib/utils/format.time';
 import {getNetwork} from '@yearn-finance/web-lib/utils/wagmi/utils';
 
-import {BebopDetails} from './DropdownDetails';
+import {BebopDetails} from './ApprovalWizard.DropdownDetails';
 
 import type {ReactElement} from 'react';
 import type {TBebopRequest, TRequest} from 'utils/types';
