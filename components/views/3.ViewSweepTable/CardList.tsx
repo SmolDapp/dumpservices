@@ -58,13 +58,12 @@ function CardList(props: {search: string}): ReactElement {
 			)
 			.filter(
 				([tokenAddress]: [string, TBalanceData]): boolean =>
-					toAddress(tokenAddress) !== destination.address &&
-					(chainID === 1 ? toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS : true) //It's impossible to dump eth with CowSwap
+					toAddress(tokenAddress) !== destination.address && toAddress(tokenAddress) !== ETH_TOKEN_ADDRESS
 			)
 			.filter(([tokenAddress]: [string, TBalanceData]): boolean =>
 				destination.address === ETH_TOKEN_ADDRESS ? toAddress(tokenAddress) !== WETH_TOKEN_ADDRESS : true
 			);
-	}, [balances, props.search, destination.address, chainID]);
+	}, [balances, props.search, destination.address]);
 
 	const prepareRequest = useCallback(
 		(props: {
