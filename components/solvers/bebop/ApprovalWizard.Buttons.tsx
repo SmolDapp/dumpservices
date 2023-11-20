@@ -189,7 +189,7 @@ function BebopExecuteButton(props: {
 		for (let i = 0; i < 1000; i++) {
 			try {
 				const {data} = (await axios.get(
-					`http://${process.env.API_ENDPOINT}/api/jamProxyOrderStatus?quote_id=${quoteID}`
+					`${process.env.API_ENDPOINT}/api/jamProxyOrderStatus?quote_id=${quoteID}`
 				)) as {data: TBebopJamOrderStatusAPIResp};
 				if (data?.tx_hash && data.tx_hash !== '0x') {
 					const transaction = await fetchTransaction({hash: data.tx_hash});
@@ -209,7 +209,7 @@ function BebopExecuteButton(props: {
 	const onSendOrders = useCallback(async (): Promise<void> => {
 		try {
 			props.onUpdateExecuteStep(false, true, false, '0x');
-			const {data: response} = (await axios.post(`http://${process.env.API_ENDPOINT}/api/jamProxyPost`, {
+			const {data: response} = (await axios.post(`${process.env.API_ENDPOINT}/api/jamProxyPost`, {
 				signature: props.currentQuote.quote.signature,
 				quote_id: props.currentQuote.quote.id
 			})) as {

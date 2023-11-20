@@ -316,7 +316,7 @@ export function useSolver(): TSolverContext {
 						sign = signResp.signature;
 					}
 
-					const {data: response} = (await axios.post(`http://${process.env.API_ENDPOINT}/api/jamProxyPost`, {
+					const {data: response} = (await axios.post(`${process.env.API_ENDPOINT}/api/jamProxyPost`, {
 						signature: sign,
 						quote_id: quote.id
 					})) as {
