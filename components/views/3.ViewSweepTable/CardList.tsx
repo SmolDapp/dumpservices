@@ -2,6 +2,7 @@ import React, {useCallback, useRef} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {useTokenList} from 'contexts/useTokenList';
 import {useWallet} from 'contexts/useWallet';
+import {getTypedBebopQuote} from 'hooks/assertSolver';
 import {addQuote, deleteQuote, getBuyAmount, initQuote, resetQuote} from 'hooks/handleQuote';
 import {useSolver} from 'hooks/useSolver';
 import {DENYLIST_COWSWAP} from 'utils/denyList.cowswap';
@@ -72,17 +73,17 @@ function CardList(props: {search: string}): ReactElement {
 			rawAmount: bigint;
 			rawBalance: bigint;
 		}): TRequestArgs => {
-			const previousInputTokens = Object.values(props.solver === 'BEBOP' ? quotes?.sellTokens || [] : []).map(
-				(token: TTokenWithAmount): TToken => {
-					return {
-						address: token.address,
-						name: token.name,
-						symbol: token.symbol,
-						decimals: token.decimals,
-						chainId: token.chainId
-					};
-				}
-			);
+			const previousInputTokens = Object.values(
+				props.solver === 'BEBOP' ? getTypedBebopQuote(quotes).sellTokens || [] : []
+			).map((token: TTokenWithAmount): TToken => {
+				return {
+					address: token.address,
+					name: token.name,
+					symbol: token.symbol,
+					decimals: token.decimals,
+					chainId: token.chainId
+				};
+			});
 			const previousInputAmounts = Object.values(props.solver === 'BEBOP' ? quotes?.sellTokens || [] : []).map(
 				(token: TTokenWithAmount): bigint => {
 					return toBigInt(token.amount.raw);

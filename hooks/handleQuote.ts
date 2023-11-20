@@ -206,8 +206,21 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 		}
 
 		const prevQuote = getTypedBebopQuote(prev);
+		const prevFromInput = Object.entries(args.inputTokens).reduce((acc, [key, token]) => {
+			acc[toAddress(token.address)] = {
+				address: token.address,
+				decimals: token.decimals,
+				symbol: token.symbol,
+				name: token.name,
+				chainId: token.chainId,
+				amount: toNormalizedBN(args.inputAmounts[Number(key)], token.decimals)
+			};
+			return acc;
+		}, {} as TDict<TTokenWithAmount>);
+
 		return {
 			...prevQuote,
+			sellTokens: prevFromInput,
 			lastUpdate: new Date(),
 			quote: {
 				...prevQuote.quote,
@@ -223,7 +236,7 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 					decimals: args.outputToken.decimals,
 					symbol: args.outputToken.symbol,
 					name: args.outputToken.name,
-					amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
+					amount: toNormalizedBN(0)
 				},
 				isFetching: true
 			}
