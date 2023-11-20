@@ -45,13 +45,24 @@ function Expiration(props: TBebopApprovalWizard & {currentQuote: TRequest & TBeb
 			quoteExpiration < new Date().valueOf() &&
 			isRefreshingQuoteForExp.current === props.currentQuote.quote.expirationTimestamp
 		) {
+			if (
+				props.currentQuote.quote.txHash !== '0x' ||
+				props.currentQuote.quote.isExecuting ||
+				props.currentQuote.quote.isExecuted
+			) {
+				return;
+			}
 			isRefreshingQuoteForExp.current = 0;
 			props.onRefreshQuote();
 		}
 	}, 1000);
 
 	function renderExpiration(): ReactElement {
-		if (props.currentQuote.quote.txHash !== '0x') {
+		if (
+			props.currentQuote.quote.txHash !== '0x' ||
+			props.currentQuote.quote.isExecuting ||
+			props.currentQuote.quote.isExecuted
+		) {
 			return <small className={'text-xs tabular-nums text-neutral-500'}>&nbsp;</small>;
 		}
 

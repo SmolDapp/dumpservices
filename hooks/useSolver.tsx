@@ -211,7 +211,8 @@ export function useSolver(): TSolverContext {
 					}
 				}
 				if (solverType === 'BEBOP') {
-					const transaction = await fetchTransaction({hash: orderUID as Hex});
+					console.log(`fetching transaction ${orderUID} on chain ${safeChainID}`);
+					const transaction = await fetchTransaction({hash: orderUID as Hex, chainId: safeChainID});
 					if (transaction.blockHash) {
 						return {status: TPossibleStatus.BEBOP_CONFIRMED, isSuccessful: true};
 					}
