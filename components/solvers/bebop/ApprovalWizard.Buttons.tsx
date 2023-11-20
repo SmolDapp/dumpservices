@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedBebopQuote, hasQuote} from 'hooks/assertSolver';
 import {getSellAmount} from 'hooks/handleQuote';
@@ -9,6 +9,7 @@ import {TPossibleStatus, TStatus} from 'utils/types';
 import {serialize} from 'wagmi';
 import axios from 'axios';
 import {IconSpinner} from '@icons/IconSpinner';
+import {useUpdateEffect} from '@react-hookz/web';
 import {fetchTransaction, signTypedData} from '@wagmi/core';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
@@ -183,8 +184,10 @@ function BebopSignButton(props: {
 
 function BebopExecuteButton(props: {
 	currentQuote: TRequest & TBebopRequest;
+	isSigned: boolean;
 	onUpdateExecuteStep: (isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) => void;
 }): ReactElement {
+	const executeButtonRef = useRef<HTMLButtonElement>(null);
 	const checkOrderStatus = useCallback(async (quoteID: string): Promise<boolean> => {
 		for (let i = 0; i < 1000; i++) {
 			try {
@@ -239,8 +242,17 @@ function BebopExecuteButton(props: {
 		}
 	}, [checkOrderStatus, props]);
 
+	useUpdateEffect(() => {
+		const isDisabled =
+			!props.currentQuote.quote || !props.currentQuote.quote.isSigned || props.currentQuote.quote.isExecuted;
+		if (!isDisabled && props.isSigned) {
+			executeButtonRef.current?.click();
+		}
+	}, [props.currentQuote, props.isSigned]);
+
 	return (
 		<Button
+			ref={executeButtonRef}
 			className={'yearn--button !w-fit !px-6 !text-sm'}
 			isBusy={props.currentQuote.quote.isExecuting}
 			isDisabled={
@@ -322,6 +334,7 @@ function BebopButtons({
 			return (
 				<BebopExecuteButton
 					currentQuote={currentQuote}
+					isSigned={currentQuote.quote.isSigned}
 					onUpdateExecuteStep={onUpdateExecuteStep}
 				/>
 			);

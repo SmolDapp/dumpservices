@@ -102,7 +102,6 @@ function Wrapper(): ReactElement {
 					approvals={approvalStep}
 					onUpdateApprovalStep={set_approvalStep}
 					onUpdateSignStep={(isSuccess: boolean, isSigning: boolean, hasError: boolean, signature: Hex) => {
-						console.log({isSuccess, isSigning, hasError, signature});
 						set_quotes((q): TRequest & TBebopRequest => {
 							const previousQuote = getTypedBebopQuote(q);
 							return {

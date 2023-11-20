@@ -66,7 +66,7 @@ export function resetQuote(key: TAddress): void {
  ******************************************************************************/
 export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solver: 'COWSWAP' | 'BEBOP'): TQuote {
 	if (solver === 'COWSWAP') {
-		if (!prev) {
+		if (!prev.solverType) {
 			return {
 				solverType: 'COWSWAP',
 				buyToken: {
@@ -83,7 +83,7 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 						symbol: args.inputTokens[0].symbol,
 						name: args.inputTokens[0].name,
 						chainId: args.inputTokens[0].chainId,
-						amount: toNormalizedBN(0)
+						amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 					}
 				},
 				quote: {
@@ -95,7 +95,7 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 							decimals: args.inputTokens[0].decimals,
 							symbol: args.inputTokens[0].symbol,
 							name: args.inputTokens[0].name,
-							amount: toNormalizedBN(0)
+							amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 						},
 						buyToken: {
 							chainId: args.outputToken.chainId,
@@ -132,14 +132,14 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 						decimals: args.inputTokens[0].decimals,
 						symbol: args.inputTokens[0].symbol,
 						name: args.inputTokens[0].name,
-						amount: toNormalizedBN(0)
+						amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 					},
 					buyToken: prevQuote.quote[toAddress(key)]?.buyToken || {
 						address: args.outputToken.address,
 						decimals: args.outputToken.decimals,
 						symbol: args.outputToken.symbol,
 						name: args.outputToken.name,
-						amount: toNormalizedBN(0)
+						amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 					},
 					isFetching: true
 				}
@@ -148,7 +148,7 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 	}
 
 	if (solver === 'BEBOP') {
-		if (!prev) {
+		if (!prev.solverType) {
 			return {
 				solverType: 'BEBOP',
 				buyTokens: {
@@ -167,7 +167,7 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 						symbol: args.inputTokens[0].symbol,
 						name: args.inputTokens[0].name,
 						chainId: args.inputTokens[0].chainId,
-						amount: toNormalizedBN(0)
+						amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 					}
 				},
 				quote: {
@@ -179,7 +179,7 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 						decimals: args.inputTokens[0].decimals,
 						symbol: args.inputTokens[0].symbol,
 						name: args.inputTokens[0].name,
-						amount: toNormalizedBN(0)
+						amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 					},
 					buyToken: {
 						chainId: args.outputToken.chainId,
@@ -216,14 +216,14 @@ export function initQuote(prev: TQuote, key: TAddress, args: TRequestArgs, solve
 					decimals: args.inputTokens[0].decimals,
 					symbol: args.inputTokens[0].symbol,
 					name: args.inputTokens[0].name,
-					amount: toNormalizedBN(0)
+					amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 				},
 				buyToken: prevQuote.quote?.buyToken || {
 					address: args.outputToken.address,
 					decimals: args.outputToken.decimals,
 					symbol: args.outputToken.symbol,
 					name: args.outputToken.name,
-					amount: toNormalizedBN(0)
+					amount: toNormalizedBN(args.inputAmounts[0], args.inputTokens[0].decimals)
 				},
 				isFetching: true
 			}
