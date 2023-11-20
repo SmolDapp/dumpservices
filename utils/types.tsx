@@ -155,7 +155,7 @@ export type TBebopJamQuoteAPIResp = {
 };
 export type TBebopJamOrderStatusAPIResp = {
 	status: 'string';
-	tx_hash: Hex;
+	txHash: Hex;
 	amounts: number;
 };
 

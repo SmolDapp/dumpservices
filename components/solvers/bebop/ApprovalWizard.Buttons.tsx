@@ -194,8 +194,8 @@ function BebopExecuteButton(props: {
 				const {data} = (await axios.get(
 					`${process.env.API_ENDPOINT}/api/jamProxyOrderStatus?quote_id=${quoteID}`
 				)) as {data: TBebopJamOrderStatusAPIResp};
-				if (data?.tx_hash && data.tx_hash !== '0x') {
-					const transaction = await fetchTransaction({hash: data.tx_hash});
+				if (data?.txHash && data.txHash !== '0x') {
+					const transaction = await fetchTransaction({hash: data.txHash});
 					if (transaction.blockHash) {
 						return true;
 					}
