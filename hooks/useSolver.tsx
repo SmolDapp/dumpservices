@@ -226,7 +226,7 @@ export function useSolver(): TSolverContext {
 				error: new Error('TX fail because the order expired')
 			};
 		},
-		[cowswapOrderBook]
+		[cowswapOrderBook, safeChainID]
 	);
 
 	/* 🔵 - Yearn Finance **************************************************************************
@@ -328,6 +328,7 @@ export function useSolver(): TSolverContext {
 							};
 						};
 					};
+					console.log(response);
 					if (response) {
 						if (response.error) {
 							console.error(response.error);
