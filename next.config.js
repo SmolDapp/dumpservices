@@ -63,6 +63,7 @@ module.exports = phase =>
 				RPC_URL_OPTIMISM_YEARN: process.env.RPC_URL_OPTIMISM_YEARN,
 				WALLETCONNECT_PROJECT_ID: process.env.WALLETCONNECT_PROJECT_ID,
 				SMOL_ASSETS_URL: 'https://assets.smold.app/api',
+				API_ENDPOINT: 'dumpservice-git-feat-bebop-ycorpo.vercel.app',
 
 				RECEIVER_ADDRESS: '0x10001192576E8079f12d6695b0948C2F41320040',
 				DISPERSE_ADDRESS: '0xD152f549545093347A162Dce210e7293f1452150',
