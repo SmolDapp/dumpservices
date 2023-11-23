@@ -111,7 +111,7 @@ function TokenRow(props: {
 						'grow-1 col-span-7 flex h-10 w-full items-center justify-between rounded-md p-2 border font-mono text-sm border-neutral-200',
 						'bg-neutral-0'
 					)}>
-					<div className={estimateOut === undefined ? 'text-neutral-300' : ''}>
+					<div className={estimateOut === undefined ? 'font-number text-neutral-300' : 'font-number'}>
 						{`${formatAmount(estimateOut?.normalized || 0, 4, 4)} ${props.toToken.symbol}`}
 					</div>
 					<div>

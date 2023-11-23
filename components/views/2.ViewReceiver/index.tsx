@@ -2,23 +2,23 @@ import React, {useEffect, useState} from 'react';
 import {useSweepooor} from 'contexts/useSweepooor';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
-import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import {isZeroAddress, toAddress} from '@yearn-finance/web-lib/utils/address';
 import AddressInput, {defaultInputAddressLike} from '@common/AddressInput';
 
 import type {ReactElement} from 'react';
 import type {TInputAddressLike} from '@common/AddressInput';
 
 function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
-	const {address} = useWeb3();
+	const {address, ens} = useWeb3();
 	const {set_receiver} = useSweepooor();
 	const [tokenReceiver, set_tokenReceiver] = useState<TInputAddressLike>(defaultInputAddressLike);
 	const [hasBeenConfirmed, set_hasBeenConfirmed] = useState(false);
 
 	useEffect((): void => {
-		if (!tokenReceiver?.label && toAddress(address) !== toAddress()) {
-			set_tokenReceiver({address, isValid: true, label: address as string});
+		if (!isZeroAddress(address)) {
+			set_tokenReceiver({address, isValid: true, label: ens || toAddress(address)});
 		}
-	}, [tokenReceiver, address]);
+	}, [address, ens]);
 
 	return (
 		<section>
@@ -55,7 +55,7 @@ function ViewReceiver({onProceed}: {onProceed: VoidFunction}): ReactElement {
 									set_hasBeenConfirmed(true);
 									onProceed();
 								}}
-								isDisabled={hasBeenConfirmed}>
+								isDisabled={hasBeenConfirmed || !tokenReceiver.isValid}>
 								{'Next'}
 							</Button>
 						</div>
