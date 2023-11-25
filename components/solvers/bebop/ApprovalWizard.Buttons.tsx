@@ -9,7 +9,6 @@ import {TPossibleStatus, TStatus} from 'utils/types';
 import {serialize} from 'wagmi';
 import axios from 'axios';
 import {IconSpinner} from '@icons/IconSpinner';
-import {useUpdateEffect} from '@react-hookz/web';
 import {fetchTransaction, signTypedData} from '@wagmi/core';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
@@ -165,6 +164,9 @@ function BebopSignButton(props: {
 				message: props.currentQuote.quote.toSign
 			});
 			props.onUpdateSignStep(true, false, false, signature);
+			setTimeout(() => {
+				document.getElementById('TRIGGER_DUMP')?.click();
+			}, 100);
 		} catch (error) {
 			console.error(error);
 			props.onUpdateSignStep(false, false, true, '0x');
@@ -188,7 +190,7 @@ function BebopExecuteButton(props: {
 	onUpdateExecuteStep: (isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) => void;
 }): ReactElement {
 	const executeButtonRef = useRef<HTMLButtonElement>(null);
-	const checkOrderStatus = useCallback(async (quoteID: string): Promise<boolean> => {
+	const checkOrderStatus = useCallback(async (quoteID: string): Promise<{isSuccess: boolean; hash: Hex}> => {
 		for (let i = 0; i < 1000; i++) {
 			try {
 				const {data} = (await axios.get(
@@ -197,7 +199,7 @@ function BebopExecuteButton(props: {
 				if (data?.txHash && data.txHash !== '0x') {
 					const transaction = await fetchTransaction({hash: data.txHash});
 					if (transaction.blockHash) {
-						return true;
+						return {isSuccess: true, hash: data.txHash};
 					}
 				}
 			} catch (error) {
@@ -206,7 +208,7 @@ function BebopExecuteButton(props: {
 			// Sleep for 3 seconds before checking the status again
 			await new Promise((resolve): NodeJS.Timeout => setTimeout(resolve, 3000));
 		}
-		return false;
+		return {isSuccess: false, hash: '0x'};
 	}, []);
 
 	const onSendOrders = useCallback(async (): Promise<void> => {
@@ -229,30 +231,23 @@ function BebopExecuteButton(props: {
 				props.onUpdateExecuteStep(false, false, true, '0x');
 				return;
 			}
-			const isSuccess = await checkOrderStatus(props.currentQuote.quote.id);
+			const {isSuccess, hash} = await checkOrderStatus(props.currentQuote.quote.id);
 			if (!isSuccess) {
 				console.error(`Order failed`);
 				props.onUpdateExecuteStep(false, false, true, '0x');
 				return;
 			}
-			props.onUpdateExecuteStep(true, false, false, response.txHash);
+			props.onUpdateExecuteStep(true, false, false, hash);
 		} catch (error) {
 			console.error(error);
 			props.onUpdateExecuteStep(false, false, true, '0x');
 		}
 	}, [checkOrderStatus, props]);
 
-	useUpdateEffect(() => {
-		const isDisabled =
-			!props.currentQuote.quote || !props.currentQuote.quote.isSigned || props.currentQuote.quote.isExecuted;
-		if (!isDisabled && props.isSigned) {
-			executeButtonRef.current?.click();
-		}
-	}, [props.currentQuote, props.isSigned]);
-
 	return (
 		<Button
 			ref={executeButtonRef}
+			id={'TRIGGER_DUMP'}
 			className={'yearn--button !w-fit !px-6 !text-sm'}
 			isBusy={props.currentQuote.quote.isExecuting}
 			isDisabled={

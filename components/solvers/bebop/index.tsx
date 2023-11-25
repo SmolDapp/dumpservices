@@ -3,6 +3,8 @@ import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedBebopQuote, hasQuote} from 'hooks/assertSolver';
 import {addQuote} from 'hooks/handleQuote';
 import {useSolver} from 'hooks/useSolver';
+import {serialize} from 'wagmi';
+import {useDeepCompareMemo} from '@react-hookz/web';
 import {toast} from '@yearn-finance/web-lib/components/yToast';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
@@ -23,7 +25,9 @@ function Wrapper(): ReactElement {
 	const {quotes, set_quotes, receiver, destination, onReset} = useSweepooor();
 	const [approvalStep, set_approvalStep] = useState<TDict<TStatus>>({});
 	const solver = useSolver();
-	const currentQuote = getTypedBebopQuote(quotes);
+	const currentQuote = useDeepCompareMemo((): TRequest & TBebopRequest => {
+		return getTypedBebopQuote(quotes);
+	}, [serialize(quotes)]);
 
 	const prepareRequest = useCallback((): TRequestArgs => {
 		const previousInputTokens = Object.values(quotes?.sellTokens || []).map((token: TTokenWithAmount): TToken => {
@@ -81,6 +85,44 @@ function Wrapper(): ReactElement {
 		return;
 	}, [currentQuote, prepareRequest, set_quotes, solver]);
 
+	const onUpdateSignStep = useCallback(
+		(isSuccess: boolean, isSigning: boolean, hasError: boolean, signature: Hex) => {
+			set_quotes((q): TRequest & TBebopRequest => {
+				const previousQuote = getTypedBebopQuote(q);
+				return {
+					...previousQuote,
+					quote: {
+						...previousQuote.quote,
+						isSigned: isSuccess,
+						isSigning: isSigning,
+						hasSignatureError: hasError,
+						signature
+					}
+				};
+			});
+		},
+		[set_quotes]
+	);
+
+	const onUpdateExecuteStep = useCallback(
+		(isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) => {
+			set_quotes((q): TRequest & TBebopRequest => {
+				const previousQuote = getTypedBebopQuote(q);
+				return {
+					...previousQuote,
+					quote: {
+						...previousQuote.quote,
+						isExecuted: isSuccess,
+						isExecuting: isExecuting,
+						hasExecutionError: hasError,
+						txHash
+					}
+				};
+			});
+		},
+		[set_quotes]
+	);
+
 	if (!hasQuote(quotes, '') || toBigInt(getTypedBebopQuote(quotes).quote.buyToken.amount.raw) === 0n) {
 		return (
 			<div className={'py-20'}>
@@ -101,36 +143,8 @@ function Wrapper(): ReactElement {
 					isRefreshingQuote={currentQuote.quote.isRefreshing}
 					approvals={approvalStep}
 					onUpdateApprovalStep={set_approvalStep}
-					onUpdateSignStep={(isSuccess: boolean, isSigning: boolean, hasError: boolean, signature: Hex) => {
-						set_quotes((q): TRequest & TBebopRequest => {
-							const previousQuote = getTypedBebopQuote(q);
-							return {
-								...previousQuote,
-								quote: {
-									...previousQuote.quote,
-									isSigned: isSuccess,
-									isSigning: isSigning,
-									hasSignatureError: hasError,
-									signature
-								}
-							};
-						});
-					}}
-					onUpdateExecuteStep={(isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) =>
-						set_quotes((q): TRequest & TBebopRequest => {
-							const previousQuote = getTypedBebopQuote(q);
-							return {
-								...previousQuote,
-								quote: {
-									...previousQuote.quote,
-									isExecuted: isSuccess,
-									isExecuting: isExecuting,
-									hasExecutionError: hasError,
-									txHash
-								}
-							};
-						})
-					}
+					onUpdateSignStep={onUpdateSignStep}
+					onUpdateExecuteStep={onUpdateExecuteStep}
 				/>
 			</div>
 			<SuccessModal
