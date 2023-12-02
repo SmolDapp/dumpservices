@@ -15,8 +15,7 @@ import {isBebopOrder, isCowswapOrder} from './assertSolver';
 import {retrieveQuote, signQuoteFromBebop, signQuoteFromCowswap} from './handleQuote';
 import {getValidTo} from './helperWithSolver';
 
-import type {TPostOrder} from 'pages/api/jamProxyPost';
-import type {Maybe, TGetQuote, TOrderQuoteError, TRequest, TRequestArgs} from 'utils/types';
+import type {Maybe, TBebopPostOrder, TGetQuote, TOrderQuoteError, TRequest, TRequestArgs} from 'utils/types';
 import type {Hex} from 'viem';
 import type {TAddress} from '@yearn-finance/web-lib/types';
 import type {TNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
@@ -55,7 +54,7 @@ export function getSpender({chainID}: {chainID: number}): TAddress {
 		case 1:
 			return toAddress(process.env.COWSWAP_SPENDER_ADDRESS);
 		case 137:
-			return toAddress(process.env.BEBOP_BALANCE_MANAGER_ADDRESS);
+			return toAddress(process.env.BEBOP_SPENDER_ADDRESS);
 	}
 	return toAddress(process.env.COWSWAP_SPENDER_ADDRESS);
 }
@@ -316,11 +315,11 @@ export function useSolver(): TSolverContext {
 						sign = signResp.signature;
 					}
 
-					const {data: response} = (await axios.post(`${process.env.API_ENDPOINT}/api/jamProxyPost`, {
+					const {data: response} = (await axios.post(`${process.env.BEBOP_API_ENDPOINT}/order`, {
 						signature: sign,
 						quote_id: quote.id
 					})) as {
-						data: TPostOrder & {
+						data: TBebopPostOrder & {
 							error?: {
 								errorCode: number;
 								message: string;

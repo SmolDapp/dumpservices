@@ -634,7 +634,7 @@ async function retrieveQuoteFromBebopJam({
 
 	if (canExecuteFetch) {
 		try {
-			const requestURI = new URL(`${process.env.API_ENDPOINT}/api/jamProxy`);
+			const requestURI = new URL(`${process.env.BEBOP_API_ENDPOINT}/quote`);
 			requestURI.searchParams.append('buy_tokens', buyToken.address);
 			requestURI.searchParams.append('sell_tokens', sellTokens.join(','));
 			requestURI.searchParams.append('sell_amounts', amounts.map(({raw}): string => raw.toString()).join(','));

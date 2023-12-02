@@ -1,10 +1,11 @@
 import {TPossibleStatus} from 'utils/types';
 import axios from 'axios';
 import {toAddress, truncateHex} from '@yearn-finance/web-lib/utils/address';
-import {toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
+import {toBigInt, toNormalizedBN} from '@yearn-finance/web-lib/utils/format.bigNumber';
 import {formatAmount} from '@yearn-finance/web-lib/utils/format.number';
 
-import type {TCowswapOrderQuoteResponse} from 'utils/types';
+import type {TBebopRequest, TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
+import type {Hex} from 'viem';
 
 type TSafeTxHistory = {
 	safe: string;
@@ -97,6 +98,51 @@ function notify(
 			'\n*👀 - Meta:*',
 			`\t\t\t\tFrom: [${truncateHex(from, 4)}](https://etherscan.io/address/${from})`,
 			`\t\t\t\tTo: [${truncateHex(to, 4)}](https://etherscan.io/address/${to})`,
+			`\t\t\t\tWallet: ${origin}`,
+			...extra
+		]
+	});
+}
+
+export function notifyBebop(order: TRequest & TBebopRequest, origin: string, txHash: Hex): void {
+	const messages = [] as string[];
+	const from = toAddress(order.quote.from);
+	const to = toAddress(order.quote.receiver);
+	for (let index = 0; index < Object.values(order.sellTokens).length; index++) {
+		const sellToken = Object.values(order.sellTokens)[index];
+		const buyToken = Object.values(order.buyTokens)[index];
+
+		const buyAmount = formatAmount(buyToken.amount.normalized, 6, 6);
+		const sellAmount = formatAmount(sellToken.amount.normalized, 6, 6);
+		const feeAmount = formatAmount(
+			toNormalizedBN(
+				toBigInt(buyToken.amountWithSlippage?.raw || 0n) - toBigInt(buyToken?.amount.raw || 0n),
+				buyToken.decimals
+			).normalized,
+			6,
+			6
+		);
+		const status = ` ✅ [Order](https://polygonscan.com/tx/${txHash})`;
+		messages.push(
+			`\t\t\t\t${sellAmount} [${sellToken.symbol.toUpperCase()}](https://polygonscan.io/address/${
+				sellToken.address
+			}) ▶ ${buyAmount} [${buyToken.symbol.toUpperCase()}](https://polygonscan.io/address/${
+				buyToken.address
+			}) | ${feeAmount} [${sellToken.symbol.toUpperCase()}](https://polygonscan.io/address/${
+				sellToken.address
+			}) | ${status}`
+		);
+	}
+
+	const extra = [] as string[];
+	axios.post('/api/notify', {
+		messages: [
+			'*🥟 New Bebop dump detected*',
+			'\n*🧹 - Orders:*',
+			...messages,
+			'\n*👀 - Meta:*',
+			`\t\t\t\tFrom: [${truncateHex(from, 4)}](https://polygonscan.com/address/${from})`,
+			`\t\t\t\tTo: [${truncateHex(to, 4)}](https://polygonscan.com/address/${to})`,
 			`\t\t\t\tWallet: ${origin}`,
 			...extra
 		]

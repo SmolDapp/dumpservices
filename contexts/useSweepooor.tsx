@@ -78,6 +78,15 @@ export const SweepooorContextApp = ({children}: {children: ReactElement}): React
 		set_currentStep(Step.DESTINATION);
 	}, []);
 
+	useEffect((): void => {
+		if (chainID === 137 && isWalletSafe) {
+			set_quotes(defaultProps.quotes);
+			set_destination(defaultProps.destination);
+			set_receiver(defaultProps.receiver);
+			set_currentStep(Step.WALLET);
+		}
+	}, [isWalletSafe, chainID]);
+
 	/**********************************************************************************************
 	 ** If the user is not active, reset the state to the default values.
 	 **********************************************************************************************/
@@ -113,12 +122,14 @@ export const SweepooorContextApp = ({children}: {children: ReactElement}): React
 	 **********************************************************************************************/
 	useEffect((): void => {
 		const isEmbedWallet = isWalletLedger || isWalletSafe;
-		if ((isActive && address) || isEmbedWallet) {
+		if (isWalletSafe && chainID === 137) {
+			set_currentStep(Step.WALLET);
+		} else if ((isActive && address) || isEmbedWallet) {
 			set_currentStep(Step.DESTINATION);
 		} else if (!isActive || !address) {
 			set_currentStep(Step.WALLET);
 		}
-	}, [address, isActive, isWalletLedger, isWalletSafe]);
+	}, [address, isActive, isWalletLedger, isWalletSafe, chainID]);
 
 	/**********************************************************************************************
 	 ** This effect is used to handle some UI transitions and sections jumps. Once the current step
@@ -133,7 +144,9 @@ export const SweepooorContextApp = ({children}: {children: ReactElement}): React
 			const scalooor = document?.getElementById('scalooor');
 			const headerHeight = 96;
 
-			if (currentStep === Step.WALLET && !isEmbedWallet) {
+			if (isWalletSafe && chainID === 137) {
+				currentStepContainer = document?.getElementById('wallet');
+			} else if (currentStep === Step.WALLET && !isEmbedWallet) {
 				currentStepContainer = document?.getElementById('wallet');
 			} else if (currentStep === Step.DESTINATION || isEmbedWallet) {
 				currentStepContainer = document?.getElementById('tokenToReceive');
@@ -152,7 +165,7 @@ export const SweepooorContextApp = ({children}: {children: ReactElement}): React
 				scrollToTargetAdjusted(currentStepContainer);
 			}
 		}, 0);
-	}, [currentStep, isWalletLedger, isWalletSafe]);
+	}, [currentStep, isWalletLedger, isWalletSafe, chainID]);
 
 	useUpdateEffect((): void => {
 		onReset();

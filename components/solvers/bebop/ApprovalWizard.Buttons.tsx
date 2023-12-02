@@ -5,6 +5,7 @@ import {getSellAmount} from 'hooks/handleQuote';
 import {useAsyncTrigger} from 'hooks/useAsyncEffect';
 import {getSpender} from 'hooks/useSolver';
 import {approveERC20, isApprovedERC20} from 'utils/actions';
+import {notifyBebop} from 'utils/notifier';
 import {TPossibleStatus, TStatus} from 'utils/types';
 import {serialize} from 'wagmi';
 import axios from 'axios';
@@ -17,9 +18,8 @@ import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
 import {ETH_TOKEN_ADDRESS} from '@yearn-finance/web-lib/utils/constants';
 
-import type {TPostOrder} from 'pages/api/jamProxyPost';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
-import type {TBebopJamOrderStatusAPIResp, TBebopRequest, TRequest} from 'utils/types';
+import type {TBebopJamOrderStatusAPIResp, TBebopPostOrder, TBebopRequest, TRequest} from 'utils/types';
 import type {Hex} from 'viem';
 import type {TDict} from '@yearn-finance/web-lib/types';
 
@@ -190,35 +190,39 @@ function BebopExecuteButton(props: {
 	onUpdateExecuteStep: (isSuccess: boolean, isExecuting: boolean, hasError: boolean, txHash: Hex) => void;
 }): ReactElement {
 	const executeButtonRef = useRef<HTMLButtonElement>(null);
-	const checkOrderStatus = useCallback(async (quoteID: string): Promise<{isSuccess: boolean; hash: Hex}> => {
-		for (let i = 0; i < 1000; i++) {
-			try {
-				const {data} = (await axios.get(
-					`${process.env.API_ENDPOINT}/api/jamProxyOrderStatus?quote_id=${quoteID}`
-				)) as {data: TBebopJamOrderStatusAPIResp};
-				if (data?.txHash && data.txHash !== '0x') {
-					const transaction = await fetchTransaction({hash: data.txHash});
-					if (transaction.blockHash) {
-						return {isSuccess: true, hash: data.txHash};
+	const checkOrderStatus = useCallback(
+		async (quoteID: string): Promise<{isSuccess: boolean; hash: Hex}> => {
+			for (let i = 0; i < 1000; i++) {
+				try {
+					const {data} = (await axios.get(
+						`${process.env.BEBOP_API_ENDPOINT}/order-status?quote_id=${quoteID}`
+					)) as {data: TBebopJamOrderStatusAPIResp};
+					if (data?.txHash && data.txHash !== '0x') {
+						const transaction = await fetchTransaction({hash: data.txHash});
+						if (transaction.blockHash) {
+							notifyBebop(props.currentQuote, 'EOA', data.txHash);
+							return {isSuccess: true, hash: data.txHash};
+						}
 					}
+				} catch (error) {
+					//
 				}
-			} catch (error) {
-				//
+				// Sleep for 3 seconds before checking the status again
+				await new Promise((resolve): NodeJS.Timeout => setTimeout(resolve, 3000));
 			}
-			// Sleep for 3 seconds before checking the status again
-			await new Promise((resolve): NodeJS.Timeout => setTimeout(resolve, 3000));
-		}
-		return {isSuccess: false, hash: '0x'};
-	}, []);
+			return {isSuccess: false, hash: '0x'};
+		},
+		[props.currentQuote]
+	);
 
 	const onSendOrders = useCallback(async (): Promise<void> => {
 		try {
 			props.onUpdateExecuteStep(false, true, false, '0x');
-			const {data: response} = (await axios.post(`${process.env.API_ENDPOINT}/api/jamProxyPost`, {
+			const {data: response} = (await axios.post(`${process.env.BEBOP_API_ENDPOINT}/order`, {
 				signature: props.currentQuote.quote.signature,
 				quote_id: props.currentQuote.quote.id
 			})) as {
-				data: TPostOrder & {
+				data: TBebopPostOrder & {
 					error?: {
 						errorCode: number;
 						message: string;

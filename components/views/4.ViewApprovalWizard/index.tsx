@@ -5,7 +5,6 @@ import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 
 import BebopBatchedFlow from '../../solvers/bebop';
 import CowswapStandardFlow from '../../solvers/cowswap';
-import SafeXBebop from '../../solvers/safeXCowswap/SafeXBebop';
 import SafeXCowswap from '../../solvers/safeXCowswap/SafeXCowswap';
 
 import type {ReactElement} from 'react';
@@ -19,7 +18,7 @@ function ViewApprovalWizard(): ReactElement {
 			return <SafeXCowswap />;
 		}
 		if (currentStep === Step.APPROVALS && isWalletSafe && isBebopOrder(quotes)) {
-			return <SafeXBebop />;
+			return <div>{'Dumping with a Safe via Bebop is not supported yet. Please use a regular wallet.'}</div>;
 		}
 		if (currentStep === Step.APPROVALS && isBebopOrder(quotes)) {
 			return <BebopBatchedFlow />;

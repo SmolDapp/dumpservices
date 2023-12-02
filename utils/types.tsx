@@ -250,3 +250,5 @@ export type TSignQuoteFromCowswap = {
 	safeChainID: number;
 	amountWithSlippage: bigint;
 };
+
+export type TBebopPostOrder = {txHash: Hex; status: string; expiry: number};

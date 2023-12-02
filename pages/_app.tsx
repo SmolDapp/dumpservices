@@ -3,9 +3,8 @@ import {Inter} from 'next/font/google';
 import AppWrapper from 'components/common/AppWrapper';
 import {TokenListContextApp} from 'contexts/useTokenList';
 import {WalletContextApp} from 'contexts/useWallet';
-import {mainnet} from 'wagmi';
+import {mainnet, polygon} from 'viem/chains';
 import {SafeProvider} from '@gnosis.pm/safe-apps-react-sdk';
-import {polygon} from '@wagmi/chains';
 import {WithYearn} from '@yearn-finance/web-lib/contexts/WithYearn';
 import {localhost} from '@yearn-finance/web-lib/utils/wagmi/networks';
 
