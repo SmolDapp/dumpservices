@@ -12,7 +12,6 @@ import {IconWallet} from '@yearn-finance/web-lib/icons/IconWallet';
 import {truncateHex} from '@yearn-finance/web-lib/utils/address';
 
 import type {ReactElement} from 'react';
-import type {Chain} from 'viem';
 
 function NetworkButton({
 	label,
@@ -95,7 +94,7 @@ export function NetworkSelector({networks}: {networks: number[]}): ReactElement 
 
 		return chainsForInjected
 			.filter(({id}): boolean => id !== 1337 && ((networks.length > 0 && networks.includes(id)) || true))
-			.map((network: Chain): TNetwork => ({value: network.id, label: network.name}));
+			.map((network: any): TNetwork => ({value: network.id, label: network.name}));
 	}, [connectors, networks]);
 
 	const currentNetwork = useMemo(
