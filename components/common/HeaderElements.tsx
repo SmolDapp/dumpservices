@@ -12,7 +12,7 @@ import {IconWallet} from '@yearn-finance/web-lib/icons/IconWallet';
 import {truncateHex} from '@yearn-finance/web-lib/utils/address';
 
 import type {ReactElement} from 'react';
-import type {Chain} from 'wagmi';
+import type {Chain} from 'viem';
 
 function NetworkButton({
 	label,
