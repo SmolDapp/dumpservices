@@ -58,8 +58,8 @@ function ListHead({
 									? sortDirection === ''
 										? 'desc'
 										: sortDirection === 'desc'
-										? 'asc'
-										: ''
+										  ? 'asc'
+										  : ''
 									: 'desc'
 							)
 						}
@@ -81,8 +81,8 @@ function ListHead({
 											? sortDirection === ''
 												? 'desc'
 												: sortDirection === 'desc'
-												? 'asc'
-												: ''
+												  ? 'asc'
+												  : ''
 											: 'desc'
 									)
 								}
