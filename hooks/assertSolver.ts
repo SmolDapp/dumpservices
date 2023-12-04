@@ -1,6 +1,21 @@
-import type {TBebopOrderQuoteResponse, TCowswapOrderQuoteResponse} from 'utils/types';
+import {toAddress} from '@yearn-finance/web-lib/utils/address';
 
-export function asCowswapOrder(order: unknown): asserts order is TCowswapOrderQuoteResponse {
+import type {TBebopRequest, TCowswapRequest, TRequest} from 'utils/types';
+
+export function isQuote(order: TRequest): order is TRequest {
+	if (!order) {
+		return false;
+	}
+	if (typeof order !== 'object') {
+		return false;
+	}
+	if (!('solverType' in order)) {
+		return false;
+	}
+	return true;
+}
+
+export function asCowswapOrder(order: TRequest): asserts order is TRequest & TCowswapRequest {
 	if (!order) {
 		throw new Error('Order is undefined');
 	}
@@ -15,7 +30,7 @@ export function asCowswapOrder(order: unknown): asserts order is TCowswapOrderQu
 	}
 }
 
-export function isCowswapOrder(order: unknown): order is TCowswapOrderQuoteResponse {
+export function isCowswapOrder(order: TRequest): order is TRequest & TCowswapRequest {
 	try {
 		asCowswapOrder(order);
 		return true;
@@ -24,7 +39,7 @@ export function isCowswapOrder(order: unknown): order is TCowswapOrderQuoteRespo
 	}
 }
 
-export function asBebopOrder(order: unknown): asserts order is TBebopOrderQuoteResponse {
+export function asBebopOrder(order: TRequest): asserts order is TRequest & TBebopRequest {
 	if (!order) {
 		throw new Error('Order is undefined');
 	}
@@ -39,11 +54,39 @@ export function asBebopOrder(order: unknown): asserts order is TBebopOrderQuoteR
 	}
 }
 
-export function isBebopOrder(order: unknown): order is TBebopOrderQuoteResponse {
+export function isBebopOrder(order: TRequest): order is TRequest & TBebopRequest {
 	try {
 		asBebopOrder(order);
 		return true;
 	} catch (e) {
 		return false;
 	}
+}
+
+export function getTypedCowswapQuote(order: TRequest): TRequest & TCowswapRequest {
+	return order as TRequest & TCowswapRequest;
+}
+
+export function getTypedBebopQuote(order: TRequest): TRequest & TBebopRequest {
+	return order as TRequest & TBebopRequest;
+}
+
+export function hasQuote(quote: TRequest, tokenAddress: string): boolean {
+	if (!quote) {
+		return false;
+	}
+	if (isCowswapOrder(quote)) {
+		const currentQuote = getTypedCowswapQuote(quote);
+		if (tokenAddress === '') {
+			return !!currentQuote.quote;
+		}
+		return !!currentQuote?.quote?.[toAddress(tokenAddress)];
+	}
+
+	if (isBebopOrder(quote)) {
+		const currentQuote = getTypedBebopQuote(quote);
+		return !!currentQuote?.quote?.buyToken;
+	}
+
+	return false;
 }
