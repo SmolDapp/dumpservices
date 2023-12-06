@@ -7,7 +7,7 @@ import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {cl} from '@yearn-finance/web-lib/utils/cl';
 
-import groovyWalkAnimation from '../../../utils/lottie/success.json';
+import SuccessAnimation from '../../../utils/lottie/success.json';
 
 import type {ReactElement} from 'react';
 
@@ -90,7 +90,7 @@ function SuccessModal({
 									<div className={'h-52 w-52'}>
 										<Lottie
 											loop={false}
-											animationData={groovyWalkAnimation}
+											animationData={SuccessAnimation}
 										/>
 									</div>
 								</div>

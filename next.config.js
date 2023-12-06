@@ -77,7 +77,7 @@ module.exports = phase =>
 
 				BEBOP_JAM_KEY: process.env.BEBOP_JAM_KEY,
 
-				SHOULD_USE_PRESIGN: true,
+				SHOULD_USE_PRESIGN: false,
 				TELEGRAM_BOT: process.env.TELEGRAM_BOT,
 				TELEGRAM_CHAT: process.env.TELEGRAM_CHAT
 			}
