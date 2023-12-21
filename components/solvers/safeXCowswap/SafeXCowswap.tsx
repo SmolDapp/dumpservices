@@ -7,7 +7,7 @@ import {isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
 import {TStatus} from 'utils/types';
-import {maxUint256, stringToHex} from 'viem';
+import {maxUint256} from 'viem';
 import axios from 'axios';
 import {SigningScheme} from '@cowprotocol/cow-sdk';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
@@ -21,6 +21,7 @@ import {CowswapApprovalWizard} from '../cowswap/ApprovalWizard';
 
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TCowswapOrderQuoteResponse, TRequest} from 'utils/types';
+import type {Hex} from 'viem';
 import type {TDict} from '@yearn-finance/web-lib/types';
 import type {EcdsaSigningScheme} from '@cowprotocol/cow-sdk';
 import type {BaseTransaction} from '@gnosis.pm/safe-apps-sdk';
@@ -141,7 +142,7 @@ function SafeXCowswapBatchedFlow(props: {onUpdateSignStep: Dispatch<SetStateActi
 				await solver.execute(quotes, tokenAddress, true, (orderUID): void => {
 					const newPreSignatureForBatch = getSetPreSignatureTransaction(
 						toAddress(process.env.COWSWAP_GPV2SETTLEMENT_ADDRESS),
-						stringToHex(orderUID),
+						orderUID as Hex,
 						true
 					);
 					newlyExistingTransactions[String(quoteOrder.id)] = {

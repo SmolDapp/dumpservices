@@ -5,7 +5,7 @@ import type {TAddress} from '@yearn-finance/web-lib/types';
 
 export function getValidTo(order: TRequest, key: TAddress, isWalletSafe: boolean = false): number {
 	if (isWalletSafe && isCowswapOrder(order)) {
-		return order.quote[key].validTo;
+		return (order.quote?.[key]?.quote?.validTo || 0) * 1000;
 	}
 	if (isCowswapOrder(order)) {
 		return order.quote[key].expirationTimestamp * 1000;

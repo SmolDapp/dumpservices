@@ -49,7 +49,7 @@ function Expiration({quotes, token}: {quotes: TRequest; token: TTokenWithAmount}
 	}, [quoteExpiration]);
 
 	function renderExpiration(): ReactElement {
-		if (currentQuote.orderUID) {
+		if (!currentQuote || currentQuote.orderUID) {
 			return <small className={'text-xs tabular-nums text-neutral-500'}>&nbsp;</small>;
 		}
 
@@ -269,6 +269,8 @@ function CowswapApprovalWizard(props: TCowswapApprovalWizard): ReactElement {
 	if (!hasQuote(quotes, props.token.address)) {
 		return <></>;
 	}
+
+	console.log(quotes);
 
 	return (
 		<details

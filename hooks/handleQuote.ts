@@ -565,7 +565,7 @@ async function retrieveQuoteFromCowswap({
 				chainId: request.inputTokens[0].chainId,
 				amount: toNormalizedBN(
 					toBigInt(result.quote.sellAmount) + toBigInt(result.quote.feeAmount),
-					request.outputToken.decimals
+					request.inputTokens[0].decimals
 				)
 			};
 			const buyTokenWithAmount: TTokenWithAmount = {
