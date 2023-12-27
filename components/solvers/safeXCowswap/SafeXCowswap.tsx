@@ -3,7 +3,6 @@ import {useSweepooor} from 'contexts/useSweepooor';
 import {getTypedCowswapQuote, isCowswapOrder} from 'hooks/assertSolver';
 import {addQuote, getSellAmount, setRefreshingQuote} from 'hooks/handleQuote';
 import {getSpender, useSolver} from 'hooks/useSolver';
-import {isApprovedERC20} from 'utils/actions';
 import notify from 'utils/notifier';
 import {getApproveTransaction, getSetPreSignatureTransaction} from 'utils/tools.gnosis';
 import {TStatus} from 'utils/types';
@@ -12,10 +11,12 @@ import axios from 'axios';
 import {SigningScheme} from '@cowprotocol/cow-sdk';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {IconSpinner} from '@icons/IconSpinner';
+import {erc20ABI, readContract} from '@wagmi/core';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {useWeb3} from '@yearn-finance/web-lib/contexts/useWeb3';
 import {useChainID} from '@yearn-finance/web-lib/hooks/useChainID';
 import {toAddress} from '@yearn-finance/web-lib/utils/address';
+import {toBigInt} from '@yearn-finance/web-lib/utils/format.bigNumber';
 
 import {CowswapApprovalWizard} from '../cowswap/ApprovalWizard';
 
@@ -91,19 +92,21 @@ function SafeXCowswapBatchedFlow(props: {onUpdateSignStep: Dispatch<SetStateActi
 		}
 
 		// Check approvals and add them to the batch if needed
+		const {safeAddress} = await sdk.safe.getInfo();
 		const allQuotes = getTypedCowswapQuote(quotes);
 		for (const token of Object.keys(allQuotes.quote)) {
 			const currentQuote = getTypedCowswapQuote(quotes);
 			const tokenAddress = toAddress(token);
 			const quoteOrder = currentQuote.quote[tokenAddress] as TCowswapOrderQuoteResponse;
 			const spender = getSpender({chainID: safeChainID});
-			const isApproved = await isApprovedERC20({
-				connector: provider,
-				chainID: safeChainID,
-				contractAddress: tokenAddress,
-				spenderAddress: spender,
-				amount: maxUint256
+			const allowance = await readContract({
+				abi: erc20ABI,
+				address: tokenAddress,
+				chainId: safeChainID,
+				functionName: 'allowance',
+				args: [toAddress(safeAddress), spender]
 			});
+			const isApproved = toBigInt(allowance) >= toBigInt(maxUint256);
 			if (!isApproved) {
 				const newApprovalForBatch = getApproveTransaction(maxUint256, tokenAddress, spender);
 				preparedTransactions.push(newApprovalForBatch);
