@@ -107,8 +107,8 @@ function SafeXCowswapBatchedFlow(props: {onUpdateSignStep: Dispatch<SetStateActi
 				args: [toAddress(safeAddress), spender]
 			});
 			const isApproved = toBigInt(allowance) >= toBigInt(quoteOrder.sellToken.amount.raw);
+			console.log(`[SafeXCowSwap] - ${tokenAddress} isApproved: ${isApproved} - ${allowance}`);
 			if (!isApproved) {
-				console.log(`[SafeXCowSwap] - ${tokenAddress} isNotApproved`);
 				const newApprovalForBatch = getApproveTransaction(maxUint256, tokenAddress, spender);
 				preparedTransactions.push(newApprovalForBatch);
 			}
