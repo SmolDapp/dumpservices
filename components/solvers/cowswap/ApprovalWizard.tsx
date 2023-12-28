@@ -270,8 +270,6 @@ function CowswapApprovalWizard(props: TCowswapApprovalWizard): ReactElement {
 		return <></>;
 	}
 
-	console.log(quotes);
-
 	return (
 		<details
 			key={props.index}
