@@ -12,7 +12,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 		await telegram.sendMessage(process.env.TELEGRAM_CHAT as string, messages.join('\n'), {
 			parse_mode: 'Markdown',
-			disable_web_page_preview: true
+			link_preview_options: {
+				is_disabled: true
+			}
 		});
 		return res.status(200).json(true);
 	} catch (error) {

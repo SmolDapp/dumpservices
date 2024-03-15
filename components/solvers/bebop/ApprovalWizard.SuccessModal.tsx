@@ -1,13 +1,10 @@
 import {Fragment, useState} from 'react';
 import Confetti from 'react-dom-confetti';
 import Link from 'next/link';
-import Lottie from 'lottie-react';
 import {Dialog, Transition} from '@headlessui/react';
 import {useUpdateEffect} from '@react-hookz/web';
 import {Button} from '@yearn-finance/web-lib/components/Button';
 import {cl} from '@yearn-finance/web-lib/utils/cl';
-
-import SuccessAnimation from '../../../utils/lottie/success.json';
 
 import type {ReactElement} from 'react';
 
@@ -84,14 +81,6 @@ function SuccessModal({
 												}
 											</p>
 										</div>
-									</div>
-								</div>
-								<div className={'my-10 flex items-center justify-center'}>
-									<div className={'h-52 w-52'}>
-										<Lottie
-											loop={false}
-											animationData={SuccessAnimation}
-										/>
 									</div>
 								</div>
 								<div className={'flex items-center justify-center text-center'}>

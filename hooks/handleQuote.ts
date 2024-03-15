@@ -834,7 +834,12 @@ export async function signQuoteFromCowswap({
 	}
 
 	return await OrderSigningUtils.signOrder(
-		{...(quote as UnsignedOrder), buyAmount: buyAmountWithSlippage.toString()},
+		{
+			...(quote as UnsignedOrder),
+			feeAmount: '0',
+			sellAmount: (toBigInt(quote.sellAmount) + toBigInt(quote.feeAmount)).toString(),
+			buyAmount: buyAmountWithSlippage.toString()
+		},
 		safeChainID,
 		signer
 	);
